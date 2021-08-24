@@ -14,6 +14,7 @@ from tempfile import mkdtemp
 from os.path import exists, isdir, realpath, dirname
 
 from qiita_client.testing import PluginTestCase
+from qiita_client import ArtifactInfo
 
 from qp_klp import __version__, plugin
 
@@ -59,6 +60,12 @@ class qiime2Tests(PluginTestCase):
         jid = self.qclient.post('/apitest/processing_job/', data=data)['job']
         success, ainfo, msg = list_folder(self.qclient, jid, params, out_dir)
         self.assertTrue(success)
+        exp = [
+            ArtifactInfo(
+                'output', 'job-output-folder', [(f'{out_dir}/', 'directory')])
+        ]
+
+        self.assertEqual(ainfo, exp)
 
 
 if __name__ == '__main__':
