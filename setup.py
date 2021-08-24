@@ -11,7 +11,7 @@
 from setuptools import setup
 
 
-__version__ = '08.2021'
+__version__ = '2021.08'
 
 classes = """
     Development Status :: 5 - Production/Stable

@@ -11,20 +11,13 @@ from qiita_client import QiitaPlugin, QiitaCommand
 from .klp import list_folder
 
 
-__version__ = '08.2021'
+__version__ = '2021.08'
 
-
-# Initialize the plugin
-class QiitaPluginAdmin(QiitaPlugin):
-    _plugin_type = "private"
-
-
-plugin = QiitaPluginAdmin('qp-klp', __version__, 'Knight Lab Processing')
+plugin = QiitaPlugin('qp-klp', __version__, 'Knight Lab Processing')
 
 req_params = {'input_folder': ('string', [''])}
 opt_params = dict()
-outputs = None
-# {'output': 'raw_job_folder'}
+outputs = {'output': 'job-output-folder'}
 dflt_param_set = dict()
 
 list_folder_cmd = QiitaCommand(

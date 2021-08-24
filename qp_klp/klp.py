@@ -6,8 +6,10 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 
-from os.path import exists, isdir
-# from glob import glob
+from os.path import exists, isdir, join
+from glob import glob
+
+from qiita_client import ArtifactInfo
 
 
 def list_folder(qclient, job_id, parameters, out_dir):
@@ -36,10 +38,13 @@ def list_folder(qclient, job_id, parameters, out_dir):
     ainfo = None
     msg = None
     if exists(input_folder) and isdir(input_folder):
-        ainfo = ''
-        # [
-        #     ArtifactInfo('output', 'raw_job_folder',
-        #                  [(f'{out_dir}/', 'string')])]
+        with open(join(out_dir, 'listing.txt'), 'w') as f:
+            f.write('\n'.join(glob(join(input_folder, '*'))))
+
+        ainfo = [
+            ArtifactInfo('output', 'job-output-folder',
+                         [(f'{out_dir}/', 'directory')])
+        ]
     else:
         success = False
         msg = "The path doesn't exist or is not a folder"
