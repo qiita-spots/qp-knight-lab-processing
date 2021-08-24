@@ -13,7 +13,7 @@ from qiita_client import ArtifactInfo
 
 
 def list_folder(qclient, job_id, parameters, out_dir):
-    """Run Woltka with the given parameters
+    """Create file listing in output directory
 
     Parameters
     ----------
@@ -22,7 +22,7 @@ def list_folder(qclient, job_id, parameters, out_dir):
     job_id : str
         The job id
     parameters : dict
-        The parameter values to run split libraries
+        The parameter values for input folder to use
     out_dir : str
         The path to the job's output directory
 
