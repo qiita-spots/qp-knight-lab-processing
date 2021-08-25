@@ -11,9 +11,13 @@ from qiita_client import QiitaPlugin, QiitaCommand
 from .klp import list_folder
 
 
+class QiitaPluginAdmin(QiitaPlugin):
+    _plugin_type = "private"
+
+
 __version__ = '2021.08'
 
-plugin = QiitaPlugin('qp-klp', __version__, 'Knight Lab Processing')
+plugin = QiitaPluginAdmin('qp-klp', __version__, 'Knight Lab Processing')
 
 req_params = {'input_folder': ('string', [''])}
 opt_params = dict()
