@@ -8,7 +8,7 @@
 
 from qiita_client import QiitaPlugin, QiitaCommand
 
-from .klp import list_folder
+from .klp import sequence_processing_pipeline
 
 
 class QiitaPluginAdmin(QiitaPlugin):
@@ -19,13 +19,18 @@ __version__ = '2021.08'
 
 plugin = QiitaPluginAdmin('qp-klp', __version__, 'Knight Lab Processing')
 
-req_params = {'input_folder': ('string', [''])}
+req_params = {
+    'run_identifier': ('string', ['']),
+    'sample_sheet': ('prep_template', ['']),
+}
 opt_params = dict()
 outputs = {'output': 'job-output-folder'}
 dflt_param_set = dict()
 
-list_folder_cmd = QiitaCommand(
-    'List Folders', 'List the files (no subfolders) available', list_folder,
-    req_params, opt_params, outputs, dflt_param_set)
+sequence_processing_pipeline_cmd = QiitaCommand(
+    'Sequence Processing Pipeline', 'Associate a sample sheet with a '
+    'sequencing run and generate the corresponding sequence files',
+    sequence_processing_pipeline, req_params, opt_params, outputs,
+    dflt_param_set)
 
-plugin.register_command(list_folder_cmd)
+plugin.register_command(sequence_processing_pipeline_cmd)

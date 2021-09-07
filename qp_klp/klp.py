@@ -8,12 +8,14 @@
 
 from os.path import exists, isdir, join
 from glob import glob
+from functools import partial
+from shutil import copytree
 
 from qiita_client import ArtifactInfo
 
 
-def list_folder(qclient, job_id, parameters, out_dir):
-    """Create file listing in output directory
+def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
+    """Sequence Processing Pipeline command
 
     Parameters
     ----------
@@ -22,7 +24,7 @@ def list_folder(qclient, job_id, parameters, out_dir):
     job_id : str
         The job id
     parameters : dict
-        The parameter values for input folder to use
+        The parameter values for this job
     out_dir : str
         The path to the job's output directory
 
@@ -32,14 +34,22 @@ def list_folder(qclient, job_id, parameters, out_dir):
         The results of the job
     """
     qclient.update_job_step(job_id, "Step 1 of 3: Collecting information")
-    input_folder = parameters.pop('input_folder')
+    run_identifier = parameters.pop('run_identifier')
 
     success = True
     ainfo = None
     msg = None
-    if exists(input_folder) and isdir(input_folder):
-        with open(join(out_dir, 'listing.txt'), 'w') as f:
-            f.write('\n'.join(glob(join(input_folder, '*'))))
+    if exists(run_identifier) and isdir(run_identifier):
+        outpath = partial(join, out_dir)
+
+        # copytree('metat-pilot', outpath('multiqc-report'))
+
+        with open(outpath('listing.txt'), 'w') as f:
+            f.write('\n'.join(glob(join(run_identifier, '*'))))
+
+        file = parameters['sample_sheet']
+        with open(outpath(file['filename']), 'w') as f:
+            f.write(file['body'])
 
         ainfo = [
             ArtifactInfo('output', 'job-output-folder',
