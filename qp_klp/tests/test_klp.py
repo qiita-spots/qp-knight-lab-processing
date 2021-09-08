@@ -18,7 +18,7 @@ from qiita_client import ArtifactInfo
 
 from qp_klp import __version__, plugin
 
-from qp_klp.klp import list_folder
+from qp_klp.klp import sequence_processing_pipeline
 
 
 class KLPTests(PluginTestCase):
@@ -39,7 +39,7 @@ class KLPTests(PluginTestCase):
                 else:
                     remove(fp)
 
-    def test_list_folder(self):
+    def test_sequence_processing_pipeline(self):
         params = {'input_folder': '/this/path/doesnt/exist'}
 
         data = {
@@ -51,14 +51,16 @@ class KLPTests(PluginTestCase):
         out_dir = mkdtemp()
         self._clean_up_files.append(out_dir)
 
-        success, ainfo, msg = list_folder(self.qclient, jid, params, out_dir)
+        success, ainfo, msg = sequence_processing_pipeline(
+            self.qclient, jid, params, out_dir)
         self.assertFalse(success)
         self.assertEqual(msg, "The path doesn't exist or is not a folder")
 
         params = {'input_folder': out_dir}
         data['parameters'] = dumps(params)
         jid = self.qclient.post('/apitest/processing_job/', data=data)['job']
-        success, ainfo, msg = list_folder(self.qclient, jid, params, out_dir)
+        success, ainfo, msg = sequence_processing_pipeline(
+            self.qclient, jid, params, out_dir)
         self.assertTrue(success)
         exp = [
             ArtifactInfo(
