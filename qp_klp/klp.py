@@ -9,7 +9,6 @@
 from os.path import exists, isdir, join
 from glob import glob
 from functools import partial
-from shutil import copytree
 
 from qiita_client import ArtifactInfo
 
