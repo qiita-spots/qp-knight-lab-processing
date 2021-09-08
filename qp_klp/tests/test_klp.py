@@ -21,7 +21,7 @@ from qp_klp import __version__, plugin
 from qp_klp.klp import list_folder
 
 
-class qiime2Tests(PluginTestCase):
+class KLPTests(PluginTestCase):
     def setUp(self):
         # this will allow us to see the full errors
         self.maxDiff = None
