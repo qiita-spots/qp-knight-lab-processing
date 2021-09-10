@@ -44,7 +44,8 @@ class KLPTests(PluginTestCase):
 
         data = {
             'user': 'demo@microbio.me',
-            'command': dumps(['qp-klp', __version__, 'List Folders']),
+            'command': dumps(['qp-klp', __version__,
+                              'Sequence Processing Pipeline']),
             'status': 'running',
             'parameters': dumps(params)}
         jid = self.qclient.post('/apitest/processing_job/', data=data)['job']
