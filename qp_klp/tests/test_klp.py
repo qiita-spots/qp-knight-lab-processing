@@ -40,7 +40,10 @@ class KLPTests(PluginTestCase):
                     remove(fp)
 
     def test_sequence_processing_pipeline(self):
-        params = {'input_folder': '/this/path/doesnt/exist'}
+        # not a valid run_identifier folder and sample_sheet
+        params = {
+            'run_identifier': '/this/path/doesnt/exist',
+            'sample_sheet': 'NA'}
 
         data = {
             'user': 'demo@microbio.me',
@@ -57,9 +60,28 @@ class KLPTests(PluginTestCase):
         self.assertFalse(success)
         self.assertEqual(msg, "The path doesn't exist or is not a folder")
 
-        params = {'input_folder': out_dir}
-        data['parameters'] = dumps(params)
-        jid = self.qclient.post('/apitest/processing_job/', data=data)['job']
+        # valid run_identifier folder but not sample_sheet
+        # NOTE: we are no creating a new job for this test, which is fine
+        params = {
+            'run_identifier': out_dir,
+            'sample_sheet': 'NA'}
+
+        success, ainfo, msg = sequence_processing_pipeline(
+            self.qclient, jid, params, out_dir)
+        self.assertFalse(success)
+        self.assertEqual(
+            msg, "Doesn't look like a valid uploaded file; please review.")
+
+        # test success
+        # both valid run_identifier and sample_sheet
+        # NOTE: we are no creating a new job for this test, which is fine
+        params = {
+            'run_identifier': out_dir,
+            'sample_sheet': {
+                'body': 'sample_name\trun_prefix\n1.SKB1.640202\tSKB1.640202',
+                'content_type': 'text/plain',
+                'filename': 'prep_16S.txt'}}
+
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, jid, params, out_dir)
         self.assertTrue(success)

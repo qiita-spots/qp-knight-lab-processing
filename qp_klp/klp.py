@@ -34,26 +34,28 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     """
     qclient.update_job_step(job_id, "Step 1 of 3: Collecting information")
     run_identifier = parameters.pop('run_identifier')
+    sample_sheet = parameters.pop('sample_sheet')
 
     success = True
     ainfo = None
     msg = None
     if exists(run_identifier) and isdir(run_identifier):
-        outpath = partial(join, out_dir)
+        if {'body', 'content_type', 'filename'} == set(sample_sheet):
+            outpath = partial(join, out_dir)
 
-        # copytree('metat-pilot', outpath('multiqc-report'))
+            with open(outpath('listing.txt'), 'w') as f:
+                f.write('\n'.join(glob(join(run_identifier, '*'))))
 
-        with open(outpath('listing.txt'), 'w') as f:
-            f.write('\n'.join(glob(join(run_identifier, '*'))))
+            with open(outpath(sample_sheet['filename']), 'w') as f:
+                f.write(sample_sheet['body'])
 
-        file = parameters['sample_sheet']
-        with open(outpath(file['filename']), 'w') as f:
-            f.write(file['body'])
-
-        ainfo = [
-            ArtifactInfo('output', 'job-output-folder',
-                         [(f'{out_dir}/', 'directory')])
-        ]
+            ainfo = [
+                ArtifactInfo('output', 'job-output-folder',
+                             [(f'{out_dir}/', 'directory')])
+            ]
+        else:
+            success = False
+            msg = "Doesn't look like a valid uploaded file; please review."
     else:
         success = False
         msg = "The path doesn't exist or is not a folder"
