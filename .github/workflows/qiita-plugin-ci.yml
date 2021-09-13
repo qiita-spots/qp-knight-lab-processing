@@ -64,6 +64,7 @@ jobs:
           conda config --add channels conda-forge
           conda create -q --yes -n qiita python=3.6 pip libgfortran numpy nginx cython redis
           conda activate qiita
+          pip install 'setuptools<=58.0.1'
           pip install sphinx sphinx-bootstrap-theme nose-timer codecov Click
 
       - name: Qiita install
@@ -82,9 +83,12 @@ jobs:
           export QIITA_SERVER_CERT=`pwd`/qiita-dev/qiita_core/support_files/server.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           pip --quiet install -U pip
+
+          pip --quiet install https://github.com/qiita-spots/qtp-job-output-folder/archive/refs/heads/main.zip
           pip --quiet install .
           pip --quiet install coveralls
 
+          configure_qtp_job_output_folder --env-script "source /home/runner/.profile; conda activate klp" --server-cert $QIITA_SERVER_CERT
           configure_klp --env-script "source /home/runner/.profile; conda activate klp" --server-cert $QIITA_SERVER_CERT
 
           echo "Available Qiita plugins"
