@@ -7,10 +7,11 @@
 # -----------------------------------------------------------------------------
 
 from os.path import exists, isdir, join
-from glob import glob
 from functools import partial
 
 from qiita_client import ArtifactInfo
+
+from sequence_processing_pipeline.main import main as spp_main
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -39,15 +40,17 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     success = True
     ainfo = None
     msg = None
-    if exists(run_identifier) and isdir(run_identifier):
+    input_fp = f'/pscratch/seq_test/tests/{run_identifier}'
+    if exists(input_fp) and isdir(input_fp):
         if {'body', 'content_type', 'filename'} == set(sample_sheet):
             outpath = partial(join, out_dir)
-
-            with open(outpath('listing.txt'), 'w') as f:
-                f.write('\n'.join(glob(join(run_identifier, '*'))))
-
-            with open(outpath(sample_sheet['filename']), 'w') as f:
+            sample_sheet_fp = outpath(sample_sheet['filename'])
+            with open(sample_sheet_fp, 'w') as f:
                 f.write(sample_sheet['body'])
+
+            config_fp = f'{input_fp}/configuration.json'
+            spp_main(config_fp, sample_sheet_fp, input_fp, outpath,
+                     run_identifier, job_id)
 
             ainfo = [
                 ArtifactInfo('output', 'job-output-folder',
