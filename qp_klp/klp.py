@@ -185,30 +185,32 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                     f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
                     'ConvertJob/Reports ConvertJob/Logs',
                     f'cd {out_dir}; tar zcvf logs-QCJob.tgz QCJob/logs',
-                    f'cd {out_dir}; tar zcvf logs-FastQCJob.tgz FastQCJob/'
-                    'logs',
-                    f'cd {out_dir}; tar zcvf reports-FastQCJob.tgz FastQCJob/'
-                    'fastqc',
+                    f'cd {out_dir}; tar zcvf logs-FastQCJob.tgz '
+                    'FastQCJob/logs',
+                    f'cd {out_dir}; tar zcvf reports-FastQCJob.tgz '
+                    'FastQCJob/fastqc',
                     f'cd {out_dir}; tar zcvf logs-GenPrepFileJob.tgz '
                     'GenPrepFileJob/logs',
-                    f'cd {out_dir}; tar zcvf prep-files.tgz GenPrepFileJob/'
-                    'PrepFiles',
-                    f'cd {out_dir}; mv *.tgz final_results',
-                    f'cd {out_dir}; mv FastQCJob/multiqc final_results']
+                    f'cd {out_dir}; tar zcvf prep-files.tgz '
+                    'GenPrepFileJob/PrepFiles']
 
             for project, upload_dir in special_map:
-                cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz QCJob/'
-                            '{project}/fastp_reports_dir')
-                cmds.append(f'cd {out_dir}: mv QCJob/{project}/'
-                            'filtered_sequences {upload_dir}')
+                cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
+                            'QCJob/{project}/fastp_reports_dir')
+                cmds.append(f'cd {out_dir}; mv '
+                            'QCJob/{project}/filtered_sequences/* '
+                            '{upload_dir}')
+
+            cmds.append(f'cd {out_dir}; mv *.tgz final_results')
+            cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
 
             for cmd in cmds:
                 p = Popen(cmd, universal_newlines=True, shell=True,
                           stdout=PIPE, stderr=PIPE)
                 std_out, std_err = p.communicate()
-                if p.returncode != 0:
-                    raise PipelineError("Could not copy/move data to final "
-                                        f"results folder ({p.returncode})")
+                return_code = p.returncode
+                if return_code != 0:
+                    raise PipelineError(f"'{cmd}' returned {return_code}")
 
             ainfo = [
                 ArtifactInfo('output', 'job-output-folder',
