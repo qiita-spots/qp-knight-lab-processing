@@ -5,8 +5,6 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-
-
 from functools import partial
 from qiita_client import ArtifactInfo
 from sequence_processing_pipeline.Pipeline import Pipeline
@@ -18,6 +16,7 @@ from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.SequenceDirectory import SequenceDirectory
 from sequence_processing_pipeline.PipelineError import PipelineError
+from metapool import KLSampleSheet, validate_and_scrub_sample_sheet
 from subprocess import Popen, PIPE
 
 
@@ -43,7 +42,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     run_identifier = parameters.pop('run_identifier')
     sample_sheet = parameters.pop('sample_sheet')
 
+    success = True
     ainfo = None
+    msg = None
     input_fp = f'/pscratch/seq_test/tests/{run_identifier}'
     if exists(input_fp) and isdir(input_fp):
         qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
@@ -57,18 +58,30 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             with open(sample_sheet_path, 'w') as f:
                 f.write(sample_sheet['body'])
 
+            sheet = KLSampleSheet(sample_sheet_path)
+            val_sheet = validate_and_scrub_sample_sheet(sheet)
+            if not val_sheet:
+                qclient.update_job_step(job_id,
+                                        "Sample sheet failed validation.")
+                raise ValueError("Sample sheet failed validiation")
+            else:
+                # get project names and their associated qiita ids
+                bioinformatics = val_sheet.Bioinformatics
+                lst = bioinformatics.to_dict('records')
+
             results = qclient.get("/qiita_db/artifacts/types/")
+            base_path = results['uploads']
+
             special_map = []
-            for result in results:
-                base_path = results['uploads']
+            for result in lst:
                 project_name = result['Sample_Project']
                 qiita_id = result['QiitaID']
                 upload_path = join(base_path, qiita_id)
                 makedirs(upload_path, exist_ok=True)
                 special_map.append((project_name, upload_path))
 
-            config_fp = ('/home/qiita_test/qiita-spots/qp-knight-lab-'
-                         'processing/qp_klp/configuration.json')
+            config_fp = ('/home/qiita_test/qiita-spots/'
+                         'qp-knight-lab-processing/qp_klp/configuration.json')
             makedirs(f'{input_fp}/{run_identifier}', exist_ok=True)
 
             pipeline = Pipeline(config_fp, run_identifier, out_dir, job_id)
