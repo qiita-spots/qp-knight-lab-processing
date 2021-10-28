@@ -45,7 +45,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     success = True
     ainfo = None
     msg = None
-    input_fp = f'/pscratch/seq_test/tests/{run_identifier}'
+    # input_fp = f'/pscratch/seq_test/tests/{run_identifier}'
+    input_fp = run_identifier
     if exists(input_fp) and isdir(input_fp):
         qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
 
