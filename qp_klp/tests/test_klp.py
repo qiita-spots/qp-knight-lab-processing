@@ -121,7 +121,7 @@ class KLPTests(PluginTestCase):
         params = {
             "run_identifier": out_dir,
             "sample_sheet": {
-                "body": self.sample_csv_data,
+                "body": ''.join(self.sample_csv_data),
                 "content_type": "text/plain",
                 "filename": "prep_16S.txt",
             },
