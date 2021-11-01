@@ -19,12 +19,19 @@ from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
 
 from qp_klp.klp import sequence_processing_pipeline
+from time import sleep
 
 
 class KLPTests(PluginTestCase):
     def setUp(self):
         # this will allow us to see the full errors
         self.maxDiff = None
+
+        plugin('https://localhost:8383', 'register', 'ignored')
+        sleep(2)
+
+        self._clean_up_files = []
+        self.basedir = dirname(realpath(__file__))
 
         self.sample_csv_data = [
             "[Header],,,,,,,,,,\n",
@@ -67,11 +74,6 @@ class KLPTests(PluginTestCase):
             "test@lol.com,Feist_11661,,,,,,,,,\n",
             ",,,,,,,,,,\n",
         ]
-
-        plugin("https://localhost:8383", "register", "ignored")
-        self._clean_up_files = []
-
-        self.basedir = dirname(realpath(__file__))
 
     def tearDown(self):
         for fp in self._clean_up_files:
