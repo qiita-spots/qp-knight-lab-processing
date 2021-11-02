@@ -280,6 +280,15 @@ class KLPTests(PluginTestCase):
             for line in self.multiqc_config_data:
                 f.write(f"{line}\n")
 
+        # create the Reports directory in run_dir
+        reports_dir = join(test_dir, 'Reports')
+        makedirs(reports_dir)
+
+        # create QCJobs output directory for use by GenPrepFileJob
+        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_11661')
+        makedirs(qcj_output_fp, 'filtered_sequences')
+        makedirs(qcj_output_fp, 'fastp_reports_dir', 'json')
+
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
         params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
