@@ -35,7 +35,7 @@ class KLPTests(PluginTestCase):
 
         self.basedir = dirname(realpath(__file__))
 
-        self.multiqc_config_filepath = join(self._make_temp_dir,
+        self.multiqc_config_filepath = join(self._make_temp_dir(),
                                             'multiqc-config.yaml')
         self.multiqc_config_data = [
             "title: 'Sequence processing summaries'\n",
