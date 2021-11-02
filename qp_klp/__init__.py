@@ -24,7 +24,7 @@ req_params = {
     'sample_sheet': ('prep_template', ['']),
     'input_filepath': ('string', ['']),
     'config_filepath': ('string', ['']),
-    'skip_execution': ('bool', [False])}
+    'skip_execution': ('boolean', [False])}
 opt_params = dict()
 outputs = {'output': 'job-output-folder'}
 dflt_param_set = dict()
