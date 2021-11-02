@@ -182,7 +182,8 @@ class KLPTests(PluginTestCase):
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
         params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
-                  "sample_sheet": "NA"}
+                  "sample_sheet": "NA",
+                  "config_filepath": self.config_filepath}
 
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
