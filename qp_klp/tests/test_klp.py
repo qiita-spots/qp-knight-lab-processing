@@ -210,6 +210,11 @@ class KLPTests(PluginTestCase):
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
+
+        if msg:
+            # if success is True, msg should be None.
+            print("Message returned: %s" % msg)
+
         self.assertTrue(success)
         exp = [
             ArtifactInfo(
