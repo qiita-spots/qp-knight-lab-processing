@@ -180,7 +180,10 @@ class KLPTests(PluginTestCase):
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
                               "; please review.")
 
-        makedirs(join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY"))
+        test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
+        makedirs(test_dir)
+        with open(join(test_dir, 'RTAComplete.txt'), 'w') as f:
+            f.write("Hello World\n")
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
