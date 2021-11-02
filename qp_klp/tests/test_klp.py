@@ -35,6 +35,77 @@ class KLPTests(PluginTestCase):
 
         self.basedir = dirname(realpath(__file__))
 
+        self.multiqc_config_filepath = join(self._make_temp_dir,
+                                            'multiqc-config.yaml')
+        self.multiqc_config_data = [
+            "title: 'Sequence processing summaries'\n",
+            "output_fn_name: 'index.html'\n",
+            "show_analysis_paths: False\n",
+            "show_analysis_time: False\n",
+            "run_modules:\n",
+            "    - bclconvert\n",
+            "    - fastqc\n",
+            "    - fastp\n",
+            "sample_names_ignore:\n",
+            "    - 'blank*'\n",
+            "    - 'BLANK*'\n",
+            "no_version_check: False\n",
+            "plots_force_interactive: True\n",
+            "num_datasets_plot_limit: 1\n",
+            "max_table_rows: 10000\n",
+            "table_columns_visible:\n",
+            "    'Sequence Quality (bclconvert raw)':\n",
+            "        percent_fails: False\n",
+            "        percent_duplicates: False\n",
+            "        percent_gc: False\n",
+            "        avg_sequence_length: True\n",
+            "        total_sequences: True\n",
+            "    'Trimming':\n",
+            "        input_format: False\n",
+            "        avg_sequence_length: False\n",
+            "        total_record_count: False\n",
+            "        mean_sequence_length: False\n",
+            "        fraction_bp_trimmed: False\n",
+            "        fraction_records_with_adapters: False\n",
+            "    'Sequence Quality (trimmed)':\n",
+            "        percent_fails: False\n",
+            "        percent_duplicates: False\n",
+            "        percent_gc: False\n",
+            "        avg_sequence_length: True\n",
+            "        total_sequences: True\n",
+            "    'Human Filtering':\n",
+            "        overall_alignment_rate: True\n",
+            "    'Sequence Quality (filtered)':\n",
+            "        percent_fails: False\n",
+            "        percent_duplicates: False\n",
+            "        percent_gc: False\n",
+            "        avg_sequence_length: True\n",
+            "        total_sequences: True\n",
+            "module_order:\n",
+            "    - bclconvert:\n",
+            "         name: 'Base Calling'\n",
+            "         info: 'Conversion from BCL files to FASTQ files.'\n",
+            "    - fastqc:\n",
+            "        name: 'Sequence Quality (raw)'\n",
+            "        info: 'Sequence quality and summary statistics for raw s",
+            "equences.'\n",
+            "        path_filters:\n",
+            "            - '*fastqc.zip'\n",
+            "            - '*.csv'\n",
+            "    - fastp:\n",
+            "        name: 'Sequence Quality (adapter trimmed)'\n",
+            "        info: 'Summary statistics from adapter trimming and qual",
+            "ity control with fastp.'\n",
+            "        fn: '*.json'\n",
+            "    - fastqc:\n",
+            "        name: 'Sequence Quality (trimmed)'\n",
+            "        info: 'Sequence quality and summary statistics after qua",
+            "lity-control and adapter trimming.'\n",
+            "        path_filters:\n",
+            "          - '*trimmed_fastqc.zip'\n",
+            "          - '*fastp_fastqc.zip'\n"
+        ]
+
         self.sample_csv_data = [
             "[Header],,,,,,,,,,\n",
             "IEMFileVersion,4,,,,,,,,,\n",
@@ -133,7 +204,7 @@ class KLPTests(PluginTestCase):
                   "modules_to_load": ["fastqc_0.11.5"],
                   "fastqc_executable_path": "fastqc",
                   "multiqc_executable_path": "multiqc",
-                  "multiqc_config_file_path": None,
+                  "multiqc_config_file_path": self.multiqc_config_filepath,
                   "job_total_memory_limit": "20gb",
                   "job_pool_size": 30
                 }
@@ -203,6 +274,11 @@ class KLPTests(PluginTestCase):
         for fastq_file in file_list:
             with open(join(fastq_dir, fastq_file), 'w') as f:
                 f.write("Hello World\n")
+
+        # write multi-qc config file to a known location
+        with open(self.multiqc_config_filepath, 'w') as f:
+            for line in self.multiqc_config_data:
+                f.write(f"{line}\n")
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
