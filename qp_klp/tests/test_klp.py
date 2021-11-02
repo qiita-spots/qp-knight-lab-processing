@@ -160,6 +160,7 @@ class KLPTests(PluginTestCase):
         # not a valid run_identifier folder and sample_sheet
         params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
                   "sample_sheet": "NA",
+                  "skip_execution": True,
                   "config_filepath": self.config_filepath}
 
         data = {
@@ -189,6 +190,7 @@ class KLPTests(PluginTestCase):
         # NOTE: we are not creating a new job for this test, which is fine
         params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
                   "sample_sheet": "NA",
+                  "skip_execution": True,
                   "config_filepath": self.config_filepath}
 
         success, ainfo, msg = sequence_processing_pipeline(
@@ -210,6 +212,7 @@ class KLPTests(PluginTestCase):
                 "content_type": "text/plain",
                 "filename": "prep_16S.txt",
             },
+            "skip_execution": True,
             "config_filepath": self.config_filepath
         }
 

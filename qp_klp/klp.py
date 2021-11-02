@@ -42,6 +42,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     run_identifier = parameters.pop('run_identifier')
     sample_sheet = parameters.pop('sample_sheet')
     config_fp = parameters.pop('config_filepath')
+    skip_execution = parameters.pop('skip_execution')
     job_pool_size = 30
 
     try:
@@ -122,7 +123,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                  config['modules_to_load'],
                                  job_id)
 
-        convert_job.run()
+        # if skip_execution is True, then each Pipeline object will be
+        # initialized, their assertions tested, and an ainfo will be
+        # returned to the caller. However the Jobs will not actually
+        # be executed. This is useful for testing.
+        if not skip_execution:
+            convert_job.run()
 
         qclient.update_job_step(job_id,
                                 "Step 3 of 6: Adaptor & Host [optional]"
@@ -147,7 +153,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                        job_id,
                        job_pool_size)
 
-        qc_job.run()
+        if not skip_execution:
+            qc_job.run()
 
         qclient.update_job_step(job_id, "Step 4 of 6: Generating FastQC &"
                                         " MultiQC reports")
@@ -173,7 +180,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                job_pool_size,
                                config['multiqc_config_file_path'])
 
-        fastqc_job.run()
+        if not skip_execution:
+            fastqc_job.run()
 
         project_list = fastqc_job.project_names
 
@@ -191,7 +199,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                          project_list,
                          config['modules_to_load'],
                          job_id)
-        gpf_job.run()
+
+        if not skip_execution:
+            gpf_job.run()
 
         qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
                                         "archive")
@@ -219,6 +229,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
+
+        if skip_execution:
+            cmds = []
 
         for cmd in cmds:
             p = Popen(cmd, universal_newlines=True, shell=True,
