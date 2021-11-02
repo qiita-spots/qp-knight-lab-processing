@@ -199,8 +199,9 @@ class KLPTests(PluginTestCase):
                      "CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz",
                      "CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz",
                      "CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz"]
+
         for fastq_file in file_list:
-            with open(join(fastq_dir, fastq_file)) as f:
+            with open(join(fastq_dir, fastq_file), 'w') as f:
                 f.write("Hello World\n")
 
         # valid run_identifier folder but not sample_sheet
