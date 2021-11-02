@@ -88,6 +88,7 @@ jobs:
           pip --quiet install https://github.com/qiita-spots/qtp-job-output-folder/archive/refs/heads/main.zip
           pip --quiet install .
           pip --quiet install coveralls
+          export QP_KLP_CONFIG_FP='NOTHING'
 
           configure_qtp_job_output_folder --env-script "source /home/runner/.profile; conda activate klp" --server-cert $QIITA_SERVER_CERT
           configure_klp --env-script "source /home/runner/.profile; export QP_KLP_CONFIG_FP='NOTHING'; conda activate klp" --server-cert $QIITA_SERVER_CERT
