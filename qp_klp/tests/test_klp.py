@@ -330,13 +330,12 @@ class KLPTests(PluginTestCase):
 
         self.assertTrue(success)
 
-        exp = ArtifactInfo(
-                "output",
-                "job-output-folder",
-                [(f"{self.out_dir}/", "directory")]
-            )
-
-        self.assertEqual(ainfo[0], exp)
+        exp = [ArtifactInfo("output",
+                            "job-output-folder",
+                            [(f"{self.out_dir}/final_results", "directory")]
+                            )
+               ]
+        self.assertEqual(ainfo, exp)
 
 
 if __name__ == "__main__":

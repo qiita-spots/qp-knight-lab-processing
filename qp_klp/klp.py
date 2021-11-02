@@ -216,7 +216,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 f'cd {out_dir}; tar zcvf reports-FastQCJob.tgz '
                 'FastQCJob/fastqc',
                 f'cd {out_dir}; tar zcvf logs-GenPrepFileJob.tgz '
-                'GenPrepFileJob/logs']
+                'GenPrepFileJob/logs',
+                f'cd {out_dir}; tar zcvf prep-files.tgz '
+                'GenPrepFileJob/PrepFiles']
 
         for project, upload_dir in special_map:
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
@@ -227,7 +229,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
-        cmds.append(f'cd {out_dir}; mv GenPrepFileJob/PrepFiles/* {upload_dir}')
+        cmds.append(f'cd {out_dir}; mv GenPrepFileJob/PrepFiles/* '
+                    f'{upload_dir}')
 
         if skip_execution:
             cmds = []
