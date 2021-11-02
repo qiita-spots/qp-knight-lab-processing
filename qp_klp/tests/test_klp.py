@@ -216,6 +216,9 @@ class KLPTests(PluginTestCase):
         # create the file and write the configuration out to disk
         # for use by sequence_processing_pipeline().
         config_filepath = join(self.out_dir, 'configuration.json')
+        CONFIG_FP = config_filepath
+        environ['QP_KLP_CONFIG_FP'] = config_filepath
+        print(CONFIG_FP)
 
         with open(config_filepath, 'w') as f:
             f.write(dumps(spp_config, indent=2))
@@ -225,7 +228,6 @@ class KLPTests(PluginTestCase):
         #  skip-exec informs qp-klp to create objects and test parameters,
         #   but don't execute actual jobs and processes.
         environ["QP_KLP_CONFIG_FP"] = config_filepath
-        environ["QP_KLP_SKIP_EXEC"] = "TRUE"
 
     def tearDown(self):
         for fp in self._clean_up_files:

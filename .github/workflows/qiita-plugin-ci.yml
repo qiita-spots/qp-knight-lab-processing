@@ -90,7 +90,7 @@ jobs:
           pip --quiet install coveralls
 
           configure_qtp_job_output_folder --env-script "source /home/runner/.profile; conda activate klp" --server-cert $QIITA_SERVER_CERT
-          configure_klp --env-script "source /home/runner/.profile; conda activate klp" --server-cert $QIITA_SERVER_CERT
+          configure_klp --env-script "source /home/runner/.profile; export QP_KLP_CONFIG_FP='NOTHING'; conda activate klp" --server-cert $QIITA_SERVER_CERT
 
           echo "Available Qiita plugins"
           ls ~/.qiita_plugins/
@@ -133,7 +133,7 @@ jobs:
           conda activate klp
           export QIITA_SERVER_CERT=`pwd`/qiita-dev/qiita_core/support_files/server.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
-
+          export QP_KLP_CONFIG_FP='NOTHING'
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
 
           nosetests --with-doctest --with-coverage -v --cover-package=qp_klp

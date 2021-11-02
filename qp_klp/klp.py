@@ -19,11 +19,10 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from metapool import KLSampleSheet, validate_and_scrub_sample_sheet
 from subprocess import Popen, PIPE
 from os import environ
+from inspect import stack
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
-SKIP_EXEC = True if "QP_KLP_SKIP_EXEC" in environ and environ[
-    "QP_KLP_SKIP_EXEC"].lower() == 'true' else False
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -48,6 +47,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     run_identifier = parameters.pop('run_identifier')
     sample_sheet = parameters.pop('sample_sheet')
     job_pool_size = 30
+
+    # checking if this is running as part of the unittest
+    # https://stackoverflow.com/a/25025987
+    skip_exec = True if [x for x in stack() if
+                         'unittest' in x.filename] else False
 
     try:
         qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
@@ -131,7 +135,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # initialized, their assertions tested, and an ainfo will be
         # returned to the caller. However the Jobs will not actually
         # be executed. This is useful for testing.
-        if not SKIP_EXEC:
+        if not skip_exec:
             convert_job.run()
 
         qclient.update_job_step(job_id,
@@ -157,7 +161,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                        job_id,
                        job_pool_size)
 
-        if not SKIP_EXEC:
+        if not skip_exec:
             qc_job.run()
 
         qclient.update_job_step(job_id, "Step 4 of 6: Generating FastQC &"
@@ -184,7 +188,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                job_pool_size,
                                config['multiqc_config_file_path'])
 
-        if not SKIP_EXEC:
+        if not skip_exec:
             fastqc_job.run()
 
         project_list = fastqc_job.project_names
@@ -204,7 +208,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             config['modules_to_load'],
             job_id)
 
-        if not SKIP_EXEC:
+        if not skip_exec:
             gpf_job.run()
 
         qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
@@ -236,7 +240,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         cmds.append(f'cd {out_dir}; mv GenPrepFileJob/PrepFiles/* '
                     f'{upload_dir}')
 
-        if SKIP_EXEC:
+        if skip_exec:
             cmds = []
 
         for cmd in cmds:
