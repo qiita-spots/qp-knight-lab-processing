@@ -189,8 +189,9 @@ class KLPTests(PluginTestCase):
             self.qclient, job_id, params, self.out_dir
         )
         self.assertFalse(success)
-        self.assertEqual(msg, "Doesn't look like a valid uploaded file; "
-                         "please review.")
+
+        self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
+                              "; please review.")
 
         # test success
         # both valid run_identifier and sample_sheet
