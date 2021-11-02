@@ -329,15 +329,14 @@ class KLPTests(PluginTestCase):
             print("Message returned: %s" % msg)
 
         self.assertTrue(success)
-        exp = [
-            ArtifactInfo(
+
+        exp = ArtifactInfo(
                 "output",
                 "job-output-folder",
                 [(f"{self.out_dir}/", "directory")]
             )
-        ]
 
-        self.assertEqual(ainfo, exp)
+        self.assertEqual(ainfo[0], exp)
 
 
 if __name__ == "__main__":
