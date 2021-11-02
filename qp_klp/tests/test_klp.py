@@ -286,8 +286,8 @@ class KLPTests(PluginTestCase):
 
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_11661')
-        makedirs(qcj_output_fp, 'filtered_sequences')
-        makedirs(qcj_output_fp, 'fastp_reports_dir', 'json')
+        makedirs(join(qcj_output_fp, 'filtered_sequences'))
+        makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
