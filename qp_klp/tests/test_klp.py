@@ -16,6 +16,7 @@ from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
+from os import environ
 
 
 class KLPTests(PluginTestCase):
@@ -214,10 +215,17 @@ class KLPTests(PluginTestCase):
         # use out_dir to store the configuration.json file as well.
         # create the file and write the configuration out to disk
         # for use by sequence_processing_pipeline().
-        self.config_filepath = join(self.out_dir, 'configuration.json')
+        config_filepath = join(self.out_dir, 'configuration.json')
 
-        with open(self.config_filepath, 'w') as f:
+        with open(config_filepath, 'w') as f:
             f.write(dumps(spp_config, indent=2))
+
+        # Set parameters for qp_klp.py:
+        #  config-fp is the file path to qp-klp's configuration.json file.
+        #  skip-exec informs qp-klp to create objects and test parameters,
+        #   but don't execute actual jobs and processes.
+        environ["QP_KLP_CONFIG_FP"] = config_filepath
+        environ["QP_KLP_SKIP_EXEC"] = "TRUE"
 
     def tearDown(self):
         for fp in self._clean_up_files:
@@ -230,9 +238,7 @@ class KLPTests(PluginTestCase):
     def test_sequence_processing_pipeline(self):
         # not a valid run_identifier folder and sample_sheet
         params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
-                  "sample_sheet": "NA",
-                  "skip_execution": True,
-                  "config_filepath": self.config_filepath}
+                  "sample_sheet": "NA"}
 
         data = {
             "user": "demo@microbio.me",
@@ -293,9 +299,7 @@ class KLPTests(PluginTestCase):
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
         params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
-                  "sample_sheet": "NA",
-                  "skip_execution": True,
-                  "config_filepath": self.config_filepath}
+                  "sample_sheet": "NA"}
 
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
@@ -315,9 +319,7 @@ class KLPTests(PluginTestCase):
                 "body": ''.join(self.sample_csv_data),
                 "content_type": "text/plain",
                 "filename": "prep_16S.txt",
-            },
-            "skip_execution": True,
-            "config_filepath": self.config_filepath
+            }
         }
 
         success, ainfo, msg = sequence_processing_pipeline(

@@ -18,6 +18,12 @@ from sequence_processing_pipeline.SequenceDirectory import SequenceDirectory
 from sequence_processing_pipeline.PipelineError import PipelineError
 from metapool import KLSampleSheet, validate_and_scrub_sample_sheet
 from subprocess import Popen, PIPE
+from os import environ
+
+
+CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
+SKIP_EXEC = True if "QP_KLP_SKIP_EXEC" in environ and environ[
+    "QP_KLP_SKIP_EXEC"].lower() == 'true' else False
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -41,8 +47,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     """
     run_identifier = parameters.pop('run_identifier')
     sample_sheet = parameters.pop('sample_sheet')
-    config_fp = parameters.pop('config_filepath')
-    skip_execution = parameters.pop('skip_execution')
     job_pool_size = 30
 
     try:
@@ -103,7 +107,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # paths stored in the file pointed to by config_fp. The input path
         # to the BCL files is not passed directly to Pipeline by the user.
 
-        pipeline = Pipeline(config_fp, run_identifier, out_dir, job_id)
+        pipeline = Pipeline(CONFIG_FP, run_identifier, out_dir, job_id)
 
         sdo = SequenceDirectory(pipeline.run_dir, sample_sheet_path)
 
@@ -127,7 +131,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # initialized, their assertions tested, and an ainfo will be
         # returned to the caller. However the Jobs will not actually
         # be executed. This is useful for testing.
-        if not skip_execution:
+        if not SKIP_EXEC:
             convert_job.run()
 
         qclient.update_job_step(job_id,
@@ -153,7 +157,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                        job_id,
                        job_pool_size)
 
-        if not skip_execution:
+        if not SKIP_EXEC:
             qc_job.run()
 
         qclient.update_job_step(job_id, "Step 4 of 6: Generating FastQC &"
@@ -180,7 +184,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                job_pool_size,
                                config['multiqc_config_file_path'])
 
-        if not skip_execution:
+        if not SKIP_EXEC:
             fastqc_job.run()
 
         project_list = fastqc_job.project_names
@@ -190,17 +194,17 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         config = pipeline.configuration['seqpro']
         gpf_job = GenPrepFileJob(
-                         pipeline.run_dir,
-                         raw_fastq_files_path,
-                         processed_fastq_files_path,
-                         pipeline.output_path,
-                         sdo.sample_sheet_path,
-                         config['seqpro_path'],
-                         project_list,
-                         config['modules_to_load'],
-                         job_id)
+            pipeline.run_dir,
+            raw_fastq_files_path,
+            processed_fastq_files_path,
+            pipeline.output_path,
+            sdo.sample_sheet_path,
+            config['seqpro_path'],
+            project_list,
+            config['modules_to_load'],
+            job_id)
 
-        if not skip_execution:
+        if not SKIP_EXEC:
             gpf_job.run()
 
         qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
@@ -232,7 +236,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         cmds.append(f'cd {out_dir}; mv GenPrepFileJob/PrepFiles/* '
                     f'{upload_dir}')
 
-        if skip_execution:
+        if SKIP_EXEC:
             cmds = []
 
         for cmd in cmds:
