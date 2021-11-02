@@ -263,7 +263,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         ]
     else:
         success = False
-        msg = "Doesn't look like a valid uploaded file; please review."
+        msg = "This doesn't appear to be a valid sample sheet; please review."
 
     qclient.update_job_step(job_id, "Main Pipeline Finished, processing "
                                     "results")
