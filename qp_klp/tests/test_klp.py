@@ -183,8 +183,25 @@ class KLPTests(PluginTestCase):
 
         test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
         makedirs(test_dir)
+
+        # create the sentinel files ConvertJob will check for.
         with open(join(test_dir, 'RTAComplete.txt'), 'w') as f:
             f.write("Hello World\n")
+
+        with open(join(test_dir, 'RunInfo.xml'), 'w') as f:
+            f.write("Hello World\n")
+
+        # create the project directory QCJob will expect to find fastq files
+        # in.
+        fastq_dir = join(test_dir, 'Data', 'Fastq', 'Feist_11661')
+        makedirs(fastq_dir)
+        file_list = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
+                     "CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz",
+                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz",
+                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz"]
+        for fastq_file in file_list:
+            with open(join(fastq_dir, fastq_file)) as f:
+                f.write("Hello World\n")
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
