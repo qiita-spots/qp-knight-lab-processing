@@ -176,7 +176,8 @@ class KLPTests(PluginTestCase):
             self.qclient, job_id, params, self.out_dir
         )
         self.assertFalse(success)
-        self.assertEqual(msg, "The path doesn't exist or is not a folder")
+        self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
+                              "; please review.")
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
