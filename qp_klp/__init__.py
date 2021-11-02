@@ -22,6 +22,8 @@ plugin = QiitaPluginAdmin('qp-klp', __version__, 'Knight Lab Processing')
 req_params = {
     'run_identifier': ('string', ['']),
     'sample_sheet': ('prep_template', ['']),
+    'input_filepath': ('string', ['']),
+    'config_filepath': ('string', ['']),
 }
 opt_params = dict()
 outputs = {'output': 'job-output-folder'}

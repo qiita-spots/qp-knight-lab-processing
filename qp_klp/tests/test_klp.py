@@ -5,24 +5,25 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-
 from unittest import main
 from os import remove
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
-from os.path import exists, isdir, realpath, dirname
-
+from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
-
 from qp_klp import __version__, plugin
-
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 
 
 class KLPTests(PluginTestCase):
+    def _make_temp_dir(self):
+        new_dir = mkdtemp()
+        self._clean_up_files.append(new_dir)
+        return new_dir
+
     def setUp(self):
         # this will allow us to see the full errors
         self.maxDiff = None
@@ -31,6 +32,7 @@ class KLPTests(PluginTestCase):
         sleep(2)
 
         self._clean_up_files = []
+
         self.basedir = dirname(realpath(__file__))
 
         self.sample_csv_data = [
@@ -75,6 +77,76 @@ class KLPTests(PluginTestCase):
             ",,,,,,,,,,\n",
         ]
 
+        self.out_dir = self._make_temp_dir()
+
+        spp_config = {
+              "configuration": {
+                "pipeline": {
+                  "younger_than": 90,
+                  "older_than": 24,
+                  "archive_path": '/not/out_dir',
+                  "search_paths": [self.out_dir]
+                },
+                "bcl2fastq": {
+                  "nodes": 1,
+                  "nprocs": 16,
+                  "queue": "qiita",
+                  "wallclock_time_in_hours": 36,
+                  "modules_to_load": ["bcl2fastq_2.20.0.422"],
+                  "executable_path": "bcl2fastq",
+                  "per_process_memory_limit": "10gb"
+                },
+                "bcl-convert": {
+                  "nodes": 1,
+                  "nprocs": 16,
+                  "queue": "qiita",
+                  "wallclock_time_in_hours": 36,
+                  "modules_to_load": ["bclconvert_3.7.5"],
+                  "executable_path": "bcl-convert",
+                  "per_process_memory_limit": "10gb"
+                },
+                "qc": {
+                  "nodes": 1,
+                  "nprocs": 16,
+                  "queue": "qiita",
+                  "wallclock_time_in_hours": 1,
+                  "mmi_db": "/databases/minimap2/human-phix-db.mmi",
+                  "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
+                                      "minimap2_2.18"],
+                  "fastp_executable_path": "fastp",
+                  "minimap2_executable_path": "minimap2",
+                  "samtools_executable_path": "samtools",
+                  "job_total_memory_limit": "20gb",
+                  "job_pool_size": 30
+                },
+                "seqpro": {
+                  "seqpro_path": "seqpro",
+                  "modules_to_load": []
+                },
+                "fastqc": {
+                  "nodes": 1,
+                  "nprocs": 16,
+                  "queue": "qiita",
+                  "nthreads": 16,
+                  "wallclock_time_in_hours": 1,
+                  "modules_to_load": ["fastqc_0.11.5"],
+                  "fastqc_executable_path": "fastqc",
+                  "multiqc_executable_path": "multiqc",
+                  "multiqc_config_file_path": None,
+                  "job_total_memory_limit": "20gb",
+                  "job_pool_size": 30
+                }
+              }
+            }
+
+        # use out_dir to store the configuration.json file as well.
+        # create the file and write the configuration out to disk
+        # for use by sequence_processing_pipeline().
+        self.config_filepath = join(self.out_dir, 'configuration.json')
+
+        with open(self.config_filepath, 'w') as f:
+            f.write(dumps(spp_config, indent=2))
+
     def tearDown(self):
         for fp in self._clean_up_files:
             if exists(fp):
@@ -85,8 +157,9 @@ class KLPTests(PluginTestCase):
 
     def test_sequence_processing_pipeline(self):
         # not a valid run_identifier folder and sample_sheet
-        params = {"run_identifier": "/this/path/doesnt/exist",
-                  "sample_sheet": "NA"}
+        params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
+                  "sample_sheet": "NA",
+                  "config_filepath": self.config_filepath}
 
         data = {
             "user": "demo@microbio.me",
@@ -95,22 +168,23 @@ class KLPTests(PluginTestCase):
             "status": "running",
             "parameters": dumps(params),
         }
-        jid = self.qclient.post("/apitest/processing_job/", data=data)["job"]
-        out_dir = mkdtemp()
-        self._clean_up_files.append(out_dir)
+
+        job_id = self.qclient.post("/apitest/processing_job/",
+                                   data=data)["job"]
 
         success, ainfo, msg = sequence_processing_pipeline(
-            self.qclient, jid, params, out_dir
+            self.qclient, job_id, params, self.out_dir
         )
         self.assertFalse(success)
         self.assertEqual(msg, "The path doesn't exist or is not a folder")
 
         # valid run_identifier folder but not sample_sheet
-        # NOTE: we are no creating a new job for this test, which is fine
-        params = {"run_identifier": out_dir, "sample_sheet": "NA"}
+        # NOTE: we are not creating a new job for this test, which is fine
+        params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
+                  "sample_sheet": "NA"}
 
         success, ainfo, msg = sequence_processing_pipeline(
-            self.qclient, jid, params, out_dir
+            self.qclient, job_id, params, self.out_dir
         )
         self.assertFalse(success)
         self.assertEqual(msg, "Doesn't look like a valid uploaded file; "
@@ -121,23 +195,24 @@ class KLPTests(PluginTestCase):
         # NOTE: we are no creating a new job for this test, which is fine
 
         params = {
-            "run_identifier": out_dir,
+            "run_identifier": "200318_A00953_0082_AH5TWYDSXY",
             "sample_sheet": {
                 "body": ''.join(self.sample_csv_data),
                 "content_type": "text/plain",
                 "filename": "prep_16S.txt",
             },
+            "config_filepath": self.config_filepath
         }
 
         success, ainfo, msg = sequence_processing_pipeline(
-            self.qclient, jid, params, out_dir
+            self.qclient, job_id, params, self.out_dir
         )
         self.assertTrue(success)
         exp = [
             ArtifactInfo(
                 "output",
                 "job-output-folder",
-                [(f"{out_dir}/", "directory")]
+                [(f"{self.out_dir}/", "directory")]
             )
         ]
 
