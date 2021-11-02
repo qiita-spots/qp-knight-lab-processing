@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import main
-from os import remove
+from os import remove, makedirs
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
@@ -180,8 +180,7 @@ class KLPTests(PluginTestCase):
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
                               "; please review.")
 
-
-        makedirs(join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
+        makedirs(join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY"))
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
