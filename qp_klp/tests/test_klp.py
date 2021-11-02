@@ -78,6 +78,7 @@ class KLPTests(PluginTestCase):
         ]
 
         self.out_dir = self._make_temp_dir()
+        self.search_dir = self._make_temp_dir()
 
         spp_config = {
               "configuration": {
@@ -85,7 +86,7 @@ class KLPTests(PluginTestCase):
                   "younger_than": 90,
                   "older_than": 24,
                   "archive_path": '/not/out_dir',
-                  "search_paths": [self.out_dir]
+                  "search_paths": [self.search_dir]
                 },
                 "bcl2fastq": {
                   "nodes": 1,
@@ -178,6 +179,9 @@ class KLPTests(PluginTestCase):
         self.assertFalse(success)
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
                               "; please review.")
+
+
+        makedirs(join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
