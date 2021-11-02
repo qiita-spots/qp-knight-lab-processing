@@ -332,19 +332,9 @@ class KLPTests(PluginTestCase):
 
         exp = [ArtifactInfo("output",
                             "job-output-folder",
-                            [(f"{self.out_dir}/final_results", "directory")]
+                            [(f"{self.out_dir}/final_results/", "directory")]
                             )
                ]
-
-        print("AINFO.OUTPUT_NAME %s" % str(ainfo[0].output_name))
-        print("AINFO.ARTIFACT_TYPE %s" % str(ainfo[0].artifact_type))
-        print("AINFO.FILES %s" % str(ainfo[0].files))
-        print("AINFO.ARCHIVE %s" % str(ainfo[0].archive))
-
-        print("EXP.OUTPUT_NAME %s" % str(exp[0].output_name))
-        print("EXP.ARTIFACT_TYPE %s" % str(exp[0].artifact_type))
-        print("EXP.FILES %s" % str(exp[0].files))
-        print("EXP.ARCHIVE %s" % str(exp[0].archive))
 
         self.assertEqual(ainfo, exp)
 
