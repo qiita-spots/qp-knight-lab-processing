@@ -108,8 +108,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             else:
                 raise e
 
-        makedirs(join(pipeline.run_dir, run_identifier), exist_ok=True)
-
         sdo = SequenceDirectory(pipeline.run_dir, sample_sheet_path)
 
         qclient.update_job_step(job_id,
