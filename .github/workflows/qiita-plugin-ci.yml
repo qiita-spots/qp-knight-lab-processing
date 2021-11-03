@@ -62,8 +62,9 @@ jobs:
 
           # Setting up main qiita conda environment
           conda config --add channels conda-forge
-          conda create -q --yes -n qiita python=3.6 pip libgfortran numpy nginx cython redis
+          conda create -q --yes -n qiita python=3.6 pip==9.0.3 libgfortran numpy nginx cython redis
           conda activate qiita
+          pip install --upgrade pip
           pip install 'setuptools<=58.0.1'
           pip install sphinx sphinx-bootstrap-theme nose-timer codecov Click
 
@@ -77,7 +78,7 @@ jobs:
       - name: Install Qiita plugins
         shell: bash -l {0}
         run: |
-          conda create -q --yes -n klp python=3.6
+          conda create -q --yes -n klp python=3.6 pip==9.0.3
           conda activate klp
 
           export QIITA_SERVER_CERT=`pwd`/qiita-dev/qiita_core/support_files/server.crt
@@ -87,9 +88,10 @@ jobs:
           pip --quiet install https://github.com/qiita-spots/qtp-job-output-folder/archive/refs/heads/main.zip
           pip --quiet install .
           pip --quiet install coveralls
+          export QP_KLP_CONFIG_FP=`pwd`/configuration.json
 
           configure_qtp_job_output_folder --env-script "source /home/runner/.profile; conda activate klp" --server-cert $QIITA_SERVER_CERT
-          configure_klp --env-script "source /home/runner/.profile; conda activate klp" --server-cert $QIITA_SERVER_CERT
+          configure_klp --env-script "source /home/runner/.profile; export QP_KLP_CONFIG_FP=$QP_KLP_CONFIG_FP; conda activate klp" --server-cert $QIITA_SERVER_CERT
 
           echo "Available Qiita plugins"
           ls ~/.qiita_plugins/
@@ -132,7 +134,7 @@ jobs:
           conda activate klp
           export QIITA_SERVER_CERT=`pwd`/qiita-dev/qiita_core/support_files/server.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
-
+          export QP_KLP_CONFIG_FP=`pwd`/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
 
           nosetests --with-doctest --with-coverage -v --cover-package=qp_klp
