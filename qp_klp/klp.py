@@ -97,11 +97,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             makedirs(upload_path, exist_ok=True)
             special_map.append((project_name, upload_path))
 
-        config_fp = ('/home/qiita_test/qiita-spots/'
-                     'qp-knight-lab-processing/qp_klp/configuration.json')
-
         try:
-            pipeline = Pipeline(config_fp, run_identifier, out_dir, job_id)
+            pipeline = Pipeline(CONFIG_FP, run_identifier, out_dir, job_id)
         except PipelineError as e:
             # Pipeline is the object that finds the input fp, based on
             # a search directory set in configuration.json and a run_id.

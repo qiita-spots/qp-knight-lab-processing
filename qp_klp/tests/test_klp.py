@@ -212,7 +212,6 @@ class KLPTests(PluginTestCase):
               }
             }
 
-        # use out_dir to store the configuration.json file as well.
         # create the file and write the configuration out to disk
         # for use by sequence_processing_pipeline().
         config_filepath = environ['QP_KLP_CONFIG_FP']
