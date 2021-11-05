@@ -50,6 +50,8 @@ setup(name='qp-klp',
                         'qiita-spots/qiita-files/archive/master.zip',
                         'qiita_client @ https://github.com/'
                         'qiita-spots/qiita_client/archive/master.zip',
+                        'metapool @ https://github.com/biocore/'
+                        'metagenomics_pooling_notebook/archive/master.zip',
                         'sequence-processing-pipeline @ https://github.com/'
                         'biocore/mg-scripts/archive/master.zip'],
       dependency_links=[],
