@@ -16,7 +16,7 @@ from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.SequenceDirectory import SequenceDirectory
 from sequence_processing_pipeline.PipelineError import PipelineError
-from metapool import KLSampleSheet, validate_and_scrub_sample_sheet
+from metapool import KLSampleSheet, quiet_validate_and_scrub_sample_sheet
 from subprocess import Popen, PIPE
 from os import environ, walk
 from inspect import stack
@@ -72,12 +72,19 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         # validate the sample-sheet using metapool package.
         sheet = KLSampleSheet(sample_sheet_path)
-        val_sheet = validate_and_scrub_sample_sheet(sheet)
+        msgs, val_sheet = quiet_validate_and_scrub_sample_sheet(sheet)
         if not val_sheet:
-            qclient.update_job_step(job_id,
-                                    "Sample sheet failed validation.")
-            raise ValueError("Sample sheet failed validiation")
+            # only pass the top message to update_job_step, due to
+            # limited display width.
+            msg = msgs[0] if msgs else "Sample sheet failed validation."
+
+            qclient.update_job_step(job_id, msg)
+            raise ValueError(msg)
         else:
+            # if we're passed a val_sheet, assume any msgs are warnings only.
+            # unfortunately, we can only display the top msg.
+            msg = msgs[0] if msgs else None
+            qclient.update_job_step(job_id, f'warning: {msg}')
             # get project names and their associated qiita ids
             bioinformatics = val_sheet.Bioinformatics
             lst = bioinformatics.to_dict('records')
