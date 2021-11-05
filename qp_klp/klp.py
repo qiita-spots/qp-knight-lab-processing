@@ -229,10 +229,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         for project, upload_dir in special_map:
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
-                        'QCJob/{project}/fastp_reports_dir')
+                        f'QCJob/{project}/fastp_reports_dir')
             cmds.append(f'cd {out_dir}; mv '
-                        'QCJob/{project}/filtered_sequences/* '
-                        '{upload_dir}')
+                        f'QCJob/{project}/filtered_sequences/* '
+                        f'{upload_dir}')
             for csv_file in csv_fps:
                 if project in csv_file:
                     cmds.append(f'cd {out_dir}; mv {csv_file} {upload_dir}')
