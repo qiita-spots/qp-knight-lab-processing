@@ -190,7 +190,8 @@ class KLPTests(PluginTestCase):
                   "minimap2_executable_path": "minimap2",
                   "samtools_executable_path": "samtools",
                   "job_total_memory_limit": "20gb",
-                  "job_pool_size": 30
+                  "job_pool_size": 30,
+                  "job_max_array_length": 1000
                 },
                 "seqpro": {
                   "seqpro_path": "seqpro",
@@ -207,7 +208,8 @@ class KLPTests(PluginTestCase):
                   "multiqc_executable_path": "multiqc",
                   "multiqc_config_file_path": self.multiqc_config_filepath,
                   "job_total_memory_limit": "20gb",
-                  "job_pool_size": 30
+                  "job_pool_size": 30,
+                  "job_max_array_length": 1000
                 }
               }
             }
