@@ -51,6 +51,6 @@ setup(name='qp-klp',
                         'qiita_client @ https://github.com/'
                         'qiita-spots/qiita_client/archive/master.zip',
                         'sequence-processing-pipeline @ https://github.com/'
-                        'biocore/mg-scripts/archive/master.zip'],
+                        'charles-cowart/mg-scripts/archive/extra_validation.zip'],
       dependency_links=[],
       classifiers=classifiers)
