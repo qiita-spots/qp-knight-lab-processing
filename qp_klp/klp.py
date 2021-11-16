@@ -160,7 +160,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                        config['samtools_executable_path'],
                        config['modules_to_load'],
                        job_id,
-                       job_pool_size)
+                       job_pool_size,
+                       config['job_max_array_length'])
 
         if not skip_exec:
             qc_job.run()
@@ -187,7 +188,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                config['wallclock_time_in_hours'],
                                config['job_total_memory_limit'],
                                job_pool_size,
-                               config['multiqc_config_file_path'])
+                               config['multiqc_config_file_path'],
+                               config['job_max_array_length'])
 
         if not skip_exec:
             fastqc_job.run()
