@@ -6,20 +6,19 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from functools import partial
-from qiita_client import ArtifactInfo
-from sequence_processing_pipeline.Pipeline import Pipeline
+from inspect import stack
+from os import environ, walk
 from os import makedirs
 from os.path import join
+from qiita_client import ArtifactInfo
 from sequence_processing_pipeline.ConvertJob import ConvertJob
-from sequence_processing_pipeline.QCJob import QCJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
-from sequence_processing_pipeline.SequenceDirectory import SequenceDirectory
+from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
-from metapool import KLSampleSheet, quiet_validate_and_scrub_sample_sheet
+from sequence_processing_pipeline.QCJob import QCJob
+from sequence_processing_pipeline.SequenceDirectory import SequenceDirectory
 from subprocess import Popen, PIPE
-from os import environ, walk
-from inspect import stack
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
@@ -60,6 +59,18 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(sample_sheet):
+        # Create a Pipeline object
+        try:
+            pipeline = Pipeline(CONFIG_FP, run_identifier, out_dir, job_id)
+        except PipelineError as e:
+            # Pipeline is the object that finds the input fp, based on
+            # a search directory set in configuration.json and a run_id.
+            if str(e).endswith("could not be found"):
+                msg = f"A path for {run_identifier} could not be found."
+                return False, None, msg
+            else:
+                raise e
+
         outpath = partial(join, out_dir)
         final_results_path = outpath('final_results')
         makedirs(final_results_path, exist_ok=True)
@@ -70,14 +81,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         with open(sample_sheet_path, 'w') as f:
             f.write(sample_sheet['body'])
 
-        # validate the sample-sheet using metapool package.
-        sheet = KLSampleSheet(sample_sheet_path)
-        msgs, val_sheet = quiet_validate_and_scrub_sample_sheet(sheet)
+        msgs, val_sheet = pipeline.validate(sample_sheet_path)
+
         if not val_sheet:
             # only pass the top message to update_job_step, due to
             # limited display width.
             msg = msgs[0] if msgs else "Sample sheet failed validation."
-
             qclient.update_job_step(job_id, msg)
             raise ValueError(msg)
         else:
@@ -104,17 +113,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             makedirs(upload_path, exist_ok=True)
             special_map.append((project_name, upload_path))
 
-        try:
-            pipeline = Pipeline(CONFIG_FP, run_identifier, out_dir, job_id)
-        except PipelineError as e:
-            # Pipeline is the object that finds the input fp, based on
-            # a search directory set in configuration.json and a run_id.
-            if str(e).endswith("could not be found"):
-                msg = f"A path for {run_identifier} could not be found."
-                return False, None, msg
-            else:
-                raise e
-
+        # Create a SequenceDirectory object
         sdo = SequenceDirectory(pipeline.run_dir, sample_sheet_path)
 
         qclient.update_job_step(job_id,
