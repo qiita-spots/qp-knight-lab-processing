@@ -16,7 +16,7 @@ from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
-from os import environ
+from os import environ, walk
 
 
 class KLPTests(PluginTestCase):
@@ -315,6 +315,11 @@ class KLPTests(PluginTestCase):
                 "filename": "prep_16S.txt",
             }
         }
+
+        for root, dirs, files in walk(self.out_dir):
+            for some_file in files:
+                some_path = f'{root}/{some_file}'
+                print(some_path)
 
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
