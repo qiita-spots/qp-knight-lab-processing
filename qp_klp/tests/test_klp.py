@@ -17,6 +17,10 @@ from qp_klp import __version__, plugin
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 from os import environ, walk
+import logging
+
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class KLPTests(PluginTestCase):
@@ -319,7 +323,7 @@ class KLPTests(PluginTestCase):
         for root, dirs, files in walk(self.out_dir):
             for some_file in files:
                 some_path = f'{root}/{some_file}'
-                print(some_path)
+                logging.debug(some_path)
 
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
@@ -327,7 +331,7 @@ class KLPTests(PluginTestCase):
 
         if msg:
             # if success is True, msg should be None.
-            print("Message returned: %s" % msg)
+            logging.debug("Message returned: %s" % msg)
 
         self.assertTrue(success)
 
