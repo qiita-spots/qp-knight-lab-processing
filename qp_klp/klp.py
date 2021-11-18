@@ -9,7 +9,7 @@ from functools import partial
 from inspect import stack
 from os import environ, walk
 from os import makedirs
-from os.path import join
+from os.path import join, exists
 from qiita_client import ArtifactInfo
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
@@ -86,7 +86,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         if not val_sheet:
             # only pass the top message to update_job_step, due to
             # limited display width.
-            msg = msgs[0] if msgs else "Sample sheet failed validation."
+            msg = str(msgs[0]) if msgs else "Sample sheet failed validation."
             qclient.update_job_step(job_id, msg)
             raise ValueError(msg)
         else:
@@ -238,9 +238,16 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         for project, upload_dir in special_map:
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                         f'QCJob/{project}/fastp_reports_dir')
-            cmds.append(f'cd {out_dir}; mv '
-                        f'QCJob/{project}/filtered_sequences/* '
-                        f'{upload_dir}')
+
+            if exists(f'{out_dir}/QCJob/{project}/filtered_sequences'):
+                cmds.append(f'cd {out_dir}; mv '
+                            f'QCJob/{project}/filtered_sequences/* '
+                            f'{upload_dir}')
+            else:
+                cmds.append(f'cd {out_dir}; mv '
+                            f'QCJob/{project}/trimmed_sequences/* '
+                            f'{upload_dir}')
+
             for csv_file in csv_fps:
                 if project in csv_file:
                     cmds.append(f'cd {out_dir}; mv {csv_file} {upload_dir}')
