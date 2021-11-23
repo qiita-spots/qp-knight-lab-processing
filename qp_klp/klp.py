@@ -83,7 +83,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         msgs, val_sheet = pipeline.validate(sample_sheet_path)
 
-        if not val_sheet:
+        if val_sheet is not None:
             # only pass the top message to update_job_step, due to
             # limited display width.
             msg = str(msgs[0]) if msgs else "Sample sheet failed validation."
