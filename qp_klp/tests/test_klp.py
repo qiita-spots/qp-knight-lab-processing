@@ -17,6 +17,10 @@ from qp_klp import __version__, plugin
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 from os import environ
+import logging
+
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class KLPTests(PluginTestCase):
@@ -140,7 +144,7 @@ class KLPTests(PluginTestCase):
             "Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapt"
             "er,HumanFiltering,library_construction_protocol,experiment_desig"
             "n_description,,,\n",
-            "Feist_11661,11661,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Eqiip"
+            "Feist_11661,11661,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Equip"
             "eriment,,,\n",
             ",,,,,,,,,,\n",
             "[Contact],,,,,,,,,,\n",
@@ -190,7 +194,8 @@ class KLPTests(PluginTestCase):
                   "minimap2_executable_path": "minimap2",
                   "samtools_executable_path": "samtools",
                   "job_total_memory_limit": "20gb",
-                  "job_pool_size": 30
+                  "job_pool_size": 30,
+                  "job_max_array_length": 1000
                 },
                 "seqpro": {
                   "seqpro_path": "seqpro",
@@ -207,7 +212,8 @@ class KLPTests(PluginTestCase):
                   "multiqc_executable_path": "multiqc",
                   "multiqc_config_file_path": self.multiqc_config_filepath,
                   "job_total_memory_limit": "20gb",
-                  "job_pool_size": 30
+                  "job_pool_size": 30,
+                  "job_max_array_length": 1000
                 }
               }
             }
@@ -260,17 +266,20 @@ class KLPTests(PluginTestCase):
         with open(join(test_dir, 'RunInfo.xml'), 'w') as f:
             f.write("Hello World\n")
 
-        # create the project directory QCJob will expect to find fastq files
-        # in.
-        fastq_dir = join(test_dir, 'Data', 'Fastq', 'Feist_11661')
+        # create the project directory sequence_processing_pipeline() will
+        # expect to find fastq files in.
+        fastq_dir = join(self.out_dir, 'ConvertJob', 'Feist_11661')
         makedirs(fastq_dir)
+
         file_list = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
                      "CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz",
                      "CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz",
                      "CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz"]
 
         for fastq_file in file_list:
-            with open(join(fastq_dir, fastq_file), 'w') as f:
+            fp = join(fastq_dir, fastq_file)
+            logging.debug("FASTQ FILE PATH: %s" % fp)
+            with open(fp, 'w') as f:
                 f.write("Hello World\n")
 
         # write multi-qc config file to a known location
@@ -303,7 +312,7 @@ class KLPTests(PluginTestCase):
 
         # test success
         # both valid run_identifier and sample_sheet
-        # NOTE: we are no creating a new job for this test, which is fine
+        # NOTE: we are not creating a new job for this test, which is fine
 
         params = {
             "run_identifier": "200318_A00953_0082_AH5TWYDSXY",
@@ -320,7 +329,7 @@ class KLPTests(PluginTestCase):
 
         if msg:
             # if success is True, msg should be None.
-            print("Message returned: %s" % msg)
+            logging.debug("Message returned: %s" % msg)
 
         self.assertTrue(success)
 

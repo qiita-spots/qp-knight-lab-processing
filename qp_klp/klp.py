@@ -6,20 +6,19 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from functools import partial
-from qiita_client import ArtifactInfo
-from sequence_processing_pipeline.Pipeline import Pipeline
+from inspect import stack
+from os import environ, walk
 from os import makedirs
-from os.path import join
+from os.path import join, exists
+from qiita_client import ArtifactInfo
 from sequence_processing_pipeline.ConvertJob import ConvertJob
-from sequence_processing_pipeline.QCJob import QCJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
-from sequence_processing_pipeline.SequenceDirectory import SequenceDirectory
+from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
-from metapool import KLSampleSheet, validate_and_scrub_sample_sheet
+from sequence_processing_pipeline.QCJob import QCJob
+from sequence_processing_pipeline.SequenceDirectory import SequenceDirectory
 from subprocess import Popen, PIPE
-from os import environ, walk
-from inspect import stack
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
@@ -60,6 +59,18 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(sample_sheet):
+        # Create a Pipeline object
+        try:
+            pipeline = Pipeline(CONFIG_FP, run_identifier, out_dir, job_id)
+        except PipelineError as e:
+            # Pipeline is the object that finds the input fp, based on
+            # a search directory set in configuration.json and a run_id.
+            if str(e).endswith("could not be found"):
+                msg = f"A path for {run_identifier} could not be found."
+                return False, None, msg
+            else:
+                raise e
+
         outpath = partial(join, out_dir)
         final_results_path = outpath('final_results')
         makedirs(final_results_path, exist_ok=True)
@@ -70,14 +81,19 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         with open(sample_sheet_path, 'w') as f:
             f.write(sample_sheet['body'])
 
-        # validate the sample-sheet using metapool package.
-        sheet = KLSampleSheet(sample_sheet_path)
-        val_sheet = validate_and_scrub_sample_sheet(sheet)
-        if not val_sheet:
-            qclient.update_job_step(job_id,
-                                    "Sample sheet failed validation.")
-            raise ValueError("Sample sheet failed validiation")
+        msgs, val_sheet = pipeline.validate(sample_sheet_path)
+
+        if val_sheet is None:
+            # only pass the top message to update_job_step, due to
+            # limited display width.
+            msg = str(msgs[0]) if msgs else "Sample sheet failed validation."
+            qclient.update_job_step(job_id, msg)
+            raise ValueError(msg)
         else:
+            # if we're passed a val_sheet, assume any msgs are warnings only.
+            # unfortunately, we can only display the top msg.
+            msg = msgs[0] if msgs else None
+            qclient.update_job_step(job_id, f'warning: {msg}')
             # get project names and their associated qiita ids
             bioinformatics = val_sheet.Bioinformatics
             lst = bioinformatics.to_dict('records')
@@ -97,17 +113,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             makedirs(upload_path, exist_ok=True)
             special_map.append((project_name, upload_path))
 
-        try:
-            pipeline = Pipeline(CONFIG_FP, run_identifier, out_dir, job_id)
-        except PipelineError as e:
-            # Pipeline is the object that finds the input fp, based on
-            # a search directory set in configuration.json and a run_id.
-            if str(e).endswith("could not be found"):
-                msg = f"A path for {run_identifier} could not be found."
-                return False, None, msg
-            else:
-                raise e
-
+        # Create a SequenceDirectory object
         sdo = SequenceDirectory(pipeline.run_dir, sample_sheet_path)
 
         qclient.update_job_step(job_id,
@@ -154,7 +160,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                        config['samtools_executable_path'],
                        config['modules_to_load'],
                        job_id,
-                       job_pool_size)
+                       job_pool_size,
+                       config['job_max_array_length'])
 
         if not skip_exec:
             qc_job.run()
@@ -181,7 +188,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                config['wallclock_time_in_hours'],
                                config['job_total_memory_limit'],
                                job_pool_size,
-                               config['multiqc_config_file_path'])
+                               config['multiqc_config_file_path'],
+                               config['job_max_array_length'])
 
         if not skip_exec:
             fastqc_job.run()
@@ -230,9 +238,16 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         for project, upload_dir in special_map:
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                         f'QCJob/{project}/fastp_reports_dir')
-            cmds.append(f'cd {out_dir}; mv '
-                        f'QCJob/{project}/filtered_sequences/* '
-                        f'{upload_dir}')
+
+            if exists(f'{out_dir}/QCJob/{project}/filtered_sequences'):
+                cmds.append(f'cd {out_dir}; mv '
+                            f'QCJob/{project}/filtered_sequences/* '
+                            f'{upload_dir}')
+            else:
+                cmds.append(f'cd {out_dir}; mv '
+                            f'QCJob/{project}/trimmed_sequences/* '
+                            f'{upload_dir}')
+
             for csv_file in csv_fps:
                 if project in csv_file:
                     cmds.append(f'cd {out_dir}; mv {csv_file} {upload_dir}')
