@@ -227,7 +227,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # convert sifs into a list of filenames.
         sifs = ' '.join(sifs)
 
-        cmds = [f'cd {out_dir}; tar zcvf sample.tgz {sifs}',
+        cmds = [f'cd {out_dir}; tar zcvf sample-files.tgz {sifs}',
                 f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                 f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
                 'ConvertJob/Reports ConvertJob/Logs',
@@ -266,7 +266,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
-        cmds.append(f'cd {out_dir}; mv sample.tgz {upload_dir}')
+        cmds.append(f'cd {out_dir}; mv sample-files.tgz {upload_dir}')
 
         if skip_exec:
             cmds = []
