@@ -9,7 +9,7 @@ from functools import partial
 from inspect import stack
 from os import environ, walk
 from os import makedirs
-from os.path import join, exists
+from os.path import basename, join, exists
 from qiita_client import ArtifactInfo
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
@@ -97,6 +97,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             # get project names and their associated qiita ids
             bioinformatics = val_sheet.Bioinformatics
             lst = bioinformatics.to_dict('records')
+
+        sifs = pipeline.generate_sample_information_files(sample_sheet_path)
 
         # find the uploads directory all trimmed files will need to be
         # moved to.
@@ -217,7 +219,16 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
                                         "archive")
 
-        cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
+        # just use the filenames for tarballing the sifs.
+        # this will prevent the tarball from having an arbitrarily nested
+        # tree.
+        # the sifs should all be stored in the {out_dir} by default.
+        sifs = [basename(x) for x in sifs]
+        # convert sifs into a list of filenames.
+        sifs = ' '.join(sifs)
+
+        cmds = [f'cd {out_dir}; tar zcvf sample.tgz {sifs}',
+                f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                 f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
                 'ConvertJob/Reports ConvertJob/Logs',
                 f'cd {out_dir}; tar zcvf logs-QCJob.tgz QCJob/logs',
@@ -255,6 +266,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
+        cmds.append(f'cd {out_dir}; mv sample.tgz {upload_dir}')
 
         if skip_exec:
             cmds = []
