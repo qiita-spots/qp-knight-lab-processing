@@ -9,7 +9,7 @@ from functools import partial
 from inspect import stack
 from os import environ, walk
 from os import makedirs
-from os.path import join, exists
+from os.path import basename, join, exists
 from qiita_client import ArtifactInfo
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
@@ -97,6 +97,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             # get project names and their associated qiita ids
             bioinformatics = val_sheet.Bioinformatics
             lst = bioinformatics.to_dict('records')
+
+        sifs = pipeline.generate_sample_information_files(sample_sheet_path)
 
         # find the uploads directory all trimmed files will need to be
         # moved to.
@@ -230,6 +232,16 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 f'cd {out_dir}; tar zcvf prep-files.tgz '
                 'GenPrepFileJob/PrepFiles']
 
+        # just use the filenames for tarballing the sifs.
+        # this will prevent the tarball from having an arbitrarily nested
+        # tree.
+        # the sifs should all be stored in the {out_dir} by default.
+        if sifs:
+            tmp = [basename(x) for x in sifs]
+            # convert sifs into a list of filenames.
+            tmp = ' '.join(tmp)
+            cmds.append(f'cd {out_dir}; tar zcvf sample-files.tgz {tmp}')
+
         csv_fps = []
         for root, dirs, files in walk(join(gpf_job.output_path, 'PrepFiles')):
             for csv_file in files:
@@ -255,6 +267,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
+        
+        if sifs:
+            cmds.append(f'cd {out_dir}; mv sample-files.tgz {upload_dir}')
 
         if skip_exec:
             cmds = []
