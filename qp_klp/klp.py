@@ -219,14 +219,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
                                         "archive")
 
-        # just use the filenames for tarballing the sifs.
-        # this will prevent the tarball from having an arbitrarily nested
-        # tree.
-        # the sifs should all be stored in the {out_dir} by default.
-        sifs = [basename(x) for x in sifs]
-        # convert sifs into a list of filenames.
-        sifs = ' '.join(sifs)
-
         cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                 f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
                 'ConvertJob/Reports ConvertJob/Logs',
@@ -241,8 +233,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 'GenPrepFileJob/PrepFiles']
 
         # just use the filenames for tarballing the sifs.
-        # this will prevent the tarball from having an arbitrarily nested
-        # tree.
         # the sifs should all be stored in the {out_dir} by default.
         if sifs:
             tmp = [basename(x) for x in sifs]
@@ -282,13 +272,15 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         if skip_exec:
             cmds = []
 
+        cmd_log_fp = join(out_dir, 'cmds.log')
+        with open(cmd_log_fp, 'w') as cmd_log_f:
+            for cmd in cmds:
+                cmd_log_f.write(f'{cmd}\n')
+
         for cmd in cmds:
             p = Popen(cmd, universal_newlines=True, shell=True,
                       stdout=PIPE, stderr=PIPE)
             std_out, std_err = p.communicate()
-            return_code = p.returncode
-            if return_code != 0:
-                raise PipelineError(f"'{cmd}' returned {return_code}")
 
         ainfo = [
             ArtifactInfo('output', 'job-output-folder',
