@@ -246,6 +246,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 csv_fps.append(join(root, csv_file))
 
         for project, upload_dir in special_map:
+            if sifs:
+                # move uncompressed sifs to upload_dir.
+                cmds.append(f'cd {out_dir}; mv {tmp} {upload_dir}')
+
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                         f'QCJob/{project}/fastp_reports_dir')
 
@@ -263,11 +267,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                     cmds.append(f'cd {out_dir}; mv {csv_file} {upload_dir}')
                     break
 
+        # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
-
-        if sifs:
-            cmds.append(f'cd {out_dir}; mv sample-files.tgz {upload_dir}')
 
         if skip_exec:
             cmds = []
