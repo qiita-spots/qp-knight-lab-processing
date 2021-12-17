@@ -248,7 +248,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         for project, upload_dir in special_map:
             if sifs:
                 # move uncompressed sifs to upload_dir.
-                cmds.append(f'cd {out_dir}; mv {tmp} {upload_dir}')
+                # sif filenames are of the form: '{project}_blanks.tsv'
+                cmds.append(f'cd {out_dir}; mv {project}_blanks.tsv {upload_dir}')
 
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                         f'QCJob/{project}/fastp_reports_dir')
