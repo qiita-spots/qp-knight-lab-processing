@@ -20,7 +20,9 @@ from os import environ
 import logging
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(message)s',
+                    datefmt='%d-%b-%y %H:%M:%S')
 
 
 class KLPTests(PluginTestCase):
@@ -32,6 +34,7 @@ class KLPTests(PluginTestCase):
     def setUp(self):
         # this will allow us to see the full errors
         self.maxDiff = None
+        self.logger = logging.getLogger(__name__)
 
         plugin('https://localhost:8383', 'register', 'ignored')
         sleep(2)
@@ -278,7 +281,7 @@ class KLPTests(PluginTestCase):
 
         for fastq_file in file_list:
             fp = join(fastq_dir, fastq_file)
-            logging.debug("FASTQ FILE PATH: %s" % fp)
+            self.logger.debug("FASTQ FILE PATH: %s" % fp)
             with open(fp, 'w') as f:
                 f.write("Hello World\n")
 
@@ -329,7 +332,7 @@ class KLPTests(PluginTestCase):
 
         if msg:
             # if success is True, msg should be None.
-            logging.debug("Message returned: %s" % msg)
+            self.logger.debug("Message returned: %s" % msg)
 
         self.assertTrue(success)
 
@@ -346,12 +349,12 @@ class KLPTests(PluginTestCase):
         if exists(sif_fp):
             with open(sif_fp, 'r') as f:
                 for line in f:
-                    logging.debug("CMD_LOG: %s" % line)
+                    self.logger.debug("CMD_LOG: %s" % line)
         else:
             for root, dirs, files in walk('.'):
                 for some_file in files:
                     some_path = join(root, some_file)
-                    logging.debug(some_path)
+                    self.logger.debug(some_path)
 
 
 if __name__ == "__main__":
