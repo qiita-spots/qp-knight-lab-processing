@@ -281,6 +281,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             p = Popen(cmd, universal_newlines=True, shell=True,
                       stdout=PIPE, stderr=PIPE)
             std_out, std_err = p.communicate()
+            return_code = p.returncode
+            if return_code != 0:
+                raise PipelineError(f"'{cmd}' returned {return_code}")
 
         ainfo = [
             ArtifactInfo('output', 'job-output-folder',
