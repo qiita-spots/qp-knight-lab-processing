@@ -357,8 +357,7 @@ class KLPTests(PluginTestCase):
                'cd OUT_DIR; tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles',
                ('cd OUT_DIR; tar zcvf reports-QCJob.tgz QCJob/Feist_11661/fas'
                 'tp_reports_dir'),
-               ('cd OUT_DIR; mv QCJob/Feist_11661/filtered_sequences/* PREFIX'
-                '/support_files/test_data/uploads/11661'),
+               'cd PREFIX/support_files/test_data/uploads/11661',
                'cd OUT_DIR; mv *.tgz final_results',
                'cd OUT_DIR; mv FastQCJob/multiqc final_results']
 
@@ -372,8 +371,14 @@ class KLPTests(PluginTestCase):
             cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
 
             cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$',
-                           r' PREFIX/support_files/test_data/uploads/11661',
+                           r' cd PREFIX/support_files/test_data/uploads/11661',
                            x) for x in cmds]
+
+            for line in exp:
+                self.logger.debug('exp: %s' % line)
+
+            for line in cmds:
+                self.logger.debug('obs: %s' % line)
 
             self.assertEqual(exp, cmds)
 
