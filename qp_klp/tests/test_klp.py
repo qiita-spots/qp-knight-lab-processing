@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import main
-from os import remove, makedirs, walk
+from os import remove, makedirs
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
@@ -345,16 +345,12 @@ class KLPTests(PluginTestCase):
         self.assertEqual(ainfo, exp)
 
         # verify cmd.log
-        sif_fp = 'Feist_11661_blanks.tsv'
-        if exists(sif_fp):
-            with open(sif_fp, 'r') as f:
-                for line in f:
-                    self.logger.debug("CMD_LOG: %s" % line)
-        else:
-            for root, dirs, files in walk(self.out_dir):
-                for some_file in files:
-                    some_path = join(root, some_file)
-                    self.logger.debug(some_path)
+        cmdslog_fp = join(self.out_dir, 'cmds.log')
+        with open(cmdslog_fp, 'r') as f:
+            self.logger.debug("BEGIN CMDS LOG")
+            for line in f:
+                self.logger.debug(line)
+            self.logger.debug("END CMDS LOG")
 
         # force an error during testing to display debug log output.
         self.assertEqual(False)
