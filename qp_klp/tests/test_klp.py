@@ -374,12 +374,6 @@ class KLPTests(PluginTestCase):
                            r' PREFIX/support_files/test_data/uploads/11661',
                            x) for x in cmds]
 
-            for line in exp:
-                self.logger.debug('exp: %s' % line)
-
-            for line in cmds:
-                self.logger.debug('obs: %s' % line)
-
             self.assertEqual(exp, cmds)
 
 
