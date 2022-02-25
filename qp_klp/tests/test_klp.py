@@ -18,6 +18,7 @@ from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 from os import environ
 import logging
+import re
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -345,15 +346,36 @@ class KLPTests(PluginTestCase):
         self.assertEqual(ainfo, exp)
 
         # verify cmd.log
+        exp = ['cd OUT_DIR; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
+               ('cd OUT_DIR; tar zcvf reports-ConvertJob.tgz ConvertJob/Repor'
+                'ts ConvertJob/Logs'),
+               'cd OUT_DIR; tar zcvf logs-QCJob.tgz QCJob/logs',
+               'cd OUT_DIR; tar zcvf logs-FastQCJob.tgz FastQCJob/logs',
+               'cd OUT_DIR; tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc',
+               ('cd OUT_DIR; tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/'
+                'logs'),
+               'cd OUT_DIR; tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles',
+               ('cd OUT_DIR; tar zcvf reports-QCJob.tgz QCJob/Feist_11661/fas'
+                'tp_reports_dir'),
+               ('cd OUT_DIR; mv QCJob/Feist_11661/filtered_sequences/* PREFIX'
+                '/support_files/test_data/uploads/11661'),
+               'cd OUT_DIR; mv *.tgz final_results',
+               'cd OUT_DIR; mv FastQCJob/multiqc final_results']
+
         cmdslog_fp = join(self.out_dir, 'cmds.log')
         with open(cmdslog_fp, 'r') as f:
-            self.logger.debug("BEGIN CMDS LOG")
-            for line in f:
-                self.logger.debug(line)
-            self.logger.debug("END CMDS LOG")
+            # read all lines into a list
+            cmds = f.readlines()
+            # remove newlines
+            cmds = [x.strip() for x in cmds]
+            # replace randomly-generated tmp directory with fixed text.
+            cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
 
-        # force an error during testing to display debug log output.
-        self.assertEqual(False)
+            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$',
+                           r' PREFIX/support_files/test_data/uploads/11661',
+                           x) for x in cmds]
+
+            self.assertEqual(exp, cmds)
 
 
 if __name__ == "__main__":
