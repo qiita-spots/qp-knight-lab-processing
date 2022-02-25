@@ -356,6 +356,9 @@ class KLPTests(PluginTestCase):
                     some_path = join(root, some_file)
                     self.logger.debug(some_path)
 
+        # force an error during testing to display debug log output.
+        self.assertEqual(False)
+
 
 if __name__ == "__main__":
     main()

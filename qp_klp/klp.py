@@ -234,7 +234,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         # just use the filenames for tarballing the sifs.
         # the sifs should all be stored in the {out_dir} by default.
-        if sifs:
+        if sifs and [sif for sif in sifs if f'{project}_blanks.tsv' in sif]:
             tmp = [basename(x) for x in sifs]
             # convert sifs into a list of filenames.
             tmp = ' '.join(tmp)
