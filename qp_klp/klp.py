@@ -234,7 +234,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         # just use the filenames for tarballing the sifs.
         # the sifs should all be stored in the {out_dir} by default.
-        if sifs and [sif for sif in sifs if f'{project}_blanks.tsv' in sif]:
+        if sifs:
             tmp = [basename(x) for x in sifs]
             # convert sifs into a list of filenames.
             tmp = ' '.join(tmp)
@@ -246,7 +246,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 csv_fps.append(join(root, csv_file))
 
         for project, upload_dir in special_map:
-            if sifs:
+            if sifs and [x for x in sifs if f'{project}_blanks.tsv' in x]:
                 # move uncompressed sifs to upload_dir.
                 # sif filenames are of the form: '{project}_blanks.tsv'
                 cmds.append(f'cd {out_dir}; mv {project}_blanks.tsv'
