@@ -351,7 +351,7 @@ class KLPTests(PluginTestCase):
                 for line in f:
                     self.logger.debug("CMD_LOG: %s" % line)
         else:
-            for root, dirs, files in walk('.'):
+            for root, dirs, files in walk(self.out_dir):
                 for some_file in files:
                     some_path = join(root, some_file)
                     self.logger.debug(some_path)
