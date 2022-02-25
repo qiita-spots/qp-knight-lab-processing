@@ -371,7 +371,7 @@ class KLPTests(PluginTestCase):
             cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
 
             cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$',
-                           r' cd PREFIX/support_files/test_data/uploads/11661',
+                           r' PREFIX/support_files/test_data/uploads/11661',
                            x) for x in cmds]
 
             for line in exp:
