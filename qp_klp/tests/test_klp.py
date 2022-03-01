@@ -326,7 +326,8 @@ class KLPTests(PluginTestCase):
                 "body": ''.join(self.sample_csv_data),
                 "content_type": "text/plain",
                 "filename": "prep_16S.txt",
-            }
+            },
+            "lane_number": 1
         }
 
         success, ainfo, msg = sequence_processing_pipeline(
