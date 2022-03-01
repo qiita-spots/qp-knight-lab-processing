@@ -85,7 +85,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             for d in data:
                 if add_lane_number:
                     d = d.split(',')
-                    d[0] = lane_number
+                    d[0] = str(lane_number)
                     d = ','.join(d)
 
                 f.write(d)
