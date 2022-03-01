@@ -327,7 +327,7 @@ class KLPTests(PluginTestCase):
                 "content_type": "text/plain",
                 "filename": "prep_16S.txt",
             },
-            "lane_number": 1
+            "lane_number": 2
         }
 
         success, ainfo, msg = sequence_processing_pipeline(

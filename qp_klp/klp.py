@@ -90,7 +90,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                     d = d.split(',')
                     d[0] = str(lane_number)
                     d = ','.join(d)
-                f.write(d)
+                f.write(f'{d}\n')
 
                 if d.startswith('Lane,'):
                     add_lane_number = True
