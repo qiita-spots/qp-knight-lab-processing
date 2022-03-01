@@ -83,17 +83,17 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             data = sample_sheet['body'].split('\n')
             add_lane_number = False
             for d in data:
+                if add_lane_number and set(d.split(',')) == set(['']):
+                    add_lane_number = False
+
                 if add_lane_number:
                     d = d.split(',')
                     d[0] = str(lane_number)
                     d = ','.join(d)
-
                 f.write(d)
 
-                if d.startswith('Lane'):
+                if d.startswith('Lane,'):
                     add_lane_number = True
-                if add_lane_number and d.strip() == '':
-                    add_lane_number = False
 
         msgs, val_sheet = pipeline.validate(sample_sheet_path)
 
