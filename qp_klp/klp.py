@@ -45,6 +45,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     """
     run_identifier = parameters.pop('run_identifier')
     sample_sheet = parameters.pop('sample_sheet')
+    lane_number = parameters.pop('lane_number')
     job_pool_size = 30
 
     # checking if this is running as part of the unittest
@@ -79,7 +80,20 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # sample-sheet as a file to pass to the Pipeline().
         sample_sheet_path = outpath(sample_sheet['filename'])
         with open(sample_sheet_path, 'w') as f:
-            f.write(sample_sheet['body'])
+            data = sample_sheet['body'].split('\n')
+            add_lane_number = False
+            for d in data:
+                if add_lane_number:
+                    d = d.split(',')
+                    d[0] = lane_number
+                    d = ','.join(d)
+
+                f.write(d)
+
+                if d.startswith('Lane'):
+                    add_lane_number = True
+                if add_lane_number and d.strip() == '':
+                    add_lane_number = False
 
         msgs, val_sheet = pipeline.validate(sample_sheet_path)
 

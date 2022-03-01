@@ -236,7 +236,8 @@ class KLPTests(PluginTestCase):
     def test_sequence_processing_pipeline(self):
         # not a valid run_identifier folder and sample_sheet
         params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
-                  "sample_sheet": "NA"}
+                  "sample_sheet": "NA",
+                  "lane_number": 1}
 
         data = {
             "user": "demo@microbio.me",
@@ -300,7 +301,8 @@ class KLPTests(PluginTestCase):
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
         params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
-                  "sample_sheet": "NA"}
+                  "sample_sheet": "NA",
+                  "lane_number": 1}
 
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
