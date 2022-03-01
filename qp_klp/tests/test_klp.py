@@ -18,9 +18,12 @@ from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 from os import environ
 import logging
+import re
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(message)s',
+                    datefmt='%d-%b-%y %H:%M:%S')
 
 
 class KLPTests(PluginTestCase):
@@ -32,6 +35,7 @@ class KLPTests(PluginTestCase):
     def setUp(self):
         # this will allow us to see the full errors
         self.maxDiff = None
+        self.logger = logging.getLogger(__name__)
 
         plugin('https://localhost:8383', 'register', 'ignored')
         sleep(2)
@@ -279,7 +283,7 @@ class KLPTests(PluginTestCase):
 
         for fastq_file in file_list:
             fp = join(fastq_dir, fastq_file)
-            logging.debug("FASTQ FILE PATH: %s" % fp)
+            self.logger.debug("FASTQ FILE PATH: %s" % fp)
             with open(fp, 'w') as f:
                 f.write("Hello World\n")
 
@@ -331,7 +335,7 @@ class KLPTests(PluginTestCase):
 
         if msg:
             # if success is True, msg should be None.
-            logging.debug("Message returned: %s" % msg)
+            self.logger.debug("Message returned: %s" % msg)
 
         self.assertTrue(success)
 
@@ -342,6 +346,37 @@ class KLPTests(PluginTestCase):
                ]
 
         self.assertEqual(ainfo, exp)
+
+        # verify cmd.log
+        exp = ['cd OUT_DIR; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
+               ('cd OUT_DIR; tar zcvf reports-ConvertJob.tgz ConvertJob/Repor'
+                'ts ConvertJob/Logs'),
+               'cd OUT_DIR; tar zcvf logs-QCJob.tgz QCJob/logs',
+               'cd OUT_DIR; tar zcvf logs-FastQCJob.tgz FastQCJob/logs',
+               'cd OUT_DIR; tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc',
+               ('cd OUT_DIR; tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/'
+                'logs'),
+               'cd OUT_DIR; tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles',
+               ('cd OUT_DIR; tar zcvf reports-QCJob.tgz QCJob/Feist_11661/fas'
+                'tp_reports_dir'),
+               'cd PREFIX/support_files/test_data/uploads/11661',
+               'cd OUT_DIR; mv *.tgz final_results',
+               'cd OUT_DIR; mv FastQCJob/multiqc final_results']
+
+        cmdslog_fp = join(self.out_dir, 'cmds.log')
+        with open(cmdslog_fp, 'r') as f:
+            # read all lines into a list
+            cmds = f.readlines()
+            # remove newlines
+            cmds = [x.strip() for x in cmds]
+            # replace randomly-generated tmp directory with fixed text.
+            cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
+
+            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$',
+                           r' PREFIX/support_files/test_data/uploads/11661',
+                           x) for x in cmds]
+
+            self.assertEqual(exp, cmds)
 
 
 if __name__ == "__main__":

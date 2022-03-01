@@ -233,14 +233,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
                                         "archive")
 
-        # just use the filenames for tarballing the sifs.
-        # this will prevent the tarball from having an arbitrarily nested
-        # tree.
-        # the sifs should all be stored in the {out_dir} by default.
-        sifs = [basename(x) for x in sifs]
-        # convert sifs into a list of filenames.
-        sifs = ' '.join(sifs)
-
         cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                 f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
                 'ConvertJob/Reports ConvertJob/Logs',
@@ -255,8 +247,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 'GenPrepFileJob/PrepFiles']
 
         # just use the filenames for tarballing the sifs.
-        # this will prevent the tarball from having an arbitrarily nested
-        # tree.
         # the sifs should all be stored in the {out_dir} by default.
         if sifs:
             tmp = [basename(x) for x in sifs]
@@ -270,6 +260,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 csv_fps.append(join(root, csv_file))
 
         for project, upload_dir in special_map:
+            if sifs and [x for x in sifs if f'{project}_blanks.tsv' in x]:
+                # move uncompressed sifs to upload_dir.
+                # sif filenames are of the form: '{project}_blanks.tsv'
+                cmds.append(f'cd {out_dir}; mv {project}_blanks.tsv'
+                            f' {upload_dir}')
+
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                         f'QCJob/{project}/fastp_reports_dir')
 
@@ -287,12 +283,19 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                     cmds.append(f'cd {out_dir}; mv {csv_file} {upload_dir}')
                     break
 
+        # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
 
-        if sifs:
-            cmds.append(f'cd {out_dir}; mv sample-files.tgz {upload_dir}')
+        # allow the writing of commands out to cmds.log, even if skip_exec
+        # is True. This allows for unit-testing of cmds generation.
+        cmd_log_fp = join(out_dir, 'cmds.log')
+        with open(cmd_log_fp, 'w') as cmd_log_f:
+            for cmd in cmds:
+                cmd_log_f.write(f'{cmd}\n')
 
+        # if execution was skipped, reinitialze the cmds list to empty after
+        # writing to log and before actually executing commands.
         if skip_exec:
             cmds = []
 
