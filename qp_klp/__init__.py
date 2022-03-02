@@ -15,13 +15,15 @@ class QiitaPluginAdmin(QiitaPlugin):
     _plugin_type = "private"
 
 
-__version__ = '2021.08'
+__version__ = '2022.03'
 
 plugin = QiitaPluginAdmin('qp-klp', __version__, 'Knight Lab Processing')
 
 req_params = {
     'run_identifier': ('string', ['']),
-    'sample_sheet': ('prep_template', [''])}
+    'sample_sheet': ('prep_template', ['']),
+    'lane_number': ('integer', [None]),
+    }
 opt_params = dict()
 outputs = {'output': 'job-output-folder'}
 dflt_param_set = dict()
