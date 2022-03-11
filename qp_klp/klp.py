@@ -5,6 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
+import json
 from functools import partial
 from inspect import stack
 from os import environ, walk
@@ -17,11 +18,28 @@ from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.QCJob import QCJob
-from sequence_processing_pipeline.SequenceDirectory import SequenceDirectory
 from subprocess import Popen, PIPE
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
+
+
+def save_sample_sheet(sample_sheet, sample_sheet_path, lane_number):
+    with open(sample_sheet_path, 'w') as f:
+        data = sample_sheet['body'].split('\n')
+        add_lane_number = False
+        for d in data:
+            if add_lane_number and set(d.split(',')) == set(['']):
+                add_lane_number = False
+
+            if add_lane_number:
+                d = d.split(',')
+                d[0] = str(lane_number)
+                d = ','.join(d)
+            f.write(f'{d}\n')
+
+            if d.startswith('Lane,'):
+                add_lane_number = True
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -57,62 +75,52 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     ainfo = None
     msg = None
 
-    qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
+    qclient.update_job_step(job_id, "Step 1 of 7: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(sample_sheet):
+        # Pipeline now takes the path to a sample-sheet as a parameter.
+        # We must now save the sample-sheet to disk before creating a
+        # Pipeline object.
+        outpath = partial(join, out_dir)
+        final_results_path = outpath('final_results')
+        makedirs(final_results_path, exist_ok=True)
+        sample_sheet_path = outpath(sample_sheet['filename'])
+        save_sample_sheet(sample_sheet, sample_sheet_path, lane_number)
+
         # Create a Pipeline object
         try:
-            pipeline = Pipeline(CONFIG_FP, run_identifier, out_dir, job_id)
+            pipeline = Pipeline(CONFIG_FP, run_identifier, sample_sheet_path,
+                                out_dir, job_id)
         except PipelineError as e:
             # Pipeline is the object that finds the input fp, based on
             # a search directory set in configuration.json and a run_id.
             if str(e).endswith("could not be found"):
                 msg = f"A path for {run_identifier} could not be found."
                 return False, None, msg
+            elif str(e).startswith("Sample-sheet has the following errors:"):
+                msg = str(e)
+                qclient.update_job_step(job_id, msg)
+                raise ValueError(msg)
             else:
                 raise e
 
-        outpath = partial(join, out_dir)
-        final_results_path = outpath('final_results')
-        makedirs(final_results_path, exist_ok=True)
-
-        # the user is uploading a sample-sheet to us, but we need the
-        # sample-sheet as a file to pass to the Pipeline().
-        sample_sheet_path = outpath(sample_sheet['filename'])
-        with open(sample_sheet_path, 'w') as f:
-            data = sample_sheet['body'].split('\n')
-            add_lane_number = False
-            for d in data:
-                if add_lane_number and set(d.split(',')) == set(['']):
-                    add_lane_number = False
-
-                if add_lane_number:
-                    d = d.split(',')
-                    d[0] = str(lane_number)
-                    d = ','.join(d)
-                f.write(f'{d}\n')
-
-                if d.startswith('Lane,'):
-                    add_lane_number = True
-
-        msgs, val_sheet = pipeline.validate(sample_sheet_path)
-
-        if val_sheet is None:
-            # only pass the top message to update_job_step, due to
-            # limited display width.
-            msg = str(msgs[0]) if msgs else "Sample sheet failed validation."
-            qclient.update_job_step(job_id, msg)
-            raise ValueError(msg)
-        else:
-            # if we're passed a val_sheet, assume any msgs are warnings only.
-            # unfortunately, we can only display the top msg.
-            msg = msgs[0] if msgs else None
-            qclient.update_job_step(job_id, f'warning: {msg}')
-            # get project names and their associated qiita ids
-            bioinformatics = val_sheet.Bioinformatics
-            lst = bioinformatics.to_dict('records')
+        # if an Error has not been raised, assume there are no errors
+        # in the sample-sheet. A successfully-created Pipeline object can
+        # still contain a list of warnings about sample-sheet validation.
+        # If any warnings are present, they should be reported to the user.
+        if pipeline.warnings:
+            msg = '\n'.join(pipeline.warnings)
+            qclient.update_job_step(job_id, 'Sample-sheet has been flagged '
+                                            'with the following warnings: '
+                                            f'{msg}')
 
         sifs = pipeline.generate_sample_information_files(sample_sheet_path)
+
+        # get a list of unique sample ids from the sample-sheet.
+        # comparing them against the list of samples found in the results
+        # of each stage of the pipeline will let us know when and where
+        # samples failed to process.
+        samples = pipeline.get_sample_ids()
 
         # find the uploads directory all trimmed files will need to be
         # moved to.
@@ -122,23 +130,20 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # associated with each project and ensure a subdirectory exists
         # for when it comes time to move the trimmed files.
         special_map = []
-        for result in lst:
-            project_name = result['Sample_Project']
-            qiita_id = result['QiitaID']
-            upload_path = join(results['uploads'], qiita_id)
+        for project in pipeline.get_project_info():
+            upload_path = join(results['uploads'], project['qiita_id'])
             makedirs(upload_path, exist_ok=True)
-            special_map.append((project_name, upload_path))
-
-        # Create a SequenceDirectory object
-        sdo = SequenceDirectory(pipeline.run_dir, sample_sheet_path)
+            special_map.append((project['project_name'], upload_path))
 
         qclient.update_job_step(job_id,
-                                "Step 2 of 6: Converting BCL to fastq")
+                                "Step 2 of 7: Converting BCL to fastq")
+
+        failed_samples = {}
 
         config = pipeline.configuration['bcl-convert']
         convert_job = ConvertJob(pipeline.run_dir,
                                  pipeline.output_path,
-                                 sdo.sample_sheet_path,
+                                 sample_sheet_path,
                                  config['queue'],
                                  config['nodes'],
                                  config['nprocs'],
@@ -154,9 +159,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # be executed. This is useful for testing.
         if not skip_exec:
             convert_job.run()
+            failed_samples['ConvertJob'] = convert_job.audit(samples)
 
         qclient.update_job_step(job_id,
-                                "Step 3 of 6: Adaptor & Host [optional] "
+                                "Step 3 of 7: Adaptor & Host [optional] "
                                 "trimming")
 
         raw_fastq_files_path = join(pipeline.output_path, 'ConvertJob')
@@ -164,7 +170,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         config = pipeline.configuration['qc']
         qc_job = QCJob(raw_fastq_files_path,
                        pipeline.output_path,
-                       sdo.sample_sheet_path,
+                       sample_sheet_path,
                        config['mmi_db'],
                        config['queue'],
                        config['nodes'],
@@ -181,8 +187,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         if not skip_exec:
             qc_job.run()
+            failed_samples['QCJob'] = qc_job.audit(samples)
 
-        qclient.update_job_step(job_id, "Step 4 of 6: Generating FastQC & "
+        qclient.update_job_step(job_id, "Step 4 of 7: Generating FastQC & "
                                         "MultiQC reports")
 
         config = pipeline.configuration['fastqc']
@@ -209,10 +216,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         if not skip_exec:
             fastqc_job.run()
+            failed_samples['FastQCJob'] = fastqc_job.audit(samples)
 
         project_list = fastqc_job.project_names
 
-        qclient.update_job_step(job_id, "Step 5 of 6: Generating Prep "
+        qclient.update_job_step(job_id, "Step 5 of 7: Generating Prep "
                                         "Information Files")
 
         config = pipeline.configuration['seqpro']
@@ -221,7 +229,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             raw_fastq_files_path,
             processed_fastq_files_path,
             pipeline.output_path,
-            sdo.sample_sheet_path,
+            sample_sheet_path,
             config['seqpro_path'],
             project_list,
             config['modules_to_load'],
@@ -230,7 +238,13 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         if not skip_exec:
             gpf_job.run()
 
-        qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
+        qclient.update_job_step(job_id, "Step 6 of 7: Generating Failed "
+                                        "Samples Report")
+
+        with open(join(out_dir, 'failed_samples.txt'), 'w') as f:
+            f.write(json.dumps(failed_samples, indent=True))
+
+        qclient.update_job_step(job_id, "Step 7 of 7: Copying results to "
                                         "archive")
 
         cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
