@@ -5,7 +5,6 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-import json
 from functools import partial
 from inspect import stack
 from os import environ, walk
