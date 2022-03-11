@@ -264,14 +264,6 @@ class KLPTests(PluginTestCase):
         test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
         makedirs(test_dir)
 
-        # set the age of test_dir to be something within the allowable range
-        # defined in configuration.json.
-        current_time = time()
-        # create an epoch time value older than 24 hours ago but younger than
-        # 90 hours ago. Use 33 hours ago = 118,800 seconds ago.
-        timestamp = current_time - 118800
-        utime(test_dir, (timestamp, timestamp))
-
         # create the sentinel files ConvertJob will check for.
         with open(join(test_dir, 'RTAComplete.txt'), 'w') as f:
             f.write("Hello World\n")
@@ -337,6 +329,13 @@ class KLPTests(PluginTestCase):
             },
             "lane_number": 2
         }
+
+        # set the age of test_dir to be something within the allowable range
+        # defined in configuration.json. create an epoch time value older
+        # than 24 hours ago but younger than 90 hours ago. Use 33 hours ago
+        # = 118,800 seconds ago.
+        timestamp = time() - 118800
+        utime(test_dir, (timestamp, timestamp))
 
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
