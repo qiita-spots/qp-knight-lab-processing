@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import main
-from os import remove, makedirs
+from os import remove, makedirs, utime
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
@@ -15,7 +15,7 @@ from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
 from qp_klp.klp import sequence_processing_pipeline
-from time import sleep
+from time import sleep, time
 from os import environ
 import logging
 import re
@@ -263,6 +263,14 @@ class KLPTests(PluginTestCase):
 
         test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
         makedirs(test_dir)
+
+        # set the age of test_dir to be something within the allowable range
+        # defined in configuration.json.
+        current_time = time()
+        # create an epoch time value older than 24 hours ago but younger than
+        # 90 hours ago. Use 33 hours ago = 118,800 seconds ago.
+        timestamp = current_time - 118800
+        utime(test_dir, (timestamp, timestamp))
 
         # create the sentinel files ConvertJob will check for.
         with open(join(test_dir, 'RTAComplete.txt'), 'w') as f:
