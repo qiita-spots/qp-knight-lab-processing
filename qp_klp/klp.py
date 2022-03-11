@@ -75,7 +75,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     ainfo = None
     msg = None
 
-    qclient.update_job_step(job_id, "Step 1 of 7: Setting up pipeline")
+    qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(sample_sheet):
         # Pipeline now takes the path to a sample-sheet as a parameter.
@@ -136,9 +136,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             special_map.append((project['project_name'], upload_path))
 
         qclient.update_job_step(job_id,
-                                "Step 2 of 7: Converting BCL to fastq")
-
-        failed_samples = {}
+                                "Step 2 of 6: Converting BCL to fastq")
 
         config = pipeline.configuration['bcl-convert']
         convert_job = ConvertJob(pipeline.run_dir,
@@ -159,10 +157,14 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # be executed. This is useful for testing.
         if not skip_exec:
             convert_job.run()
-            failed_samples['ConvertJob'] = convert_job.audit(samples)
+            failed_samples = convert_job.audit(samples)
+            # write list of failed samples out to file and update after
+            # each Job completes.
+            with open(join(out_dir, 'failed_samples.txt'), 'a') as f:
+                f.write(f"ConvertJob: {failed_samples}\n")
 
         qclient.update_job_step(job_id,
-                                "Step 3 of 7: Adaptor & Host [optional] "
+                                "Step 3 of 6: Adaptor & Host [optional] "
                                 "trimming")
 
         raw_fastq_files_path = join(pipeline.output_path, 'ConvertJob')
@@ -187,9 +189,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         if not skip_exec:
             qc_job.run()
-            failed_samples['QCJob'] = qc_job.audit(samples)
+            failed_samples = qc_job.audit(samples)
+            with open(join(out_dir, 'failed_samples.txt'), 'a') as f:
+                f.write(f"QCJob: {failed_samples}\n")
 
-        qclient.update_job_step(job_id, "Step 4 of 7: Generating FastQC & "
+        qclient.update_job_step(job_id, "Step 4 of 6: Generating FastQC & "
                                         "MultiQC reports")
 
         config = pipeline.configuration['fastqc']
@@ -216,11 +220,13 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         if not skip_exec:
             fastqc_job.run()
-            failed_samples['FastQCJob'] = fastqc_job.audit(samples)
+            failed_samples = fastqc_job.audit(samples)
+            with open(join(out_dir, 'failed_samples.txt'), 'a') as f:
+                f.write(f"FastQCJob: {failed_samples}\n")
 
         project_list = fastqc_job.project_names
 
-        qclient.update_job_step(job_id, "Step 5 of 7: Generating Prep "
+        qclient.update_job_step(job_id, "Step 5 of 6: Generating Prep "
                                         "Information Files")
 
         config = pipeline.configuration['seqpro']
@@ -238,13 +244,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         if not skip_exec:
             gpf_job.run()
 
-        qclient.update_job_step(job_id, "Step 6 of 7: Generating Failed "
-                                        "Samples Report")
-
-        with open(join(out_dir, 'failed_samples.txt'), 'w') as f:
-            f.write(json.dumps(failed_samples, indent=True))
-
-        qclient.update_job_step(job_id, "Step 7 of 7: Copying results to "
+        qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
                                         "archive")
 
         cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
