@@ -114,7 +114,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                             'with the following warnings: '
                                             f'{msg}')
 
-        sifs = pipeline.generate_sample_information_files(sample_sheet_path)
+        sifs = pipeline.generate_sample_information_files()
 
         # get a list of unique sample ids from the sample-sheet.
         # comparing them against the list of samples found in the results
