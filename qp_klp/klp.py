@@ -74,6 +74,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     ainfo = None
     msg = None
 
+    # partial URLs to detailed description pages for both Qiita and Qiita-RC.
+    qiita_rc_study_url_prefix = 'https://qiita-rc.ucsd.edu/study/description/'
+    qiita_study_url_prefix = 'https://qiita-rc.ucsd.edu/study/description/'
+
     qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(sample_sheet):
@@ -120,6 +124,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # of each stage of the pipeline will let us know when and where
         # samples failed to process.
         samples = pipeline.get_sample_ids()
+        # remove the BLANKs. We won't need them for our purposes.
+        samples = [x for x in samples if 'BLANK' not in x]
 
         # find the uploads directory all trimmed files will need to be
         # moved to.
@@ -132,7 +138,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         for project in pipeline.get_project_info():
             upload_path = join(results['uploads'], project['qiita_id'])
             makedirs(upload_path, exist_ok=True)
-            special_map.append((project['project_name'], upload_path))
+            special_map.append((project['project_name'], upload_path,
+                                project['qiita_id']))
 
         qclient.update_job_step(job_id,
                                 "Step 2 of 6: Converting BCL to fastq")
@@ -272,12 +279,18 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             for csv_file in files:
                 csv_fps.append(join(root, csv_file))
 
-        for project, upload_dir in special_map:
+        touched_studies = []
+
+        for project, upload_dir, qiita_id in special_map:
             if sifs and [x for x in sifs if f'{project}_blanks.tsv' in x]:
                 # move uncompressed sifs to upload_dir.
                 # sif filenames are of the form: '{project}_blanks.tsv'
                 cmds.append(f'cd {out_dir}; mv {project}_blanks.tsv'
                             f' {upload_dir}')
+                # record that something is being moved into a Qiita Study.
+                # this will allow us to notify the user which Studies to
+                # review upon completion.
+                touched_studies.append((qiita_id, project))
 
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                         f'QCJob/{project}/fastp_reports_dir')
@@ -286,15 +299,27 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 cmds.append(f'cd {out_dir}; mv '
                             f'QCJob/{project}/filtered_sequences/* '
                             f'{upload_dir}')
+                touched_studies.append((qiita_id, project))
             else:
                 cmds.append(f'cd {out_dir}; mv '
                             f'QCJob/{project}/trimmed_sequences/* '
                             f'{upload_dir}')
+                touched_studies.append((qiita_id, project))
 
             for csv_file in csv_fps:
                 if project in csv_file:
                     cmds.append(f'cd {out_dir}; mv {csv_file} {upload_dir}')
+                    touched_studies.append((qiita_id, project))
                     break
+
+        # create a set of unique study-ids that were touched by the Pipeline
+        # and return this information to the user.
+        touched_studies = sorted(list(set(touched_studies)))
+        with open(join(out_dir, 'touched_studies.tsv'), 'a') as f:
+            f.write('Project\tQiita Study ID\tQiita-RC URL\tQiita URL\n')
+            for qiita_id, project in touched_studies:
+                f.write((f'{project}\t{qiita_id}\t{qiita_rc_study_url_prefix}/'
+                        f'{qiita_id}\t{qiita_study_url_prefix}/{qiita_id}\n'))
 
         # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
