@@ -25,7 +25,7 @@ CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
 
 def save_sample_sheet(sample_sheet, sample_sheet_path, lane_number):
     with open(sample_sheet_path, 'w') as f:
-        data = sample_sheet['body'].split('\n')
+        data = sample_sheet.split('\n')
         add_lane_number = False
         for d in data:
             if add_lane_number and set(d.split(',')) == set(['']):
@@ -87,8 +87,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         outpath = partial(join, out_dir)
         final_results_path = outpath('final_results')
         makedirs(final_results_path, exist_ok=True)
-        sample_sheet_path = outpath(sample_sheet['filename'])
-        save_sample_sheet(sample_sheet, sample_sheet_path, lane_number)
+        # replace any whitespace in the filename with underscores
+        sample_sheet_path = outpath(sample_sheet['filename']).replace(' ',
+                                                                      '_')
+        save_sample_sheet(sample_sheet['body'],
+                          sample_sheet_path,
+                          lane_number)
 
         # Create a Pipeline object
         try:
