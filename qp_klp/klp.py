@@ -18,6 +18,7 @@ from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
+from metapool import KLSampleSheet
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
@@ -69,10 +70,16 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         sample_sheet_path = outpath(sample_sheet['filename']).replace(' ',
                                                                       '_')
 
+        # save raw data to file
         with open(sample_sheet_path, 'w') as f:
-            for sample in sample_sheet['body']:
-                sample['Lane'] = '%d' % lane_number
-            sample_sheet.write(f)
+            f.write(sample_sheet)
+
+        # open new file as a KLSampleSheet
+        # use KLSampleSheet functionality to add/overwrite lane number.
+        sheet = KLSampleSheet(sample_sheet_path)
+        for sample in sheet['body']:
+            sample['Lane'] = '%d' % lane_number
+        sheet.write(f)
 
         # Create a Pipeline object
         try:
