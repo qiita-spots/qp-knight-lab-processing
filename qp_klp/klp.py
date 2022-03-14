@@ -311,7 +311,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             f.write('Project\tQiita Study ID\tQiita URL\n')
             for qiita_id, project in touched_studies:
                 f.write((f'{project}\t{qiita_id}\thttps://'
-                         f'{qclient.server_url}/study/description/'
+                         f'{qclient._server_url}/study/description/'
                          f'{qiita_id}\n'))
 
         # copy all tgz files, including sample-files.tgz, to final_results.
