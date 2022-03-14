@@ -69,10 +69,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # replace any whitespace in the filename with underscores
         sample_sheet_path = outpath(sample_sheet['filename']).replace(' ',
                                                                       '_')
-
         # save raw data to file
         with open(sample_sheet_path, 'w') as f:
-            f.write(sample_sheet)
+            for line in sample_sheet:
+                f.write(line)
 
         # open new file as a KLSampleSheet
         # use KLSampleSheet functionality to add/overwrite lane number.
