@@ -79,7 +79,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         for sample in sheet:
             sample['Lane'] = '%d' % lane_number
 
-        with open(sample_sheet_path) as f:
+        with open(sample_sheet_path, 'w') as f:
             sheet.write(f)
 
         # Create a Pipeline object
