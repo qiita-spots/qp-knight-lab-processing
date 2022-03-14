@@ -67,19 +67,20 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         final_results_path = outpath('final_results')
         makedirs(final_results_path, exist_ok=True)
         # replace any whitespace in the filename with underscores
-        sample_sheet_path = outpath(sample_sheet['filename']).replace(' ',
-                                                                      '_')
+        sample_sheet_path = outpath(sample_sheet['filename'].replace(' ',
+                                                                     '_'))
         # save raw data to file
         with open(sample_sheet_path, 'w') as f:
-            for line in sample_sheet:
-                f.write(line)
+            f.write(sample_sheet['body'])
 
         # open new file as a KLSampleSheet
         # use KLSampleSheet functionality to add/overwrite lane number.
         sheet = KLSampleSheet(sample_sheet_path)
-        for sample in sheet['body']:
+        for sample in sheet:
             sample['Lane'] = '%d' % lane_number
-        sheet.write(f)
+
+        with open(sample_sheet_path) as f:
+            sheet.write(f)
 
         # Create a Pipeline object
         try:
