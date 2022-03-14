@@ -23,13 +23,6 @@ from subprocess import Popen, PIPE
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
 
 
-def save_sample_sheet(sample_sheet, sample_sheet_path, lane_number):
-    with open(sample_sheet_path, 'w') as f:
-        for sample in sample_sheet:
-            sample['Lane'] = str(lane_number)
-        sample_sheet.write(f)
-
-
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     """Sequence Processing Pipeline command
 
@@ -63,9 +56,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     ainfo = None
     msg = None
 
-    # partial URLs to detailed description pages for both Qiita and Qiita-RC.
-    # TODO: lane-change fix for Antonio - use Yoshiki's method
-
     qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(sample_sheet):
@@ -81,7 +71,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         with open(sample_sheet_path, 'w') as f:
             for sample in sample_sheet['body']:
-                sample['Lane'] = str(lane_number)
+                sample['Lane'] = '%d' % lane_number
             sample_sheet.write(f)
 
         # Create a Pipeline object
