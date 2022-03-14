@@ -25,20 +25,9 @@ CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
 
 def save_sample_sheet(sample_sheet, sample_sheet_path, lane_number):
     with open(sample_sheet_path, 'w') as f:
-        data = sample_sheet.split('\n')
-        add_lane_number = False
-        for d in data:
-            if add_lane_number and set(d.split(',')) == set(['']):
-                add_lane_number = False
-
-            if add_lane_number:
-                d = d.split(',')
-                d[0] = str(lane_number)
-                d = ','.join(d)
-            f.write(f'{d}\n')
-
-            if d.startswith('Lane,'):
-                add_lane_number = True
+        for sample in sample_sheet:
+            sample['Lane'] = str(lane_number)
+        sample_sheet.write(f)
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -75,8 +64,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     msg = None
 
     # partial URLs to detailed description pages for both Qiita and Qiita-RC.
-    qiita_rc_study_url_prefix = 'https://qiita-rc.ucsd.edu/study/description/'
-    qiita_study_url_prefix = 'https://qiita-rc.ucsd.edu/study/description/'
+    # TODO: lane-change fix for Antonio - use Yoshiki's method
 
     qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
 
@@ -90,9 +78,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # replace any whitespace in the filename with underscores
         sample_sheet_path = outpath(sample_sheet['filename']).replace(' ',
                                                                       '_')
-        save_sample_sheet(sample_sheet['body'],
-                          sample_sheet_path,
-                          lane_number)
+
+        with open(sample_sheet_path, 'w') as f:
+            for sample in sample_sheet['body']:
+                sample['Lane'] = str(lane_number)
+            sample_sheet.write(f)
 
         # Create a Pipeline object
         try:
@@ -320,10 +310,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # and return this information to the user.
         touched_studies = sorted(list(set(touched_studies)))
         with open(join(out_dir, 'touched_studies.tsv'), 'a') as f:
-            f.write('Project\tQiita Study ID\tQiita-RC URL\tQiita URL\n')
+            f.write('Project\tQiita Study ID\tQiita URL\n')
             for qiita_id, project in touched_studies:
-                f.write((f'{project}\t{qiita_id}\t{qiita_rc_study_url_prefix}/'
-                        f'{qiita_id}\t{qiita_study_url_prefix}/{qiita_id}\n'))
+                f.write((f'{project}\t{qiita_id}\thttps://'
+                         f'{qclient.server_url}/study/description/'
+                         f'{qiita_id}\n'))
 
         # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
