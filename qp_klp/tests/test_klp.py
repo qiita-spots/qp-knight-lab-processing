@@ -325,7 +325,9 @@ class KLPTests(PluginTestCase):
             "sample_sheet": {
                 "body": ''.join(self.sample_csv_data),
                 "content_type": "text/plain",
-                "filename": "prep_16S.txt",
+                # verify sequence_processing_pipeline() will convert spaces
+                # to underscores ('_').
+                "filename": "A sample sheet.csv",
             },
             "lane_number": 2
         }
@@ -347,6 +349,10 @@ class KLPTests(PluginTestCase):
                ]
 
         self.assertEqual(ainfo, exp)
+
+        # verify sequence_processing_pipeline() will convert spaces
+        # to underscores ('_').
+        self.assertTrue(exists(join(f"{self.out_dir}", 'A_sample_sheet.csv')))
 
         # verify cmd.log
         exp = ['cd OUT_DIR; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
