@@ -19,9 +19,53 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 from metapool import KLSampleSheet
+from json import dumps
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
+
+
+class FailedSamplesRecord:
+    def __init__(self, output_dir, samples):
+        # because we want to write out the list of samples that failed after
+        # each Job is run, and we want to organize that output by project, we
+        # need to keep a running state of failed samples, and reuse the method
+        # to reorganize the running-results and write them out to disk.
+
+        self.output_path = join(output_dir, 'failed_samples.json')
+
+        # create an initial dictionary with sample-ids as keys and their
+        # associated project-name and status as values. Afterwards, we'll
+        # filter out the sample-ids w/no status (meaning they were
+        # successfully processed) before writing the failed entries out to
+        # file.
+        self.failed = {x.Sample_ID: [x.Sample_Project, None] for x in samples}
+
+    def write(self, failed_ids, job_name):
+        for failed_id in failed_ids:
+            # as a rule, if a failed_id were to appear in more than one
+            # audit(), preserve the earliest failure, rather than the
+            # latest one.
+            if self.failed[failed_id][1] is None:
+                self.failed[failed_id][1] = job_name
+
+        # filter out the sample-ids w/out a failure status
+        filtered_fails = {x: self.failed[x] for x in self.failed if
+                          self.failed[x][1] is not None}
+
+        # re-organize failures by project before writing out to file.
+        final_output = {}
+        for sample_id in filtered_fails:
+            project_name = filtered_fails[sample_id][0]
+            failed_at = filtered_fails[sample_id][1]
+            if project_name not in final_output:
+                final_output[project_name] = []
+            final_output[project_name].append((sample_id, failed_at))
+
+            # write list of failed samples out to file and update after
+            # each Job completes.
+            with open(self.output_path, 'w') as f:
+                f.write(dumps(final_output, indent=2))
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -116,8 +160,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # of each stage of the pipeline will let us know when and where
         # samples failed to process.
         samples = pipeline.get_sample_ids()
-        # remove the BLANKs. We won't need them for our purposes.
-        samples = [x for x in samples if 'BLANK' not in x]
+
+        fsr = FailedSamplesRecord(out_dir, pipeline.sample_sheet.samples)
 
         # find the uploads directory all trimmed files will need to be
         # moved to.
@@ -155,11 +199,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # be executed. This is useful for testing.
         if not skip_exec:
             convert_job.run()
-            failed_samples = convert_job.audit(samples)
-            # write list of failed samples out to file and update after
-            # each Job completes.
-            with open(join(out_dir, 'failed_samples.txt'), 'a') as f:
-                f.write(f"ConvertJob: {failed_samples}\n")
+            fsr.write(convert_job.audit(samples), 'ConvertJob')
 
         qclient.update_job_step(job_id,
                                 "Step 3 of 6: Adaptor & Host [optional] "
@@ -187,9 +227,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         if not skip_exec:
             qc_job.run()
-            failed_samples = qc_job.audit(samples)
-            with open(join(out_dir, 'failed_samples.txt'), 'a') as f:
-                f.write(f"QCJob: {failed_samples}\n")
+            fsr.write(qc_job.audit(samples), 'QCJob')
 
         qclient.update_job_step(job_id, "Step 4 of 6: Generating FastQC & "
                                         "MultiQC reports")
@@ -218,9 +256,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         if not skip_exec:
             fastqc_job.run()
-            failed_samples = fastqc_job.audit(samples)
-            with open(join(out_dir, 'failed_samples.txt'), 'a') as f:
-                f.write(f"FastQCJob: {failed_samples}\n")
+            fsr.write(fastqc_job.audit(samples), 'FastQCJob')
 
         project_list = fastqc_job.project_names
 
