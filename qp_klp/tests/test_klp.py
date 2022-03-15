@@ -354,6 +354,14 @@ class KLPTests(PluginTestCase):
         # to underscores ('_').
         self.assertTrue(exists(join(f"{self.out_dir}", 'A_sample_sheet.csv')))
 
+        self.assertTrue(exists(join(f"{self.out_dir}", 'failed_samples.json')))
+
+        with open(join(f"{self.out_dir}", 'failed_samples.json')) as f:
+            for line in f:
+                print(line)
+
+        self.assertTrue(False)
+
         # verify cmd.log
         exp = ['cd OUT_DIR; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                ('cd OUT_DIR; tar zcvf reports-ConvertJob.tgz ConvertJob/Repor'
