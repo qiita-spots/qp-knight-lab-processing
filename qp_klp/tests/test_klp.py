@@ -8,7 +8,7 @@
 from unittest import main
 from os import remove, makedirs
 from shutil import rmtree
-from json import dumps
+from json import dumps, load
 from tempfile import mkdtemp
 from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
@@ -409,15 +409,50 @@ class KLPTests(PluginTestCase):
         # simulate three write calls out to file. Each successive call should
         # append to the information already written out to file.
         fsr.write(fail_set1, 'ConvertJob')
+
         with open(f'{self.basedir}/failed_samples.json') as f:
-            print(dumps(f.read(), indent=2))
+            obs1 = load(f)
+            exp1 = {"Feist_11661": [["Pputida_TALE__HGL_Pputida_121",
+                                     "ConvertJob"]],
+                    "Gerwick_6123": [["5B", "ConvertJob"]],
+                    "NYU_BMS_Melanoma_13059": [["EP073160B01", "ConvertJob"]]
+                    }
+            self.assertDictEqual(obs1, exp1)
+
         fsr.write(fail_set2, 'QCJob')
         with open(f'{self.basedir}/failed_samples.json') as f:
-            print(dumps(f.read(), indent=2))
+            obs2 = load(f)
+            exp2 = {"Gerwick_6123": [["4A", "QCJob"],["5B", "ConvertJob"]],
+                    "Feist_11661": [["Pputida_TALE__HGL_Pputida_121",
+                                     "ConvertJob"],
+                                    ["Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
+                                     "QCJob"]],
+                    "NYU_BMS_Melanoma_13059": [["EP202095B04","QCJob"],
+                                               ["EP073160B01","ConvertJob"]]}
+            self.assertDictEqual(obs2, exp2)
         fsr.write(fail_set3, 'FastQCJob')
         with open(f'{self.basedir}/failed_samples.json') as f:
-            print(dumps(f.read(), indent=2))
+            obs3 = load(f)
+            exp3 = {"Gerwick_6123": [["4A", "QCJob"],["5B", "ConvertJob"],
+                                     ["6A", "FastQCJob"]],
+                    "Feist_11661": [["Pputida_TALE__HGL_Pputida_121",
+                                     "ConvertJob"],
+                                    ["Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
+                                     "QCJob"],
+                                    ["JM-MEC__Staphylococcus_aureusstrain_BERT"
+                                     "I-R10727", "FastQCJob"]],
+                    "NYU_BMS_Melanoma_13059": [["EP159695B01","FastQCJob"],
+                                               ["EP202095B04","QCJob"],
+                                               ["EP073160B01","ConvertJob"]]
+                    }
+            self.assertDictEqual(obs3, exp3)
         self.assertTrue(False)
+
+        '''
+      
+""
+
+        '''
 
 
 if __name__ == "__main__":
