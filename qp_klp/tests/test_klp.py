@@ -417,6 +417,7 @@ class KLPTests(PluginTestCase):
         fsr.write(fail_set3, 'FastQCJob')
         with open(f'{self.basedir}/failed_samples.json') as f:
             print(dumps(f.read(), indent=2))
+        self.assertTrue(False)
 
 
 if __name__ == "__main__":
