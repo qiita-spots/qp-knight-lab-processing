@@ -385,6 +385,12 @@ class KLPTests(PluginTestCase):
 
             self.assertEqual(exp, cmds)
 
+        with open(join(self.out_dir, 'touched_studies.tsv'), 'a') as f:
+            lines = f.readlines()
+            for line in lines:
+                print(line)
+        self.assertTrue(False)
+
     def test_failed_samples_recorder(self):
         # since unittests can't run third-party code like bcl2fastq and
         # skip_exec will bypass a Job's run() and audit() commands, we will

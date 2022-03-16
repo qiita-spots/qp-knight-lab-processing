@@ -315,10 +315,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 # sif filenames are of the form: '{project}_blanks.tsv'
                 cmds.append(f'cd {out_dir}; mv {project}_blanks.tsv'
                             f' {upload_dir}')
-                # record that something is being moved into a Qiita Study.
-                # this will allow us to notify the user which Studies to
-                # review upon completion.
-                touched_studies.append((qiita_id, project))
+
+            # record that something is being moved into a Qiita Study.
+            # this will allow us to notify the user which Studies to
+            # review upon completion.
+            touched_studies.append((qiita_id, project))
 
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                         f'QCJob/{project}/fastp_reports_dir')
@@ -327,17 +328,14 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 cmds.append(f'cd {out_dir}; mv '
                             f'QCJob/{project}/filtered_sequences/* '
                             f'{upload_dir}')
-                touched_studies.append((qiita_id, project))
             else:
                 cmds.append(f'cd {out_dir}; mv '
                             f'QCJob/{project}/trimmed_sequences/* '
                             f'{upload_dir}')
-                touched_studies.append((qiita_id, project))
 
             for csv_file in csv_fps:
                 if project in csv_file:
                     cmds.append(f'cd {out_dir}; mv {csv_file} {upload_dir}')
-                    touched_studies.append((qiita_id, project))
                     break
 
         # create a set of unique study-ids that were touched by the Pipeline
