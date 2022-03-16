@@ -454,7 +454,7 @@ class KLPTests(PluginTestCase):
                     ],
                     [
                         "Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
-                        "Q    CJob"
+                        "QCJob"
                     ]
                 ],
                 "NYU_BMS_Melanoma_13059": [
