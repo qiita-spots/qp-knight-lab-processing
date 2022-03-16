@@ -14,11 +14,12 @@ from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
-from qp_klp.klp import sequence_processing_pipeline
+from qp_klp.klp import FailedSamplesRecord, sequence_processing_pipeline
 from time import sleep
 from os import environ
 import logging
 import re
+from metapool import KLSampleSheet
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -354,14 +355,6 @@ class KLPTests(PluginTestCase):
         # to underscores ('_').
         self.assertTrue(exists(join(f"{self.out_dir}", 'A_sample_sheet.csv')))
 
-        self.assertTrue(exists(join(f"{self.out_dir}", 'failed_samples.json')))
-
-        with open(join(f"{self.out_dir}", 'failed_samples.json')) as f:
-            for line in f:
-                print(line)
-
-        self.assertTrue(False)
-
         # verify cmd.log
         exp = ['cd OUT_DIR; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                ('cd OUT_DIR; tar zcvf reports-ConvertJob.tgz ConvertJob/Repor'
@@ -392,6 +385,17 @@ class KLPTests(PluginTestCase):
                            x) for x in cmds]
 
             self.assertEqual(exp, cmds)
+
+    def test_failed_samples_recorder(self):
+        # since unittests can't run third-party code like bcl2fastq and
+        # skip_exec will bypass a Job's run() and audit() commands, we will
+        # instead test the FailedSamplesRecord class to confirm that it works
+        # as expected.
+
+        sheet = KLSampleSheet(f'{self.basedir}/tests/good-sample-sheet.csv')
+        fsr = FailedSamplesRecord(self.out_dir, sheet.samples)
+        self.assertTrue(f'{self.basedir}/tests/good-sample-sheet.csv' == '')
+
 
 
 if __name__ == "__main__":
