@@ -21,7 +21,6 @@ import logging
 import re
 from metapool import KLSampleSheet
 
-
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
@@ -162,66 +161,66 @@ class KLPTests(PluginTestCase):
         self.search_dir = self._make_temp_dir()
 
         spp_config = {
-              "configuration": {
+            "configuration": {
                 "pipeline": {
-                  "younger_than": 90,
-                  "older_than": 24,
-                  "archive_path": '/not/out_dir',
-                  "search_paths": [self.search_dir]
+                    "younger_than": 90,
+                    "older_than": 24,
+                    "archive_path": '/not/out_dir',
+                    "search_paths": [self.search_dir]
                 },
                 "bcl2fastq": {
-                  "nodes": 1,
-                  "nprocs": 16,
-                  "queue": "qiita",
-                  "wallclock_time_in_hours": 36,
-                  "modules_to_load": ["bcl2fastq_2.20.0.422"],
-                  "executable_path": "bcl2fastq",
-                  "per_process_memory_limit": "10gb"
+                    "nodes": 1,
+                    "nprocs": 16,
+                    "queue": "qiita",
+                    "wallclock_time_in_hours": 36,
+                    "modules_to_load": ["bcl2fastq_2.20.0.422"],
+                    "executable_path": "bcl2fastq",
+                    "per_process_memory_limit": "10gb"
                 },
                 "bcl-convert": {
-                  "nodes": 1,
-                  "nprocs": 16,
-                  "queue": "qiita",
-                  "wallclock_time_in_hours": 36,
-                  "modules_to_load": ["bclconvert_3.7.5"],
-                  "executable_path": "bcl-convert",
-                  "per_process_memory_limit": "10gb"
+                    "nodes": 1,
+                    "nprocs": 16,
+                    "queue": "qiita",
+                    "wallclock_time_in_hours": 36,
+                    "modules_to_load": ["bclconvert_3.7.5"],
+                    "executable_path": "bcl-convert",
+                    "per_process_memory_limit": "10gb"
                 },
                 "qc": {
-                  "nodes": 1,
-                  "nprocs": 16,
-                  "queue": "qiita",
-                  "wallclock_time_in_hours": 1,
-                  "mmi_db": "/databases/minimap2/human-phix-db.mmi",
-                  "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
-                                      "minimap2_2.18"],
-                  "fastp_executable_path": "fastp",
-                  "minimap2_executable_path": "minimap2",
-                  "samtools_executable_path": "samtools",
-                  "job_total_memory_limit": "20gb",
-                  "job_pool_size": 30,
-                  "job_max_array_length": 1000
+                    "nodes": 1,
+                    "nprocs": 16,
+                    "queue": "qiita",
+                    "wallclock_time_in_hours": 1,
+                    "mmi_db": "/databases/minimap2/human-phix-db.mmi",
+                    "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
+                                        "minimap2_2.18"],
+                    "fastp_executable_path": "fastp",
+                    "minimap2_executable_path": "minimap2",
+                    "samtools_executable_path": "samtools",
+                    "job_total_memory_limit": "20gb",
+                    "job_pool_size": 30,
+                    "job_max_array_length": 1000
                 },
                 "seqpro": {
-                  "seqpro_path": "seqpro",
-                  "modules_to_load": []
+                    "seqpro_path": "seqpro",
+                    "modules_to_load": []
                 },
                 "fastqc": {
-                  "nodes": 1,
-                  "nprocs": 16,
-                  "queue": "qiita",
-                  "nthreads": 16,
-                  "wallclock_time_in_hours": 1,
-                  "modules_to_load": ["fastqc_0.11.5"],
-                  "fastqc_executable_path": "fastqc",
-                  "multiqc_executable_path": "multiqc",
-                  "multiqc_config_file_path": self.multiqc_config_filepath,
-                  "job_total_memory_limit": "20gb",
-                  "job_pool_size": 30,
-                  "job_max_array_length": 1000
+                    "nodes": 1,
+                    "nprocs": 16,
+                    "queue": "qiita",
+                    "nthreads": 16,
+                    "wallclock_time_in_hours": 1,
+                    "modules_to_load": ["fastqc_0.11.5"],
+                    "fastqc_executable_path": "fastqc",
+                    "multiqc_executable_path": "multiqc",
+                    "multiqc_config_file_path": self.multiqc_config_filepath,
+                    "job_total_memory_limit": "20gb",
+                    "job_pool_size": 30,
+                    "job_max_array_length": 1000
                 }
-              }
             }
+        }
 
         # create the file and write the configuration out to disk
         # for use by sequence_processing_pipeline().
@@ -412,47 +411,113 @@ class KLPTests(PluginTestCase):
 
         with open(f'{self.basedir}/failed_samples.json') as f:
             obs1 = load(f)
-            exp1 = {"Feist_11661": [["Pputida_TALE__HGL_Pputida_121",
-                                     "ConvertJob"]],
-                    "Gerwick_6123": [["5B", "ConvertJob"]],
-                    "NYU_BMS_Melanoma_13059": [["EP073160B01", "ConvertJob"]]
-                    }
+            exp1 = {
+                "Feist_11661": [
+                    [
+                        "Pputida_TALE__HGL_Pputida_121",
+                        "ConvertJob"
+                    ]
+                ],
+                "Gerwick_6123": [
+                    [
+                        "5B",
+                        "ConvertJob"
+                    ]
+                ],
+                "NYU_BMS_Melanoma_13059": [
+                    [
+                        "EP073160B01",
+                        "ConvertJob"
+                    ]
+                ]
+            }
             self.assertDictEqual(obs1, exp1)
 
         fsr.write(fail_set2, 'QCJob')
         with open(f'{self.basedir}/failed_samples.json') as f:
             obs2 = load(f)
-            exp2 = {"Gerwick_6123": [["4A", "QCJob"],["5B", "ConvertJob"]],
-                    "Feist_11661": [["Pputida_TALE__HGL_Pputida_121",
-                                     "ConvertJob"],
-                                    ["Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
-                                     "QCJob"]],
-                    "NYU_BMS_Melanoma_13059": [["EP202095B04","QCJob"],
-                                               ["EP073160B01","ConvertJob"]]}
+            exp2 = {
+                "Gerwick_6123": [
+                    [
+                        "4A",
+                        "QCJob"
+                    ],
+                    [
+                        "5B",
+                        "ConvertJob"
+                    ]
+                ],
+                "Feist_11661": [
+                    [
+                        "Pputida_TALE__HGL_Pputida_121",
+                        "ConvertJob"
+                    ],
+                    [
+                        "Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
+                        "Q    CJob"
+                    ]
+                ],
+                "NYU_BMS_Melanoma_13059": [
+                    [
+                        "EP202095B04",
+                        "QCJob"
+                    ],
+                    [
+                        "EP073160B01",
+                        "ConvertJob"
+                    ]
+                ]
+            }
             self.assertDictEqual(obs2, exp2)
         fsr.write(fail_set3, 'FastQCJob')
         with open(f'{self.basedir}/failed_samples.json') as f:
             obs3 = load(f)
-            exp3 = {"Gerwick_6123": [["4A", "QCJob"],["5B", "ConvertJob"],
-                                     ["6A", "FastQCJob"]],
-                    "Feist_11661": [["Pputida_TALE__HGL_Pputida_121",
-                                     "ConvertJob"],
-                                    ["Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
-                                     "QCJob"],
-                                    ["JM-MEC__Staphylococcus_aureusstrain_BERT"
-                                     "I-R10727", "FastQCJob"]],
-                    "NYU_BMS_Melanoma_13059": [["EP159695B01","FastQCJob"],
-                                               ["EP202095B04","QCJob"],
-                                               ["EP073160B01","ConvertJob"]]
-                    }
+            exp3 = {
+                "Gerwick_6123": [
+                    [
+                        "4A",
+                        "QCJob"
+                    ],
+                    [
+                        "5B",
+                        "ConvertJob"
+                    ],
+                    [
+                        "6A",
+                        "FastQCJob"
+                    ]
+                ],
+                "Feist_11661": [
+                    [
+                        "Pputida_TALE__HGL_Pputida_121",
+                        "ConvertJob"
+                    ],
+                    [
+                        "Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
+                        "QCJob"
+                    ],
+                    [
+                        "JM-MEC__Staphylococcus_aureusstrain_BERTI-R10727",
+                        "FastQCJob"
+                    ]
+                ],
+                "NYU_BMS_Melanoma_13059": [
+                    [
+                        "EP159695B01",
+                        "FastQCJob"
+                    ],
+                    [
+                        "EP202095B04",
+                        "QCJob"
+                    ],
+                    [
+                        "EP073160B01",
+                        "ConvertJob"
+                    ]
+                ]
+            }
             self.assertDictEqual(obs3, exp3)
         self.assertTrue(False)
-
-        '''
-      
-""
-
-        '''
 
 
 if __name__ == "__main__":
