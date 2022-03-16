@@ -392,10 +392,31 @@ class KLPTests(PluginTestCase):
         # instead test the FailedSamplesRecord class to confirm that it works
         # as expected.
 
-        sheet = KLSampleSheet(f'{self.basedir}/tests/good-sample-sheet.csv')
-        fsr = FailedSamplesRecord(self.out_dir, sheet.samples)
-        self.assertTrue(f'{self.basedir}/tests/good-sample-sheet.csv' == '')
+        # self.basedir = .../qp-knight-lab-processing/qp-knight-lab-processing
+        # /qp_klp/tests/
+        sheet = KLSampleSheet(f'{self.basedir}/good-sample-sheet.csv')
+        fsr = FailedSamplesRecord(self.basedir, sheet.samples)
 
+        # we want to include samples from all projects in the sample-sheet.
+        # order of projects listed is Feist_11661, NYU_BMS_Melanoma_13059, and
+        # Gerwick_6123.
+        fail_set1 = ['Pputida_TALE__HGL_Pputida_121', 'EP073160B01', '5B']
+        fail_set2 = ['Deoxyribose_PALE_ALE__MG1655_Lib4_20_16', 'EP202095B04',
+                     '4A']
+        fail_set3 = ['JM-MEC__Staphylococcus_aureusstrain_BERTI-R10727',
+                     'EP159695B01', '6A']
+
+        # simulate three write calls out to file. Each successive call should
+        # append to the information already written out to file.
+        fsr.write(fail_set1, 'ConvertJob')
+        with open(f'{self.basedir}/failed_samples.json') as f:
+            print(dumps(f.read(), indent=2))
+        fsr.write(fail_set2, 'QCJob')
+        with open(f'{self.basedir}/failed_samples.json') as f:
+            print(dumps(f.read(), indent=2))
+        fsr.write(fail_set3, 'FastQCJob')
+        with open(f'{self.basedir}/failed_samples.json') as f:
+            print(dumps(f.read(), indent=2))
 
 
 if __name__ == "__main__":
