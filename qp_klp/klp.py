@@ -352,6 +352,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
 
+        if exists(join(out_dir, 'touched_studies.tsv')):
+            cmds.append(f'cd {out_dir}; mv touched_studies.tsv final_results')
+
+        if exists(join(out_dir, 'failed_samples.json')):
+            cmds.append(f'cd {out_dir}; mv failed_samples.json final_results')
+
         # allow the writing of commands out to cmds.log, even if skip_exec
         # is True. This allows for unit-testing of cmds generation.
         cmd_log_fp = join(out_dir, 'cmds.log')
