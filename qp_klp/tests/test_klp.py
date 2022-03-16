@@ -386,10 +386,11 @@ class KLPTests(PluginTestCase):
             self.assertEqual(exp, cmds)
 
         with open(join(self.out_dir, 'touched_studies.tsv'), 'r') as f:
-            lines = f.readlines()
-            for line in lines:
-                print(line)
-        self.assertTrue(False)
+            obs = f.read()
+            exp = ("Project\tQiita Study ID\tQiita URL\n\nFeist_11661\t11661\t"
+                   "https://https://localhost:21174/study/description/11661\n")
+
+            self.assertEqual(obs, exp)
 
     def test_failed_samples_recorder(self):
         # since unittests can't run third-party code like bcl2fastq and
