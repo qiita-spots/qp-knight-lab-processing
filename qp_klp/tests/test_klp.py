@@ -385,7 +385,7 @@ class KLPTests(PluginTestCase):
 
             self.assertEqual(exp, cmds)
 
-        with open(join(self.out_dir, 'touched_studies.tsv'), 'a') as f:
+        with open(join(self.out_dir, 'touched_studies.tsv'), 'r') as f:
             lines = f.readlines()
             for line in lines:
                 print(line)
@@ -523,7 +523,6 @@ class KLPTests(PluginTestCase):
                 ]
             }
             self.assertDictEqual(obs3, exp3)
-        self.assertTrue(False)
 
 
 if __name__ == "__main__":
