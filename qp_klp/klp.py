@@ -17,11 +17,55 @@ from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.QCJob import QCJob
-from sequence_processing_pipeline.SequenceDirectory import SequenceDirectory
 from subprocess import Popen, PIPE
+from metapool import KLSampleSheet
+from json import dumps
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
+
+
+class FailedSamplesRecord:
+    def __init__(self, output_dir, samples):
+        # because we want to write out the list of samples that failed after
+        # each Job is run, and we want to organize that output by project, we
+        # need to keep a running state of failed samples, and reuse the method
+        # to reorganize the running-results and write them out to disk.
+
+        self.output_path = join(output_dir, 'failed_samples.json')
+
+        # create an initial dictionary with sample-ids as keys and their
+        # associated project-name and status as values. Afterwards, we'll
+        # filter out the sample-ids w/no status (meaning they were
+        # successfully processed) before writing the failed entries out to
+        # file.
+        self.failed = {x.Sample_ID: [x.Sample_Project, None] for x in samples}
+
+    def write(self, failed_ids, job_name):
+        for failed_id in failed_ids:
+            # as a rule, if a failed_id were to appear in more than one
+            # audit(), preserve the earliest failure, rather than the
+            # latest one.
+            if self.failed[failed_id][1] is None:
+                self.failed[failed_id][1] = job_name
+
+        # filter out the sample-ids w/out a failure status
+        filtered_fails = {x: self.failed[x] for x in self.failed if
+                          self.failed[x][1] is not None}
+
+        # re-organize failures by project before writing out to file.
+        final_output = {}
+        for sample_id in filtered_fails:
+            project_name = filtered_fails[sample_id][0]
+            failed_at = filtered_fails[sample_id][1]
+            if project_name not in final_output:
+                final_output[project_name] = []
+            final_output[project_name].append((sample_id, failed_at))
+
+            # write list of failed samples out to file and update after
+            # each Job completes.
+            with open(self.output_path, 'w') as f:
+                f.write(dumps(final_output, indent=2))
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -60,59 +104,64 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(sample_sheet):
+        # Pipeline now takes the path to a sample-sheet as a parameter.
+        # We must now save the sample-sheet to disk before creating a
+        # Pipeline object.
+        outpath = partial(join, out_dir)
+        final_results_path = outpath('final_results')
+        makedirs(final_results_path, exist_ok=True)
+        # replace any whitespace in the filename with underscores
+        sample_sheet_path = outpath(sample_sheet['filename'].replace(' ',
+                                                                     '_'))
+        # save raw data to file
+        with open(sample_sheet_path, 'w') as f:
+            f.write(sample_sheet['body'])
+
+        # open new file as a KLSampleSheet
+        # use KLSampleSheet functionality to add/overwrite lane number.
+        sheet = KLSampleSheet(sample_sheet_path)
+        for sample in sheet:
+            sample['Lane'] = '%d' % lane_number
+
+        with open(sample_sheet_path, 'w') as f:
+            sheet.write(f)
+
         # Create a Pipeline object
         try:
-            pipeline = Pipeline(CONFIG_FP, run_identifier, out_dir, job_id)
+            pipeline = Pipeline(CONFIG_FP, run_identifier, sample_sheet_path,
+                                out_dir, job_id)
         except PipelineError as e:
             # Pipeline is the object that finds the input fp, based on
             # a search directory set in configuration.json and a run_id.
             if str(e).endswith("could not be found"):
                 msg = f"A path for {run_identifier} could not be found."
                 return False, None, msg
+            elif str(e).startswith("Sample-sheet has the following errors:"):
+                msg = str(e)
+                qclient.update_job_step(job_id, msg)
+                raise ValueError(msg)
             else:
                 raise e
 
-        outpath = partial(join, out_dir)
-        final_results_path = outpath('final_results')
-        makedirs(final_results_path, exist_ok=True)
+        # if an Error has not been raised, assume there are no errors
+        # in the sample-sheet. A successfully-created Pipeline object can
+        # still contain a list of warnings about sample-sheet validation.
+        # If any warnings are present, they should be reported to the user.
+        if pipeline.warnings:
+            msg = '\n'.join(pipeline.warnings)
+            qclient.update_job_step(job_id, 'Sample-sheet has been flagged '
+                                            'with the following warnings: '
+                                            f'{msg}')
 
-        # the user is uploading a sample-sheet to us, but we need the
-        # sample-sheet as a file to pass to the Pipeline().
-        sample_sheet_path = outpath(sample_sheet['filename'])
-        with open(sample_sheet_path, 'w') as f:
-            data = sample_sheet['body'].split('\n')
-            add_lane_number = False
-            for d in data:
-                if add_lane_number and set(d.split(',')) == set(['']):
-                    add_lane_number = False
+        sifs = pipeline.generate_sample_information_files()
 
-                if add_lane_number:
-                    d = d.split(',')
-                    d[0] = str(lane_number)
-                    d = ','.join(d)
-                f.write(f'{d}\n')
+        # get a list of unique sample ids from the sample-sheet.
+        # comparing them against the list of samples found in the results
+        # of each stage of the pipeline will let us know when and where
+        # samples failed to process.
+        samples = pipeline.get_sample_ids()
 
-                if d.startswith('Lane,'):
-                    add_lane_number = True
-
-        msgs, val_sheet = pipeline.validate(sample_sheet_path)
-
-        if val_sheet is None:
-            # only pass the top message to update_job_step, due to
-            # limited display width.
-            msg = str(msgs[0]) if msgs else "Sample sheet failed validation."
-            qclient.update_job_step(job_id, msg)
-            raise ValueError(msg)
-        else:
-            # if we're passed a val_sheet, assume any msgs are warnings only.
-            # unfortunately, we can only display the top msg.
-            msg = msgs[0] if msgs else None
-            qclient.update_job_step(job_id, f'warning: {msg}')
-            # get project names and their associated qiita ids
-            bioinformatics = val_sheet.Bioinformatics
-            lst = bioinformatics.to_dict('records')
-
-        sifs = pipeline.generate_sample_information_files(sample_sheet_path)
+        fsr = FailedSamplesRecord(out_dir, pipeline.sample_sheet.samples)
 
         # find the uploads directory all trimmed files will need to be
         # moved to.
@@ -122,15 +171,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # associated with each project and ensure a subdirectory exists
         # for when it comes time to move the trimmed files.
         special_map = []
-        for result in lst:
-            project_name = result['Sample_Project']
-            qiita_id = result['QiitaID']
-            upload_path = join(results['uploads'], qiita_id)
+        for project in pipeline.get_project_info():
+            upload_path = join(results['uploads'], project['qiita_id'])
             makedirs(upload_path, exist_ok=True)
-            special_map.append((project_name, upload_path))
-
-        # Create a SequenceDirectory object
-        sdo = SequenceDirectory(pipeline.run_dir, sample_sheet_path)
+            special_map.append((project['project_name'], upload_path,
+                                project['qiita_id']))
 
         qclient.update_job_step(job_id,
                                 "Step 2 of 6: Converting BCL to fastq")
@@ -138,7 +183,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         config = pipeline.configuration['bcl-convert']
         convert_job = ConvertJob(pipeline.run_dir,
                                  pipeline.output_path,
-                                 sdo.sample_sheet_path,
+                                 sample_sheet_path,
                                  config['queue'],
                                  config['nodes'],
                                  config['nprocs'],
@@ -154,6 +199,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # be executed. This is useful for testing.
         if not skip_exec:
             convert_job.run()
+            fsr.write(convert_job.audit(samples), 'ConvertJob')
 
         qclient.update_job_step(job_id,
                                 "Step 3 of 6: Adaptor & Host [optional] "
@@ -164,7 +210,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         config = pipeline.configuration['qc']
         qc_job = QCJob(raw_fastq_files_path,
                        pipeline.output_path,
-                       sdo.sample_sheet_path,
+                       sample_sheet_path,
                        config['mmi_db'],
                        config['queue'],
                        config['nodes'],
@@ -181,6 +227,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         if not skip_exec:
             qc_job.run()
+            fsr.write(qc_job.audit(samples), 'QCJob')
 
         qclient.update_job_step(job_id, "Step 4 of 6: Generating FastQC & "
                                         "MultiQC reports")
@@ -209,6 +256,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         if not skip_exec:
             fastqc_job.run()
+            fsr.write(fastqc_job.audit(samples), 'FastQCJob')
 
         project_list = fastqc_job.project_names
 
@@ -221,7 +269,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             raw_fastq_files_path,
             processed_fastq_files_path,
             pipeline.output_path,
-            sdo.sample_sheet_path,
+            sample_sheet_path,
             config['seqpro_path'],
             project_list,
             config['modules_to_load'],
@@ -259,12 +307,19 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             for csv_file in files:
                 csv_fps.append(join(root, csv_file))
 
-        for project, upload_dir in special_map:
+        touched_studies = []
+
+        for project, upload_dir, qiita_id in special_map:
             if sifs and [x for x in sifs if f'{project}_blanks.tsv' in x]:
                 # move uncompressed sifs to upload_dir.
                 # sif filenames are of the form: '{project}_blanks.tsv'
                 cmds.append(f'cd {out_dir}; mv {project}_blanks.tsv'
                             f' {upload_dir}')
+
+            # record that something is being moved into a Qiita Study.
+            # this will allow us to notify the user which Studies to
+            # review upon completion.
+            touched_studies.append((qiita_id, project))
 
             cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                         f'QCJob/{project}/fastp_reports_dir')
@@ -283,9 +338,25 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                     cmds.append(f'cd {out_dir}; mv {csv_file} {upload_dir}')
                     break
 
+        # create a set of unique study-ids that were touched by the Pipeline
+        # and return this information to the user.
+        touched_studies = sorted(list(set(touched_studies)))
+        with open(join(out_dir, 'touched_studies.tsv'), 'a') as f:
+            f.write('Project\tQiita Study ID\tQiita URL\n')
+            for qiita_id, project in touched_studies:
+                f.write((f'{project}\t{qiita_id}\thttps://'
+                         f'{qclient._server_url}/study/description/'
+                         f'{qiita_id}\n'))
+
         # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
+
+        if exists(join(out_dir, 'touched_studies.tsv')):
+            cmds.append(f'cd {out_dir}; mv touched_studies.tsv final_results')
+
+        if exists(join(out_dir, 'failed_samples.json')):
+            cmds.append(f'cd {out_dir}; mv failed_samples.json final_results')
 
         # allow the writing of commands out to cmds.log, even if skip_exec
         # is True. This allows for unit-testing of cmds generation.
