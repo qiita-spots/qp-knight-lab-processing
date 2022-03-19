@@ -392,22 +392,12 @@ class KLPTests(PluginTestCase):
         # three studies found in good-sample-sheet.csv.
         with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
             obs = f.read()
-            exp = '''<table border="2" class="dataframe">
-                       <thead>
-                         <tr style="text-align: left;">
-                           <th>Project</th>
-                           <th>Qiita Study ID</th>
-                           <th>Qiita URL</th>
-                         </tr>
-                       </thead>
-                       <tbody>
-                         <tr>
-                           <td>Feist_11661</td>
-                           <td>11661</td>
-                           <td>https://https://localhost:21174/study/description/11661</td>
-                         </tr>
-                       </tbody>
-                     </table>'''
+            exp = ('<table border="2" class="dataframe">\n <thead>\n <tr style'
+                   '="text-align: left;">\n <th>Project</th>\n <th>Qiita Study'
+                   'ID</th>\n <th>Qiita URL</th>\n </tr>\n </thead>\n <tbody>'
+                   '\n <tr>\n <td>Feist_11661</td>\n <td>11661</td>\n <td>http'
+                   's://https://localhost:21174/study/description/11661</td>\n'
+                   '</tr>\n </tbody>\n </table>\n')
 
             print(obs)
             print(exp)
