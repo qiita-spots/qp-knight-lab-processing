@@ -20,6 +20,7 @@ from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 from metapool import KLSampleSheet
 from json import dumps
+import pandas as pd
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
@@ -341,19 +342,24 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # create a set of unique study-ids that were touched by the Pipeline
         # and return this information to the user.
         touched_studies = sorted(list(set(touched_studies)))
-        with open(join(out_dir, 'touched_studies.tsv'), 'a') as f:
-            f.write('Project\tQiita Study ID\tQiita URL\n')
-            for qiita_id, project in touched_studies:
-                f.write((f'{project}\t{qiita_id}\thttps://'
-                         f'{qclient._server_url}/study/description/'
-                         f'{qiita_id}\n'))
+
+        df = pd.DataFrame({'Project': [], 'Qiita Study ID': [],
+                           'Qiita URL': []})
+
+        for qiita_id, project in touched_studies:
+            url = f'https://{qclient._server_url}/study/description/{qiita_id}'
+            df = df.append({'Project': project, 'Qiita Study ID': qiita_id,
+                            'Qiita URL': url})
+
+        df.to_html('touched_studies.html', border=2, index=False,
+                   justify="left")
 
         # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
 
-        if exists(join(out_dir, 'touched_studies.tsv')):
-            cmds.append(f'cd {out_dir}; mv touched_studies.tsv final_results')
+        if exists(join(out_dir, 'touched_studies.html')):
+            cmds.append(f'cd {out_dir}; mv touched_studies.html final_results')
 
         if exists(join(out_dir, 'failed_samples.json')):
             cmds.append(f'cd {out_dir}; mv failed_samples.json final_results')

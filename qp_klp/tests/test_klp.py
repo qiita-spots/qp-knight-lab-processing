@@ -390,11 +390,12 @@ class KLPTests(PluginTestCase):
         # good-sample-sheet.csv as our sample-sheet, touched_studies.tsv
         # will include only the one project Feist_11661, instead of all
         # three studies found in good-sample-sheet.csv.
-        with open(join(self.out_dir, 'touched_studies.tsv'), 'r') as f:
+        with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
             obs = f.read()
             exp = ("Project\tQiita Study ID\tQiita URL\nFeist_11661\t11661\t"
                    "https://https://localhost:21174/study/description/11661\n")
 
+            print(obs)
             self.assertEqual(obs, exp)
 
     def test_failed_samples_recorder(self):
