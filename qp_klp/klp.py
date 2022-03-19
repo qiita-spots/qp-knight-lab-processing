@@ -349,7 +349,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         for qiita_id, project in touched_studies:
             url = f'https://{qclient._server_url}/study/description/{qiita_id}'
             df = df.append({'Project': project, 'Qiita Study ID': qiita_id,
-                            'Qiita URL': url})
+                            'Qiita URL': url}, ignore_index=True)
 
         df.to_html('touched_studies.html', border=2, index=False,
                    justify="left")
