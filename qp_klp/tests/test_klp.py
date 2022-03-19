@@ -368,8 +368,8 @@ class KLPTests(PluginTestCase):
                 'tp_reports_dir'),
                'cd PREFIX/support_files/test_data/uploads/11661',
                'cd OUT_DIR; mv *.tgz final_results',
-               'cd OUT_DIR; mv FastQCJob/multiqc final_results',
-               'cd OUT_DIR; mv touched_studies.html final_results']
+               'cd OUT_DIR; mv FastQCJob/multiqc final_results']
+        # 'cd OUT_DIR; mv touched_studies.html final_results']
 
         cmdslog_fp = join(self.out_dir, 'cmds.log')
         with open(cmdslog_fp, 'r') as f:
