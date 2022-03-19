@@ -399,8 +399,6 @@ class KLPTests(PluginTestCase):
                    'Qiita URL</th></tr></thead><tbody><tr><td>Feist_11661</td>'
                    '<td>11661</td><td>https://https://localhost:21174/study/de'
                    'scription/11661</td></tr></tbody></table>')
-            print(obs)
-            print(exp)
             self.assertEqual(obs, exp)
 
     def test_failed_samples_recorder(self):
