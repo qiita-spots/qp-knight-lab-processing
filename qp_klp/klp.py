@@ -351,8 +351,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             df = df.append({'Project': project, 'Qiita Study ID': qiita_id,
                             'Qiita URL': url}, ignore_index=True)
 
-        df.to_html('touched_studies.html', border=2, index=False,
-                   justify="left")
+        with open(join(out_dir, 'touched_studies.html')) as f:
+            f.write(df.to_html(border=2, index=False, justify="left"))
 
         # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
