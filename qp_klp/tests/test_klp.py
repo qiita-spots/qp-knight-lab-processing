@@ -391,14 +391,14 @@ class KLPTests(PluginTestCase):
         # will include only the one project Feist_11661, instead of all
         # three studies found in good-sample-sheet.csv.
         with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
-            obs = f.read()
-            exp = ('<table border="2" class="dataframe">\n <thead>\n <tr style'
-                   '="text-align: left;">\n <th>Project</th>\n <th>Qiita Study'
-                   'ID</th>\n <th>Qiita URL</th>\n </tr>\n </thead>\n <tbody>'
-                   '\n <tr>\n <td>Feist_11661</td>\n <td>11661</td>\n <td>http'
-                   's://https://localhost:21174/study/description/11661</td>\n'
-                   '</tr>\n </tbody>\n </table>\n')
-
+            obs = f.readlines()
+            obs = [x.strip() for x in obs]
+            obs = ''.join(obs)
+            exp = ('<table border="2" class="dataframe"><thead><tr style="text'
+                   '-align: left;"><th>Project</th><th>Qiita Study ID</th><th>'
+                   'Qiita URL</th></tr></thead><tbody><tr><td>Feist_11661</td>'
+                   '<td>11661</td><td>https://https://localhost:21174/study/de'
+                   'scription/11661</td></tr></tbody></table>')
             print(obs)
             print(exp)
             self.assertEqual(obs, exp)
