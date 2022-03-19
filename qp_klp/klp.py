@@ -101,7 +101,23 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     ainfo = None
     msg = None
 
-    qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
+    # maintains state of the current message, minus additional updates from
+    # a callback function. E.g. "Step 1 of 6: Setting up pipeline"
+    current_message = ""
+
+    def update_job_step(id, status):
+        # internal function implements a callback function for Pipeline.run().
+        # :param id: PBS/Torque/or some other informative and current job id.
+        # :param status: status message
+        qclient.update_job_step(job_id, current_message + f" ({id}:{status})")
+
+    def update_current_message(msg):
+        # internal function that sets current_message to the new value before
+        # updating the job step in the UI.
+        current_message = msg
+        qclient.update_job_step(job_id, current_message)
+
+    update_current_message("Step 1 of 6: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(sample_sheet):
         # Pipeline now takes the path to a sample-sheet as a parameter.
@@ -138,7 +154,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 return False, None, msg
             elif str(e).startswith("Sample-sheet has the following errors:"):
                 msg = str(e)
-                qclient.update_job_step(job_id, msg)
+                update_current_message(msg)
                 raise ValueError(msg)
             else:
                 raise e
@@ -149,9 +165,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # If any warnings are present, they should be reported to the user.
         if pipeline.warnings:
             msg = '\n'.join(pipeline.warnings)
-            qclient.update_job_step(job_id, 'Sample-sheet has been flagged '
-                                            'with the following warnings: '
-                                            f'{msg}')
+            update_current_message('Sample-sheet has been flagged with the '
+                                   'following warnings: {msg}')
 
         sifs = pipeline.generate_sample_information_files()
 
@@ -177,8 +192,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             special_map.append((project['project_name'], upload_path,
                                 project['qiita_id']))
 
-        qclient.update_job_step(job_id,
-                                "Step 2 of 6: Converting BCL to fastq")
+        update_current_message("Step 2 of 6: Converting BCL to fastq")
 
         config = pipeline.configuration['bcl-convert']
         convert_job = ConvertJob(pipeline.run_dir,
@@ -198,12 +212,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # returned to the caller. However the Jobs will not actually
         # be executed. This is useful for testing.
         if not skip_exec:
-            convert_job.run()
+            convert_job.run(callback=update_job_step)
             fsr.write(convert_job.audit(samples), 'ConvertJob')
 
-        qclient.update_job_step(job_id,
-                                "Step 3 of 6: Adaptor & Host [optional] "
-                                "trimming")
+        update_current_message("Step 3 of 6: Adaptor & Host [optional] "
+                               "trimming")
 
         raw_fastq_files_path = join(pipeline.output_path, 'ConvertJob')
 
@@ -226,11 +239,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                        config['job_max_array_length'])
 
         if not skip_exec:
-            qc_job.run()
+            qc_job.run(callback=update_job_step)
             fsr.write(qc_job.audit(samples), 'QCJob')
 
-        qclient.update_job_step(job_id, "Step 4 of 6: Generating FastQC & "
-                                        "MultiQC reports")
+        update_current_message("Step 4 of 6: Generating FastQC & "
+                               "MultiQC reports")
 
         config = pipeline.configuration['fastqc']
 
@@ -255,13 +268,13 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                config['job_max_array_length'])
 
         if not skip_exec:
-            fastqc_job.run()
+            fastqc_job.run(callback=update_job_step)
             fsr.write(fastqc_job.audit(samples), 'FastQCJob')
 
         project_list = fastqc_job.project_names
 
-        qclient.update_job_step(job_id, "Step 5 of 6: Generating Prep "
-                                        "Information Files")
+        update_current_message("Step 5 of 6: Generating Prep "
+                               "Information Files")
 
         config = pipeline.configuration['seqpro']
         gpf_job = GenPrepFileJob(
@@ -276,10 +289,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             job_id)
 
         if not skip_exec:
-            gpf_job.run()
+            gpf_job.run(callback=update_job_step)
 
-        qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
-                                        "archive")
+        update_current_message("Step 6 of 6: Copying results to archive")
 
         cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                 f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
@@ -386,7 +398,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         success = False
         msg = "This doesn't appear to be a valid sample sheet; please review."
 
-    qclient.update_job_step(job_id, "Main Pipeline Finished, processing "
-                                    "results")
+    update_current_message("Main Pipeline Finished, processing results")
 
     return success, ainfo, msg
