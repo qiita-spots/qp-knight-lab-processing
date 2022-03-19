@@ -369,7 +369,7 @@ class KLPTests(PluginTestCase):
                'cd PREFIX/support_files/test_data/uploads/11661',
                'cd OUT_DIR; mv *.tgz final_results',
                'cd OUT_DIR; mv FastQCJob/multiqc final_results',
-               'cd OUT_DIR; mv touched_studies.tsv final_results']
+               'cd OUT_DIR; mv touched_studies.html final_results']
 
         cmdslog_fp = join(self.out_dir, 'cmds.log')
         with open(cmdslog_fp, 'r') as f:
@@ -387,7 +387,7 @@ class KLPTests(PluginTestCase):
             self.assertEqual(exp, cmds)
 
         # Note that because we are using self.sample_csv_data instead of
-        # good-sample-sheet.csv as our sample-sheet, touched_studies.tsv
+        # good-sample-sheet.csv as our sample-sheet, touched_studies.html
         # will include only the one project Feist_11661, instead of all
         # three studies found in good-sample-sheet.csv.
         with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
