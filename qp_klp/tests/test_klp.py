@@ -392,10 +392,25 @@ class KLPTests(PluginTestCase):
         # three studies found in good-sample-sheet.csv.
         with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
             obs = f.read()
-            exp = ("Project\tQiita Study ID\tQiita URL\nFeist_11661\t11661\t"
-                   "https://https://localhost:21174/study/description/11661\n")
+            exp = '''<table border="2" class="dataframe">
+                       <thead>
+                         <tr style="text-align: left;">
+                           <th>Project</th>
+                           <th>Qiita Study ID</th>
+                           <th>Qiita URL</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         <tr>
+                           <td>Feist_11661</td>
+                           <td>11661</td>
+                           <td>https://https://localhost:21174/study/description/11661</td>
+                         </tr>
+                       </tbody>
+                     </table>'''
 
             print(obs)
+            print(exp)
             self.assertEqual(obs, exp)
 
     def test_failed_samples_recorder(self):
