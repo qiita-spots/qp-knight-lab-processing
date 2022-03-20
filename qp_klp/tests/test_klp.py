@@ -425,23 +425,54 @@ class KLPTests(PluginTestCase):
             obs1 = f.readlines()
             obs1 = [x.strip() for x in obs1]
             obs1 = ''.join(obs1)
-            print(obs1)
+            exp1 = ('<table border="2" class="dataframe"><thead><tr style="tex'
+                    't-align: left;"><th>Project</th><th>Sample ID</th><th>Fai'
+                    'led at</th></tr></thead><tbody><tr><td>Feist_11661</td><t'
+                    'd>Pputida_TALE__HGL_Pputida_121</td><td>ConvertJob</td></'
+                    'tr><tr><td>Gerwick_6123</td><td>5B</td><td>ConvertJob</td'
+                    '></tr><tr><td>NYU_BMS_Melanoma_13059</td><td>EP073160B01<'
+                    '/td><td>ConvertJob</td></tr></tbody></table>')
+            self.assertEqual(obs1, exp1)
 
         fsr.write(fail_set2, 'QCJob')
         with open(f'{self.basedir}/failed_samples.html', 'r') as f:
             obs2 = f.readlines()
             obs2 = [x.strip() for x in obs2]
             obs2 = ''.join(obs2)
-            print(obs2)
+            exp2 = ('<table border="2" class="dataframe"><thead><tr style="tex'
+                    't-align: left;"><th>Project</th><th>Sample ID</th><th>Fai'
+                    'led at</th></tr></thead><tbody><tr><td>Gerwick_6123</td><'
+                    'td>4A</td><td>QCJob</td></tr><tr><td>Feist_11661</td><td>'
+                    'Pputida_TALE__HGL_Pputida_121</td><td>ConvertJob</td></tr'
+                    '><tr><td>Gerwick_6123</td><td>5B</td><td>ConvertJob</td><'
+                    '/tr><tr><td>Feist_11661</td><td>Deoxyribose_PALE_ALE__MG1'
+                    '655_Lib4_20_16</td><td>QCJob</td></tr><tr><td>NYU_BMS_Mel'
+                    'anoma_13059</td><td>EP202095B04</td><td>QCJob</td></tr><t'
+                    'r><td>NYU_BMS_Melanoma_13059</td><td>EP073160B01</td><td>'
+                    'ConvertJob</td></tr></tbody></table>')
+            self.assertEqual(obs2, exp2)
 
         fsr.write(fail_set3, 'FastQCJob')
         with open(f'{self.basedir}/failed_samples.html', 'r') as f:
             obs3 = f.readlines()
             obs3 = [x.strip() for x in obs3]
             obs3 = ''.join(obs3)
-            print(obs3)
-
-        self.assertTrue(False)
+            exp3 = ('<table border="2" class="dataframe"><thead><tr style="tex'
+                    't-align: left;"><th>Project</th><th>Sample ID</th><th>Fai'
+                    'led at</th></tr></thead><tbody><tr><td>Gerwick_6123</td><'
+                    'td>4A</td><td>QCJob</td></tr><tr><td>Feist_11661</td><td>'
+                    'Pputida_TALE__HGL_Pputida_121</td><td>ConvertJob</td></tr'
+                    '><tr><td>Gerwick_6123</td><td>5B</td><td>ConvertJob</td><'
+                    '/tr><tr><td>Gerwick_6123</td><td>6A</td><td>FastQCJob</td'
+                    '></tr><tr><td>Feist_11661</td><td>Deoxyribose_PALE_ALE__M'
+                    'G1655_Lib4_20_16</td><td>QCJob</td></tr><tr><td>Feist_116'
+                    '61</td><td>JM-MEC__Staphylococcus_aureusstrain_BERTI-R107'
+                    '27</td><td>FastQCJob</td></tr><tr><td>NYU_BMS_Melanoma_13'
+                    '059</td><td>EP159695B01</td><td>FastQCJob</td></tr><tr><t'
+                    'd>NYU_BMS_Melanoma_13059</td><td>EP202095B04</td><td>QCJo'
+                    'b</td></tr><tr><td>NYU_BMS_Melanoma_13059</td><td>EP07316'
+                    '0B01</td><td>ConvertJob</td></tr></tbody></table>')
+            self.assertEqual(obs3, exp3)
 
 
 if __name__ == "__main__":
