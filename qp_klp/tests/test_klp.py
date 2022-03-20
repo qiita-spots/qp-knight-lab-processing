@@ -443,6 +443,7 @@ class KLPTests(PluginTestCase):
                     ]
                 ]
             }
+            print(obs1)
             self.assertDictEqual(obs1, exp1)
 
         fsr.write(fail_set2, 'QCJob')
@@ -480,6 +481,7 @@ class KLPTests(PluginTestCase):
                     ]
                 ]
             }
+            print(obs2)
             self.assertDictEqual(obs2, exp2)
         fsr.write(fail_set3, 'FastQCJob')
         with open(f'{self.basedir}/failed_samples.json') as f:
@@ -528,6 +530,7 @@ class KLPTests(PluginTestCase):
                     ]
                 ]
             }
+            print(obs3)
             self.assertDictEqual(obs3, exp3)
 
 
