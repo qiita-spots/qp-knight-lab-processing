@@ -8,7 +8,7 @@
 from unittest import main
 from os import remove, makedirs
 from shutil import rmtree
-from json import dumps, load
+from json import dumps
 from tempfile import mkdtemp
 from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
@@ -421,117 +421,27 @@ class KLPTests(PluginTestCase):
         # append to the information already written out to file.
         fsr.write(fail_set1, 'ConvertJob')
 
-        with open(f'{self.basedir}/failed_samples.html') as f:
-            obs1 = load(f)
-            exp1 = {
-                "Feist_11661": [
-                    [
-                        "Pputida_TALE__HGL_Pputida_121",
-                        "ConvertJob"
-                    ]
-                ],
-                "Gerwick_6123": [
-                    [
-                        "5B",
-                        "ConvertJob"
-                    ]
-                ],
-                "NYU_BMS_Melanoma_13059": [
-                    [
-                        "EP073160B01",
-                        "ConvertJob"
-                    ]
-                ]
-            }
+        with open(f'{self.basedir}/failed_samples.html', 'r') as f:
+            obs1 = f.readlines()
+            obs1 = [x.strip() for x in obs1]
+            obs1 = ''.join(obs1)
             print(obs1)
-            self.assertDictEqual(obs1, exp1)
 
         fsr.write(fail_set2, 'QCJob')
-        with open(f'{self.basedir}/failed_samples.html') as f:
-            obs2 = load(f)
-            exp2 = {
-                "Gerwick_6123": [
-                    [
-                        "4A",
-                        "QCJob"
-                    ],
-                    [
-                        "5B",
-                        "ConvertJob"
-                    ]
-                ],
-                "Feist_11661": [
-                    [
-                        "Pputida_TALE__HGL_Pputida_121",
-                        "ConvertJob"
-                    ],
-                    [
-                        "Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
-                        "QCJob"
-                    ]
-                ],
-                "NYU_BMS_Melanoma_13059": [
-                    [
-                        "EP202095B04",
-                        "QCJob"
-                    ],
-                    [
-                        "EP073160B01",
-                        "ConvertJob"
-                    ]
-                ]
-            }
+        with open(f'{self.basedir}/failed_samples.html', 'r') as f:
+            obs2 = f.readlines()
+            obs2 = [x.strip() for x in obs2]
+            obs2 = ''.join(obs2)
             print(obs2)
-            self.assertDictEqual(obs2, exp2)
+
         fsr.write(fail_set3, 'FastQCJob')
-        with open(f'{self.basedir}/failed_samples.html') as f:
-            obs3 = load(f)
-            exp3 = {
-                "Gerwick_6123": [
-                    [
-                        "4A",
-                        "QCJob"
-                    ],
-                    [
-                        "5B",
-                        "ConvertJob"
-                    ],
-                    [
-                        "6A",
-                        "FastQCJob"
-                    ]
-                ],
-                "Feist_11661": [
-                    [
-                        "Pputida_TALE__HGL_Pputida_121",
-                        "ConvertJob"
-                    ],
-                    [
-                        "Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
-                        "QCJob"
-                    ],
-                    [
-                        "JM-MEC__Staphylococcus_aureusstrain_BERTI-R10727",
-                        "FastQCJob"
-                    ]
-                ],
-                "NYU_BMS_Melanoma_13059": [
-                    [
-                        "EP159695B01",
-                        "FastQCJob"
-                    ],
-                    [
-                        "EP202095B04",
-                        "QCJob"
-                    ],
-                    [
-                        "EP073160B01",
-                        "ConvertJob"
-                    ]
-                ]
-            }
+        with open(f'{self.basedir}/failed_samples.html', 'r') as f:
+            obs3 = f.readlines()
+            obs3 = [x.strip() for x in obs3]
+            obs3 = ''.join(obs3)
             print(obs3)
-            self.assertDictEqual(obs3, exp3)
+
+        self.assertTrue(False)
 
 
 if __name__ == "__main__":
