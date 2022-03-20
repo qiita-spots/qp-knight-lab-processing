@@ -421,7 +421,7 @@ class KLPTests(PluginTestCase):
         # append to the information already written out to file.
         fsr.write(fail_set1, 'ConvertJob')
 
-        with open(f'{self.basedir}/failed_samples.json') as f:
+        with open(f'{self.basedir}/failed_samples.html') as f:
             obs1 = load(f)
             exp1 = {
                 "Feist_11661": [
@@ -447,7 +447,7 @@ class KLPTests(PluginTestCase):
             self.assertDictEqual(obs1, exp1)
 
         fsr.write(fail_set2, 'QCJob')
-        with open(f'{self.basedir}/failed_samples.json') as f:
+        with open(f'{self.basedir}/failed_samples.html') as f:
             obs2 = load(f)
             exp2 = {
                 "Gerwick_6123": [
@@ -484,7 +484,7 @@ class KLPTests(PluginTestCase):
             print(obs2)
             self.assertDictEqual(obs2, exp2)
         fsr.write(fail_set3, 'FastQCJob')
-        with open(f'{self.basedir}/failed_samples.json') as f:
+        with open(f'{self.basedir}/failed_samples.html') as f:
             obs3 = load(f)
             exp3 = {
                 "Gerwick_6123": [
