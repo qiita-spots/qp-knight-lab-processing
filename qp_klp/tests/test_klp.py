@@ -369,7 +369,7 @@ class KLPTests(PluginTestCase):
                'cd PREFIX/support_files/test_data/uploads/11661',
                'cd OUT_DIR; mv *.tgz final_results',
                'cd OUT_DIR; mv FastQCJob/multiqc final_results',
-               'cd OUT_DIR; mv touched_studies.tsv final_results']
+               'cd OUT_DIR; mv touched_studies.html final_results']
 
         cmdslog_fp = join(self.out_dir, 'cmds.log')
         with open(cmdslog_fp, 'r') as f:
@@ -387,14 +387,18 @@ class KLPTests(PluginTestCase):
             self.assertEqual(exp, cmds)
 
         # Note that because we are using self.sample_csv_data instead of
-        # good-sample-sheet.csv as our sample-sheet, touched_studies.tsv
+        # good-sample-sheet.csv as our sample-sheet, touched_studies.html
         # will include only the one project Feist_11661, instead of all
         # three studies found in good-sample-sheet.csv.
-        with open(join(self.out_dir, 'touched_studies.tsv'), 'r') as f:
-            obs = f.read()
-            exp = ("Project\tQiita Study ID\tQiita URL\nFeist_11661\t11661\t"
-                   "https://https://localhost:21174/study/description/11661\n")
-
+        with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
+            obs = f.readlines()
+            obs = [x.strip() for x in obs]
+            obs = ''.join(obs)
+            exp = ('<table border="2" class="dataframe"><thead><tr style="text'
+                   '-align: left;"><th>Project</th><th>Qiita Study ID</th><th>'
+                   'Qiita URL</th></tr></thead><tbody><tr><td>Feist_11661</td>'
+                   '<td>11661</td><td>https://https://localhost:21174/study/de'
+                   'scription/11661</td></tr></tbody></table>')
             self.assertEqual(obs, exp)
 
     def test_failed_samples_recorder(self):
