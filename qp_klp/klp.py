@@ -19,7 +19,6 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 from metapool import KLSampleSheet
-from json import dumps
 import pandas as pd
 
 
@@ -33,7 +32,7 @@ class FailedSamplesRecord:
         # need to keep a running state of failed samples, and reuse the method
         # to reorganize the running-results and write them out to disk.
 
-        self.output_path = join(output_dir, 'failed_samples.json')
+        self.output_path = join(output_dir, 'failed_samples.html')
 
         # create an initial dictionary with sample-ids as keys and their
         # associated project-name and status as values. Afterwards, we'll
@@ -54,19 +53,17 @@ class FailedSamplesRecord:
         filtered_fails = {x: self.failed[x] for x in self.failed if
                           self.failed[x][1] is not None}
 
-        # re-organize failures by project before writing out to file.
-        final_output = {}
+        df = pd.DataFrame({'Project': [], 'Sample ID': [],
+                           'Failed at': []})
+
         for sample_id in filtered_fails:
             project_name = filtered_fails[sample_id][0]
             failed_at = filtered_fails[sample_id][1]
-            if project_name not in final_output:
-                final_output[project_name] = []
-            final_output[project_name].append((sample_id, failed_at))
+            df = df.append({'Project': project_name, 'Sample ID': sample_id,
+                            'Failed at': failed_at}, ignore_index=True)
 
-            # write list of failed samples out to file and update after
-            # each Job completes.
-            with open(self.output_path, 'w') as f:
-                f.write(dumps(final_output, indent=2))
+        with open(self.output_path, 'w') as f:
+            f.write(df.to_html(border=2, index=False, justify="left"))
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -361,8 +358,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         if exists(join(out_dir, 'touched_studies.html')):
             cmds.append(f'cd {out_dir}; mv touched_studies.html final_results')
 
-        if exists(join(out_dir, 'failed_samples.json')):
-            cmds.append(f'cd {out_dir}; mv failed_samples.json final_results')
+        if exists(join(out_dir, 'failed_samples.html')):
+            cmds.append(f'cd {out_dir}; mv failed_samples.html final_results')
 
         # allow the writing of commands out to cmds.log, even if skip_exec
         # is True. This allows for unit-testing of cmds generation.
