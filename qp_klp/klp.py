@@ -121,7 +121,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # use KLSampleSheet functionality to add/overwrite lane number.
         sheet = KLSampleSheet(sample_sheet_path)
         for sample in sheet:
-            sample['Lane'] = '%d' % lane_number
+            sample['Lane'] = f'{lane_number}'
 
         with open(sample_sheet_path, 'w') as f:
             sheet.write(f)
