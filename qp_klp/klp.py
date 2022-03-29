@@ -150,7 +150,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                         f'samples. Some samples from tube_id: {tids_example}.')
 
                 len_overlap = len(sample_name_diff)
+                # selecting at random k=5 samples to minimize space in display
                 samples_example = ', '.join(choices(list(qsamples), k=5))
+                # selecting the up to 4 first samples to minimize space in
+                # display
                 missing = ', '.join(sorted(sample_name_diff)[:4])
                 errors.append(
                     f'{project} has {len_overlap} missing samples (i.e. '
