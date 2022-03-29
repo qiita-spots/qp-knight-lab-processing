@@ -19,6 +19,9 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 from metapool import KLSampleSheet
+from metapool.sample_sheet import sample_sheet_to_dataframe
+from metapool.prep import remove_qiita_id
+from random import choices
 import pandas as pd
 
 
@@ -53,14 +56,13 @@ class FailedSamplesRecord:
         filtered_fails = {x: self.failed[x] for x in self.failed if
                           self.failed[x][1] is not None}
 
-        df = pd.DataFrame({'Project': [], 'Sample ID': [],
-                           'Failed at': []})
-
+        data = []
         for sample_id in filtered_fails:
             project_name = filtered_fails[sample_id][0]
             failed_at = filtered_fails[sample_id][1]
-            df = df.append({'Project': project_name, 'Sample ID': sample_id,
-                            'Failed at': failed_at}, ignore_index=True)
+            data.append({'Project': project_name, 'Sample ID': sample_id,
+                         'Failed at': failed_at})
+        df = pd.DataFrame(data)
 
         with open(self.output_path, 'w') as f:
             f.write(df.to_html(border=2, index=False, justify="left"))
@@ -120,6 +122,43 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         sheet = KLSampleSheet(sample_sheet_path)
         for sample in sheet:
             sample['Lane'] = f'{lane_number}'
+
+        sheet_df = sample_sheet_to_dataframe(sheet)
+        errors = []
+        for project, _df in sheet_df.groupby('sample_project'):
+            project_name = remove_qiita_id(project)
+            qiita_id = project.replace(f'{project_name}_', '')
+            qurl = f'/api/v1/study/{qiita_id}/samples'
+            sheet_samples = {
+                s for s in _df['sample_name'] if not s.startswith('BLANK')}
+            qsamples = {
+                s.replace(f'{qiita_id}.', '') for s in qclient.get(qurl)}
+            sample_name_diff = sheet_samples - qsamples
+            if sample_name_diff:
+                # before we report as an error, check tube_id
+                error_tube_id = 'No tube_id column in Qiita.'
+                if 'tube_id' in qclient.get(f'{qurl}/info')['categories']:
+                    tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
+                    tids = {tid[0] for _, tid in tids.items()}
+                    tube_id_diff = sheet_samples - tids
+                    if not tube_id_diff:
+                        continue
+                    len_tube_id_overlap = len(tube_id_diff)
+                    tids_example = ', '.join(choices(list(tids), k=5))
+                    error_tube_id = (
+                        f'tube_id in Qiita but {len_tube_id_overlap} missing '
+                        f'samples. Some samples from tube_id: {tids_example}.')
+
+                len_overlap = len(sample_name_diff)
+                samples_example = ', '.join(choices(list(qsamples), k=5))
+                missing = ', '.join(sorted(sample_name_diff)[:4])
+                errors.append(
+                    f'{project} has {len_overlap} missing samples (i.e. '
+                    f'{missing}). Some samples from Qiita: {samples_example}. '
+                    f'{error_tube_id}')
+
+        if errors:
+            return False, None, '\n'.join(errors)
 
         with open(sample_sheet_path, 'w') as f:
             sheet.write(f)
@@ -340,13 +379,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # and return this information to the user.
         touched_studies = sorted(list(set(touched_studies)))
 
-        df = pd.DataFrame({'Project': [], 'Qiita Study ID': [],
-                           'Qiita URL': []})
-
+        data = []
         for qiita_id, project in touched_studies:
             url = f'https://{qclient._server_url}/study/description/{qiita_id}'
-            df = df.append({'Project': project, 'Qiita Study ID': qiita_id,
-                            'Qiita URL': url}, ignore_index=True)
+            data.append({'Project': project, 'Qiita Study ID': qiita_id,
+                         'Qiita URL': url})
+        df = pd.DataFrame(data)
 
         with open(join(out_dir, 'touched_studies.html'), 'w') as f:
             f.write(df.to_html(border=2, index=False, justify="left"))

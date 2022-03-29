@@ -137,23 +137,23 @@ class KLPTests(PluginTestCase):
             "[Data],,,,,,,,,,\n",
             "Lane,Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,"
             "index,I5_Index_ID,index2,Sample_Project,Well_description\n",
-            "1,CDPH-SAL_Salmonella_Typhi_MDL-143,CDPH-SAL_Salmonella_Typhi_MD"
-            "L-143,Feist_11661_P40,A1,iTru7_107_07,CCGACTAT,iTru5_01_A,ACCGAC"
-            "AA,Feist_11661,CDPH-SAL_Salmonella Typhi_MDL-143\n",
-            "1,CDPH-SAL_Salmonella_Typhi_MDL-144,CDPH-SAL_Salmonella_Typhi_MD"
-            "L-144,Feist_11661_P40,C1,iTru7_107_08,CCGACTAT,iTru5_02_A,CTTCGC"
-            "AA,Feist_11661,CDPH-SAL_Salmonella Typhi_MDL-144\n",
+            "1,CDPH-SAL_Salmonella_Typhi_MDL-143,SKD7.640191"
+            ",Feist_1_P40,A1,iTru7_107_07,CCGACTAT,iTru5_01_A,ACCGAC"
+            "AA,Feist_1,CDPH-SAL_Salmonella Typhi_MDL-143\n",
+            "1,CDPH-SAL_Salmonella_Typhi_MDL-144,SKB8.640193XX"
+            ",Feist_1_P40,C1,iTru7_107_08,CCGACTAT,iTru5_02_A,CTTCGC"
+            "AA,Feist_1,CDPH-SAL_Salmonella Typhi_MDL-144\n",
             ",,,,,,,,,,\n",
             "[Bioinformatics],,,,,,,,,,\n",
             "Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapt"
             "er,HumanFiltering,library_construction_protocol,experiment_desig"
             "n_description,,,\n",
-            "Feist_11661,11661,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Equip"
+            "Feist_1,11661,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Equip"
             "eriment,,,\n",
             ",,,,,,,,,,\n",
             "[Contact],,,,,,,,,,\n",
             "Email,Sample_Project,,,,,,,,,\n",
-            "test@lol.com,Feist_11661,,,,,,,,,\n",
+            "test@lol.com,Feist_1,,,,,,,,,\n",
             ",,,,,,,,,,\n",
         ]
 
@@ -273,7 +273,7 @@ class KLPTests(PluginTestCase):
 
         # create the project directory sequence_processing_pipeline() will
         # expect to find fastq files in.
-        fastq_dir = join(self.out_dir, 'ConvertJob', 'Feist_11661')
+        fastq_dir = join(self.out_dir, 'ConvertJob', 'Feist_1')
         makedirs(fastq_dir)
 
         file_list = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
@@ -298,7 +298,7 @@ class KLPTests(PluginTestCase):
         makedirs(reports_dir, exist_ok=True)
 
         # create QCJobs output directory for use by GenPrepFileJob
-        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_11661')
+        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
         makedirs(join(qcj_output_fp, 'filtered_sequences'))
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
@@ -316,9 +316,7 @@ class KLPTests(PluginTestCase):
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
                               "; please review.")
 
-        # test success
-        # both valid run_identifier and sample_sheet
-        # NOTE: we are not creating a new job for this test, which is fine
+        # test error due to missing sample_names
 
         params = {
             "run_identifier": "200318_A00953_0082_AH5TWYDSXY",
@@ -335,11 +333,36 @@ class KLPTests(PluginTestCase):
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
+        self.assertFalse(success)
+        self.assertTrue(
+            msg.startswith("Feist_1 has 1 missing samples (i.e. "
+                           "SKB8.640193XX). Some samples from Qiita:"))
+        self.assertTrue(
+           msg.endswith(". No tube_id column in Qiita."))
 
-        if msg:
-            # if success is True, msg should be None.
-            self.logger.debug("Message returned: %s" % msg)
+        # test success
+        # both valid run_identifier and sample_sheet
+        # NOTE: we are not creating a new job for this test, which is fine
 
+        # fix self.sample_csv_data
+        self.sample_csv_data[21] = self.sample_csv_data[21].replace(
+            'SKB8.640193XX', 'SKB8.640193')
+        params = {
+            "run_identifier": "200318_A00953_0082_AH5TWYDSXY",
+            "sample_sheet": {
+                "body": ''.join(self.sample_csv_data),
+                "content_type": "text/plain",
+                # verify sequence_processing_pipeline() will convert spaces
+                # to underscores ('_').
+                "filename": "A sample sheet.csv",
+            },
+            "lane_number": 2
+        }
+
+        success, ainfo, msg = sequence_processing_pipeline(
+            self.qclient, job_id, params, self.out_dir
+        )
+        self.assertIsNone(msg)
         self.assertTrue(success)
 
         exp = [ArtifactInfo("output",
@@ -364,7 +387,7 @@ class KLPTests(PluginTestCase):
                ('cd OUT_DIR; tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/'
                 'logs'),
                'cd OUT_DIR; tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles',
-               ('cd OUT_DIR; tar zcvf reports-QCJob.tgz QCJob/Feist_11661/fas'
+               ('cd OUT_DIR; tar zcvf reports-QCJob.tgz QCJob/Feist_1/fas'
                 'tp_reports_dir'),
                'cd PREFIX/support_files/test_data/uploads/11661',
                'cd OUT_DIR; mv *.tgz final_results',
@@ -388,7 +411,7 @@ class KLPTests(PluginTestCase):
 
         # Note that because we are using self.sample_csv_data instead of
         # good-sample-sheet.csv as our sample-sheet, touched_studies.html
-        # will include only the one project Feist_11661, instead of all
+        # will include only the one project Feist_1, instead of all
         # three studies found in good-sample-sheet.csv.
         with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
             obs = f.readlines()
@@ -396,7 +419,7 @@ class KLPTests(PluginTestCase):
             obs = ''.join(obs)
             exp = ('<table border="2" class="dataframe"><thead><tr style="text'
                    '-align: left;"><th>Project</th><th>Qiita Study ID</th><th>'
-                   'Qiita URL</th></tr></thead><tbody><tr><td>Feist_11661</td>'
+                   'Qiita URL</th></tr></thead><tbody><tr><td>Feist_1</td>'
                    '<td>11661</td><td>https://https://localhost:21174/study/de'
                    'scription/11661</td></tr></tbody></table>')
             self.assertEqual(obs, exp)
@@ -413,7 +436,7 @@ class KLPTests(PluginTestCase):
         fsr = FailedSamplesRecord(self.basedir, sheet.samples)
 
         # we want to include samples from all projects in the sample-sheet.
-        # order of projects listed is Feist_11661, NYU_BMS_Melanoma_13059, and
+        # order of projects listed is Feist_1, NYU_BMS_Melanoma_13059, and
         # Gerwick_6123.
         fail_set1 = ['Pputida_TALE__HGL_Pputida_121', 'EP073160B01', '5B']
         fail_set2 = ['Deoxyribose_PALE_ALE__MG1655_Lib4_20_16', 'EP202095B04',
