@@ -108,7 +108,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # internal function implements a callback function for Pipeline.run().
         # :param id: PBS/Torque/or some other informative and current job id.
         # :param status: status message
-        qclient.update_job_step(job_id, _update_job_step.msg + f" ({id}: {status})")
+        qclient.update_job_step(job_id,
+                                _update_job_step.msg + f" ({id}: {status})")
 
     # initialize static variable to maintain current message
     _update_job_step.msg = ""
