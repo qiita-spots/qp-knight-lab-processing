@@ -19,7 +19,10 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 from metapool import KLSampleSheet
-from json import dumps
+from metapool.sample_sheet import sample_sheet_to_dataframe
+from metapool.prep import remove_qiita_id
+from random import choices
+import pandas as pd
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
@@ -32,7 +35,7 @@ class FailedSamplesRecord:
         # need to keep a running state of failed samples, and reuse the method
         # to reorganize the running-results and write them out to disk.
 
-        self.output_path = join(output_dir, 'failed_samples.json')
+        self.output_path = join(output_dir, 'failed_samples.html')
 
         # create an initial dictionary with sample-ids as keys and their
         # associated project-name and status as values. Afterwards, we'll
@@ -53,19 +56,16 @@ class FailedSamplesRecord:
         filtered_fails = {x: self.failed[x] for x in self.failed if
                           self.failed[x][1] is not None}
 
-        # re-organize failures by project before writing out to file.
-        final_output = {}
+        data = []
         for sample_id in filtered_fails:
             project_name = filtered_fails[sample_id][0]
             failed_at = filtered_fails[sample_id][1]
-            if project_name not in final_output:
-                final_output[project_name] = []
-            final_output[project_name].append((sample_id, failed_at))
+            data.append({'Project': project_name, 'Sample ID': sample_id,
+                         'Failed at': failed_at})
+        df = pd.DataFrame(data)
 
-            # write list of failed samples out to file and update after
-            # each Job completes.
-            with open(self.output_path, 'w') as f:
-                f.write(dumps(final_output, indent=2))
+        with open(self.output_path, 'w') as f:
+            f.write(df.to_html(border=2, index=False, justify="left"))
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -101,7 +101,23 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     ainfo = None
     msg = None
 
-    qclient.update_job_step(job_id, "Step 1 of 6: Setting up pipeline")
+    # maintains state of the current message, minus additional updates from
+    # a callback function. E.g. "Step 1 of 6: Setting up pipeline"
+    current_message = ""
+
+    def _update_job_step(id, status):
+        # internal function implements a callback function for Pipeline.run().
+        # :param id: PBS/Torque/or some other informative and current job id.
+        # :param status: status message
+        qclient.update_job_step(job_id, current_message + f" ({id}:{status})")
+
+    def _update_current_message(msg):
+        # internal function that sets current_message to the new value before
+        # updating the job step in the UI.
+        current_message = msg
+        qclient.update_job_step(job_id, current_message)
+
+    _update_current_message("Step 1 of 6: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(sample_sheet):
         # Pipeline now takes the path to a sample-sheet as a parameter.
@@ -123,6 +139,46 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         for sample in sheet:
             sample['Lane'] = f'{lane_number}'
 
+        sheet_df = sample_sheet_to_dataframe(sheet)
+        errors = []
+        for project, _df in sheet_df.groupby('sample_project'):
+            project_name = remove_qiita_id(project)
+            qiita_id = project.replace(f'{project_name}_', '')
+            qurl = f'/api/v1/study/{qiita_id}/samples'
+            sheet_samples = {
+                s for s in _df['sample_name'] if not s.startswith('BLANK')}
+            qsamples = {
+                s.replace(f'{qiita_id}.', '') for s in qclient.get(qurl)}
+            sample_name_diff = sheet_samples - qsamples
+            if sample_name_diff:
+                # before we report as an error, check tube_id
+                error_tube_id = 'No tube_id column in Qiita.'
+                if 'tube_id' in qclient.get(f'{qurl}/info')['categories']:
+                    tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
+                    tids = {tid[0] for _, tid in tids.items()}
+                    tube_id_diff = sheet_samples - tids
+                    if not tube_id_diff:
+                        continue
+                    len_tube_id_overlap = len(tube_id_diff)
+                    tids_example = ', '.join(choices(list(tids), k=5))
+                    error_tube_id = (
+                        f'tube_id in Qiita but {len_tube_id_overlap} missing '
+                        f'samples. Some samples from tube_id: {tids_example}.')
+
+                len_overlap = len(sample_name_diff)
+                # selecting at random k=5 samples to minimize space in display
+                samples_example = ', '.join(choices(list(qsamples), k=5))
+                # selecting the up to 4 first samples to minimize space in
+                # display
+                missing = ', '.join(sorted(sample_name_diff)[:4])
+                errors.append(
+                    f'{project} has {len_overlap} missing samples (i.e. '
+                    f'{missing}). Some samples from Qiita: {samples_example}. '
+                    f'{error_tube_id}')
+
+        if errors:
+            return False, None, '\n'.join(errors)
+
         with open(sample_sheet_path, 'w') as f:
             sheet.write(f)
 
@@ -138,7 +194,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 return False, None, msg
             elif str(e).startswith("Sample-sheet has the following errors:"):
                 msg = str(e)
-                qclient.update_job_step(job_id, msg)
+                _update_current_message(msg)
                 raise ValueError(msg)
             else:
                 raise e
@@ -149,9 +205,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # If any warnings are present, they should be reported to the user.
         if pipeline.warnings:
             msg = '\n'.join(pipeline.warnings)
-            qclient.update_job_step(job_id, 'Sample-sheet has been flagged '
-                                            'with the following warnings: '
-                                            f'{msg}')
+            _update_current_message('Sample-sheet has been flagged with the '
+                                    'following warnings: {msg}')
 
         sifs = pipeline.generate_sample_information_files()
 
@@ -177,8 +232,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             special_map.append((project['project_name'], upload_path,
                                 project['qiita_id']))
 
-        qclient.update_job_step(job_id,
-                                "Step 2 of 6: Converting BCL to fastq")
+        _update_current_message("Step 2 of 6: Converting BCL to fastq")
 
         config = pipeline.configuration['bcl-convert']
         convert_job = ConvertJob(pipeline.run_dir,
@@ -198,11 +252,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # returned to the caller. However the Jobs will not actually
         # be executed. This is useful for testing.
         if not skip_exec:
-            convert_job.run()
+            convert_job.run(callback=_update_job_step)
             fsr.write(convert_job.audit(samples), 'ConvertJob')
 
-        qclient.update_job_step(job_id,
-                                "Step 3 of 6: Adaptor & Host [optional] "
+        _update_current_message("Step 3 of 6: Adaptor & Host [optional] "
                                 "trimming")
 
         raw_fastq_files_path = join(pipeline.output_path, 'ConvertJob')
@@ -226,11 +279,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                        config['job_max_array_length'])
 
         if not skip_exec:
-            qc_job.run()
+            qc_job.run(callback=_update_job_step)
             fsr.write(qc_job.audit(samples), 'QCJob')
 
-        qclient.update_job_step(job_id, "Step 4 of 6: Generating FastQC & "
-                                        "MultiQC reports")
+        _update_current_message("Step 4 of 6: Generating FastQC & "
+                                "MultiQC reports")
 
         config = pipeline.configuration['fastqc']
 
@@ -255,13 +308,13 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                config['job_max_array_length'])
 
         if not skip_exec:
-            fastqc_job.run()
+            fastqc_job.run(callback=_update_job_step)
             fsr.write(fastqc_job.audit(samples), 'FastQCJob')
 
         project_list = fastqc_job.project_names
 
-        qclient.update_job_step(job_id, "Step 5 of 6: Generating Prep "
-                                        "Information Files")
+        _update_current_message("Step 5 of 6: Generating Prep "
+                                "Information Files")
 
         config = pipeline.configuration['seqpro']
         gpf_job = GenPrepFileJob(
@@ -276,10 +329,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             job_id)
 
         if not skip_exec:
-            gpf_job.run()
+            gpf_job.run(callback=_update_job_step)
 
-        qclient.update_job_step(job_id, "Step 6 of 6: Copying results to "
-                                        "archive")
+        _update_current_message("Step 6 of 6: Copying results to archive")
 
         cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                 f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
@@ -341,22 +393,26 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # create a set of unique study-ids that were touched by the Pipeline
         # and return this information to the user.
         touched_studies = sorted(list(set(touched_studies)))
-        with open(join(out_dir, 'touched_studies.tsv'), 'a') as f:
-            f.write('Project\tQiita Study ID\tQiita URL\n')
-            for qiita_id, project in touched_studies:
-                f.write((f'{project}\t{qiita_id}\thttps://'
-                         f'{qclient._server_url}/study/description/'
-                         f'{qiita_id}\n'))
+
+        data = []
+        for qiita_id, project in touched_studies:
+            url = f'https://{qclient._server_url}/study/description/{qiita_id}'
+            data.append({'Project': project, 'Qiita Study ID': qiita_id,
+                         'Qiita URL': url})
+        df = pd.DataFrame(data)
+
+        with open(join(out_dir, 'touched_studies.html'), 'w') as f:
+            f.write(df.to_html(border=2, index=False, justify="left"))
 
         # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
         cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
 
-        if exists(join(out_dir, 'touched_studies.tsv')):
-            cmds.append(f'cd {out_dir}; mv touched_studies.tsv final_results')
+        if exists(join(out_dir, 'touched_studies.html')):
+            cmds.append(f'cd {out_dir}; mv touched_studies.html final_results')
 
-        if exists(join(out_dir, 'failed_samples.json')):
-            cmds.append(f'cd {out_dir}; mv failed_samples.json final_results')
+        if exists(join(out_dir, 'failed_samples.html')):
+            cmds.append(f'cd {out_dir}; mv failed_samples.html final_results')
 
         # allow the writing of commands out to cmds.log, even if skip_exec
         # is True. This allows for unit-testing of cmds generation.
@@ -386,7 +442,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         success = False
         msg = "This doesn't appear to be a valid sample sheet; please review."
 
-    qclient.update_job_step(job_id, "Main Pipeline Finished, processing "
-                                    "results")
+    _update_current_message("Main Pipeline Finished, processing results")
 
     return success, ainfo, msg

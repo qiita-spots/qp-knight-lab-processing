@@ -11,7 +11,7 @@
 from setuptools import setup
 
 
-__version__ = '2022.03'
+__version__ = '2022.04'
 
 classes = """
     Development Status :: 5 - Production/Stable
@@ -45,7 +45,7 @@ setup(name='qp-klp',
       packages=['qp_klp'],
       scripts=['scripts/configure_klp', 'scripts/start_klp'],
       extras_require={'test': ["nose >= 0.10.1", "pep8"]},
-      install_requires=['click >= 3.3', 'future',
+      install_requires=['click >= 3.3', 'future', 'pandas',
                         'qiita-files @ https://github.com/'
                         'qiita-spots/qiita-files/archive/master.zip',
                         'qiita_client @ https://github.com/'

@@ -8,7 +8,7 @@
 from unittest import main
 from os import remove, makedirs
 from shutil import rmtree
-from json import dumps, load
+from json import dumps
 from tempfile import mkdtemp
 from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
@@ -137,23 +137,23 @@ class KLPTests(PluginTestCase):
             "[Data],,,,,,,,,,\n",
             "Lane,Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,"
             "index,I5_Index_ID,index2,Sample_Project,Well_description\n",
-            "1,CDPH-SAL_Salmonella_Typhi_MDL-143,CDPH-SAL_Salmonella_Typhi_MD"
-            "L-143,Feist_11661_P40,A1,iTru7_107_07,CCGACTAT,iTru5_01_A,ACCGAC"
-            "AA,Feist_11661,CDPH-SAL_Salmonella Typhi_MDL-143\n",
-            "1,CDPH-SAL_Salmonella_Typhi_MDL-144,CDPH-SAL_Salmonella_Typhi_MD"
-            "L-144,Feist_11661_P40,C1,iTru7_107_08,CCGACTAT,iTru5_02_A,CTTCGC"
-            "AA,Feist_11661,CDPH-SAL_Salmonella Typhi_MDL-144\n",
+            "1,CDPH-SAL_Salmonella_Typhi_MDL-143,SKD7.640191"
+            ",Feist_1_P40,A1,iTru7_107_07,CCGACTAT,iTru5_01_A,ACCGAC"
+            "AA,Feist_1,CDPH-SAL_Salmonella Typhi_MDL-143\n",
+            "1,CDPH-SAL_Salmonella_Typhi_MDL-144,SKB8.640193XX"
+            ",Feist_1_P40,C1,iTru7_107_08,CCGACTAT,iTru5_02_A,CTTCGC"
+            "AA,Feist_1,CDPH-SAL_Salmonella Typhi_MDL-144\n",
             ",,,,,,,,,,\n",
             "[Bioinformatics],,,,,,,,,,\n",
             "Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapt"
             "er,HumanFiltering,library_construction_protocol,experiment_desig"
             "n_description,,,\n",
-            "Feist_11661,11661,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Equip"
+            "Feist_1,11661,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Equip"
             "eriment,,,\n",
             ",,,,,,,,,,\n",
             "[Contact],,,,,,,,,,\n",
             "Email,Sample_Project,,,,,,,,,\n",
-            "test@lol.com,Feist_11661,,,,,,,,,\n",
+            "test@lol.com,Feist_1,,,,,,,,,\n",
             ",,,,,,,,,,\n",
         ]
 
@@ -273,7 +273,7 @@ class KLPTests(PluginTestCase):
 
         # create the project directory sequence_processing_pipeline() will
         # expect to find fastq files in.
-        fastq_dir = join(self.out_dir, 'ConvertJob', 'Feist_11661')
+        fastq_dir = join(self.out_dir, 'ConvertJob', 'Feist_1')
         makedirs(fastq_dir)
 
         file_list = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
@@ -298,7 +298,7 @@ class KLPTests(PluginTestCase):
         makedirs(reports_dir, exist_ok=True)
 
         # create QCJobs output directory for use by GenPrepFileJob
-        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_11661')
+        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
         makedirs(join(qcj_output_fp, 'filtered_sequences'))
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
@@ -316,9 +316,7 @@ class KLPTests(PluginTestCase):
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
                               "; please review.")
 
-        # test success
-        # both valid run_identifier and sample_sheet
-        # NOTE: we are not creating a new job for this test, which is fine
+        # test error due to missing sample_names
 
         params = {
             "run_identifier": "200318_A00953_0082_AH5TWYDSXY",
@@ -335,11 +333,36 @@ class KLPTests(PluginTestCase):
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
+        self.assertFalse(success)
+        self.assertTrue(
+            msg.startswith("Feist_1 has 1 missing samples (i.e. "
+                           "SKB8.640193XX). Some samples from Qiita:"))
+        self.assertTrue(
+           msg.endswith(". No tube_id column in Qiita."))
 
-        if msg:
-            # if success is True, msg should be None.
-            self.logger.debug("Message returned: %s" % msg)
+        # test success
+        # both valid run_identifier and sample_sheet
+        # NOTE: we are not creating a new job for this test, which is fine
 
+        # fix self.sample_csv_data
+        self.sample_csv_data[21] = self.sample_csv_data[21].replace(
+            'SKB8.640193XX', 'SKB8.640193')
+        params = {
+            "run_identifier": "200318_A00953_0082_AH5TWYDSXY",
+            "sample_sheet": {
+                "body": ''.join(self.sample_csv_data),
+                "content_type": "text/plain",
+                # verify sequence_processing_pipeline() will convert spaces
+                # to underscores ('_').
+                "filename": "A sample sheet.csv",
+            },
+            "lane_number": 2
+        }
+
+        success, ainfo, msg = sequence_processing_pipeline(
+            self.qclient, job_id, params, self.out_dir
+        )
+        self.assertIsNone(msg)
         self.assertTrue(success)
 
         exp = [ArtifactInfo("output",
@@ -364,12 +387,12 @@ class KLPTests(PluginTestCase):
                ('cd OUT_DIR; tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/'
                 'logs'),
                'cd OUT_DIR; tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles',
-               ('cd OUT_DIR; tar zcvf reports-QCJob.tgz QCJob/Feist_11661/fas'
+               ('cd OUT_DIR; tar zcvf reports-QCJob.tgz QCJob/Feist_1/fas'
                 'tp_reports_dir'),
                'cd PREFIX/support_files/test_data/uploads/11661',
                'cd OUT_DIR; mv *.tgz final_results',
                'cd OUT_DIR; mv FastQCJob/multiqc final_results',
-               'cd OUT_DIR; mv touched_studies.tsv final_results']
+               'cd OUT_DIR; mv touched_studies.html final_results']
 
         cmdslog_fp = join(self.out_dir, 'cmds.log')
         with open(cmdslog_fp, 'r') as f:
@@ -387,14 +410,18 @@ class KLPTests(PluginTestCase):
             self.assertEqual(exp, cmds)
 
         # Note that because we are using self.sample_csv_data instead of
-        # good-sample-sheet.csv as our sample-sheet, touched_studies.tsv
-        # will include only the one project Feist_11661, instead of all
+        # good-sample-sheet.csv as our sample-sheet, touched_studies.html
+        # will include only the one project Feist_1, instead of all
         # three studies found in good-sample-sheet.csv.
-        with open(join(self.out_dir, 'touched_studies.tsv'), 'r') as f:
-            obs = f.read()
-            exp = ("Project\tQiita Study ID\tQiita URL\nFeist_11661\t11661\t"
-                   "https://https://localhost:21174/study/description/11661\n")
-
+        with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
+            obs = f.readlines()
+            obs = [x.strip() for x in obs]
+            obs = ''.join(obs)
+            exp = ('<table border="2" class="dataframe"><thead><tr style="text'
+                   '-align: left;"><th>Project</th><th>Qiita Study ID</th><th>'
+                   'Qiita URL</th></tr></thead><tbody><tr><td>Feist_1</td>'
+                   '<td>11661</td><td>https://https://localhost:21174/study/de'
+                   'scription/11661</td></tr></tbody></table>')
             self.assertEqual(obs, exp)
 
     def test_failed_samples_recorder(self):
@@ -409,7 +436,7 @@ class KLPTests(PluginTestCase):
         fsr = FailedSamplesRecord(self.basedir, sheet.samples)
 
         # we want to include samples from all projects in the sample-sheet.
-        # order of projects listed is Feist_11661, NYU_BMS_Melanoma_13059, and
+        # order of projects listed is Feist_1, NYU_BMS_Melanoma_13059, and
         # Gerwick_6123.
         fail_set1 = ['Pputida_TALE__HGL_Pputida_121', 'EP073160B01', '5B']
         fail_set2 = ['Deoxyribose_PALE_ALE__MG1655_Lib4_20_16', 'EP202095B04',
@@ -421,114 +448,58 @@ class KLPTests(PluginTestCase):
         # append to the information already written out to file.
         fsr.write(fail_set1, 'ConvertJob')
 
-        with open(f'{self.basedir}/failed_samples.json') as f:
-            obs1 = load(f)
-            exp1 = {
-                "Feist_11661": [
-                    [
-                        "Pputida_TALE__HGL_Pputida_121",
-                        "ConvertJob"
-                    ]
-                ],
-                "Gerwick_6123": [
-                    [
-                        "5B",
-                        "ConvertJob"
-                    ]
-                ],
-                "NYU_BMS_Melanoma_13059": [
-                    [
-                        "EP073160B01",
-                        "ConvertJob"
-                    ]
-                ]
-            }
-            self.assertDictEqual(obs1, exp1)
+        with open(f'{self.basedir}/failed_samples.html', 'r') as f:
+            obs1 = f.readlines()
+            obs1 = [x.strip() for x in obs1]
+            obs1 = ''.join(obs1)
+            exp1 = ('<table border="2" class="dataframe"><thead><tr style="tex'
+                    't-align: left;"><th>Project</th><th>Sample ID</th><th>Fai'
+                    'led at</th></tr></thead><tbody><tr><td>Feist_11661</td><t'
+                    'd>Pputida_TALE__HGL_Pputida_121</td><td>ConvertJob</td></'
+                    'tr><tr><td>Gerwick_6123</td><td>5B</td><td>ConvertJob</td'
+                    '></tr><tr><td>NYU_BMS_Melanoma_13059</td><td>EP073160B01<'
+                    '/td><td>ConvertJob</td></tr></tbody></table>')
+            self.assertEqual(obs1, exp1)
 
         fsr.write(fail_set2, 'QCJob')
-        with open(f'{self.basedir}/failed_samples.json') as f:
-            obs2 = load(f)
-            exp2 = {
-                "Gerwick_6123": [
-                    [
-                        "4A",
-                        "QCJob"
-                    ],
-                    [
-                        "5B",
-                        "ConvertJob"
-                    ]
-                ],
-                "Feist_11661": [
-                    [
-                        "Pputida_TALE__HGL_Pputida_121",
-                        "ConvertJob"
-                    ],
-                    [
-                        "Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
-                        "QCJob"
-                    ]
-                ],
-                "NYU_BMS_Melanoma_13059": [
-                    [
-                        "EP202095B04",
-                        "QCJob"
-                    ],
-                    [
-                        "EP073160B01",
-                        "ConvertJob"
-                    ]
-                ]
-            }
-            self.assertDictEqual(obs2, exp2)
+        with open(f'{self.basedir}/failed_samples.html', 'r') as f:
+            obs2 = f.readlines()
+            obs2 = [x.strip() for x in obs2]
+            obs2 = ''.join(obs2)
+            exp2 = ('<table border="2" class="dataframe"><thead><tr style="tex'
+                    't-align: left;"><th>Project</th><th>Sample ID</th><th>Fai'
+                    'led at</th></tr></thead><tbody><tr><td>Gerwick_6123</td><'
+                    'td>4A</td><td>QCJob</td></tr><tr><td>Feist_11661</td><td>'
+                    'Pputida_TALE__HGL_Pputida_121</td><td>ConvertJob</td></tr'
+                    '><tr><td>Gerwick_6123</td><td>5B</td><td>ConvertJob</td><'
+                    '/tr><tr><td>Feist_11661</td><td>Deoxyribose_PALE_ALE__MG1'
+                    '655_Lib4_20_16</td><td>QCJob</td></tr><tr><td>NYU_BMS_Mel'
+                    'anoma_13059</td><td>EP202095B04</td><td>QCJob</td></tr><t'
+                    'r><td>NYU_BMS_Melanoma_13059</td><td>EP073160B01</td><td>'
+                    'ConvertJob</td></tr></tbody></table>')
+            self.assertEqual(obs2, exp2)
+
         fsr.write(fail_set3, 'FastQCJob')
-        with open(f'{self.basedir}/failed_samples.json') as f:
-            obs3 = load(f)
-            exp3 = {
-                "Gerwick_6123": [
-                    [
-                        "4A",
-                        "QCJob"
-                    ],
-                    [
-                        "5B",
-                        "ConvertJob"
-                    ],
-                    [
-                        "6A",
-                        "FastQCJob"
-                    ]
-                ],
-                "Feist_11661": [
-                    [
-                        "Pputida_TALE__HGL_Pputida_121",
-                        "ConvertJob"
-                    ],
-                    [
-                        "Deoxyribose_PALE_ALE__MG1655_Lib4_20_16",
-                        "QCJob"
-                    ],
-                    [
-                        "JM-MEC__Staphylococcus_aureusstrain_BERTI-R10727",
-                        "FastQCJob"
-                    ]
-                ],
-                "NYU_BMS_Melanoma_13059": [
-                    [
-                        "EP159695B01",
-                        "FastQCJob"
-                    ],
-                    [
-                        "EP202095B04",
-                        "QCJob"
-                    ],
-                    [
-                        "EP073160B01",
-                        "ConvertJob"
-                    ]
-                ]
-            }
-            self.assertDictEqual(obs3, exp3)
+        with open(f'{self.basedir}/failed_samples.html', 'r') as f:
+            obs3 = f.readlines()
+            obs3 = [x.strip() for x in obs3]
+            obs3 = ''.join(obs3)
+            exp3 = ('<table border="2" class="dataframe"><thead><tr style="tex'
+                    't-align: left;"><th>Project</th><th>Sample ID</th><th>Fai'
+                    'led at</th></tr></thead><tbody><tr><td>Gerwick_6123</td><'
+                    'td>4A</td><td>QCJob</td></tr><tr><td>Feist_11661</td><td>'
+                    'Pputida_TALE__HGL_Pputida_121</td><td>ConvertJob</td></tr'
+                    '><tr><td>Gerwick_6123</td><td>5B</td><td>ConvertJob</td><'
+                    '/tr><tr><td>Gerwick_6123</td><td>6A</td><td>FastQCJob</td'
+                    '></tr><tr><td>Feist_11661</td><td>Deoxyribose_PALE_ALE__M'
+                    'G1655_Lib4_20_16</td><td>QCJob</td></tr><tr><td>Feist_116'
+                    '61</td><td>JM-MEC__Staphylococcus_aureusstrain_BERTI-R107'
+                    '27</td><td>FastQCJob</td></tr><tr><td>NYU_BMS_Melanoma_13'
+                    '059</td><td>EP159695B01</td><td>FastQCJob</td></tr><tr><t'
+                    'd>NYU_BMS_Melanoma_13059</td><td>EP202095B04</td><td>QCJo'
+                    'b</td></tr><tr><td>NYU_BMS_Melanoma_13059</td><td>EP07316'
+                    '0B01</td><td>ConvertJob</td></tr></tbody></table>')
+            self.assertEqual(obs3, exp3)
 
 
 if __name__ == "__main__":
