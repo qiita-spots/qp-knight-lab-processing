@@ -103,7 +103,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
     # maintains state of the current message, minus additional updates from
     # a callback function. E.g. "Step 1 of 6: Setting up pipeline"
-    # current_message = ""
 
     def _update_job_step(id, status):
         # internal function implements a callback function for Pipeline.run().
@@ -111,13 +110,13 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # :param status: status message
         qclient.update_job_step(job_id, _update_job_step.msg + f" ({id}: {status})")
 
+    # initialize static variable to maintain current message
     _update_job_step.msg = ""
 
     def _update_current_message(msg):
         # internal function that sets current_message to the new value before
         # updating the job step in the UI.
         _update_job_step.msg = msg
-        # current_message = msg
         qclient.update_job_step(job_id, msg)
 
     _update_current_message("Step 1 of 6: Setting up pipeline")
