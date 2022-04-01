@@ -65,7 +65,8 @@ class FailedSamplesRecord:
         df = pd.DataFrame(data)
 
         with open(self.output_path, 'w') as f:
-            f.write(df.to_html(border=2, index=False, justify="left", render_links=True, escape=False))
+            f.write(df.to_html(border=2, index=False, justify="left",
+                               render_links=True, escape=False))
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -405,7 +406,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         df = pd.DataFrame(data)
 
         with open(join(out_dir, 'touched_studies.html'), 'w') as f:
-            f.write(df.to_html(border=2, index=False, justify="left", render_links=True, escape=False))
+            f.write(df.to_html(border=2, index=False, justify="left",
+                               render_links=True, escape=False))
 
         # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
