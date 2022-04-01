@@ -400,7 +400,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         data = []
         for qiita_id, project in touched_studies:
-            url = f'https://{qclient._server_url}/study/description/{qiita_id}'
+            url = f'{qclient._server_url}/study/description/{qiita_id}'
             data.append({'Project': project, 'Qiita Study ID': qiita_id,
                          'Qiita URL': url})
         df = pd.DataFrame(data)
