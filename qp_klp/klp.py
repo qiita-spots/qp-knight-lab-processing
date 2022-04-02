@@ -154,10 +154,27 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             qsamples = {
                 s.replace(f'{qiita_id}.', '') for s in qclient.get(qurl)}
             sample_name_diff = sheet_samples - qsamples
+
+            # check that tube_id is defined in the Qiita study. If so,
+            # then any sample_names missing from the sample-sheet may simply
+            # have a leading zero present.
+            tube_id_present = 'tube_id' in qclient.get(f'{qurl}/info')[
+                'categories']
+
+            if sample_name_diff:
+                if tube_id_present:
+                    # strip any leading zeroes from the sample-ids. Note that
+                    # if a sample-id has more than one leading zero, all of
+                    # them will be removed.
+                    sheet_samples = {x.lstrip('0') for x in sheet_samples}
+                    # once any leading zeros have been removed, recalculate
+                    # sample_name_diff before continuing processing.
+                    sample_name_diff = sheet_samples - qsamples
+
             if sample_name_diff:
                 # before we report as an error, check tube_id
                 error_tube_id = 'No tube_id column in Qiita.'
-                if 'tube_id' in qclient.get(f'{qurl}/info')['categories']:
+                if tube_id_present:
                     tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
                     tids = {tid[0] for _, tid in tids.items()}
                     tube_id_diff = sheet_samples - tids
