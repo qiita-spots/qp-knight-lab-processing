@@ -420,8 +420,9 @@ class KLPTests(PluginTestCase):
             exp = ('<table border="2" class="dataframe"><thead><tr style="text'
                    '-align: left;"><th>Project</th><th>Qiita Study ID</th><th>'
                    'Qiita URL</th></tr></thead><tbody><tr><td>Feist_1</td>'
-                   '<td>11661</td><td>https://https://localhost:21174/study/de'
-                   'scription/11661</td></tr></tbody></table>')
+                   '<td>11661</td><td><a href="https://localhost:21174/study/'
+                   'description/11661" target="_blank">https://localhost:21174'
+                   '/study/description/11661</a></td></tr></tbody></table>')
             self.assertEqual(obs, exp)
 
     def test_failed_samples_recorder(self):

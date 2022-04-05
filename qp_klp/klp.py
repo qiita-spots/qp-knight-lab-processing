@@ -65,7 +65,8 @@ class FailedSamplesRecord:
         df = pd.DataFrame(data)
 
         with open(self.output_path, 'w') as f:
-            f.write(df.to_html(border=2, index=False, justify="left"))
+            f.write(df.to_html(border=2, index=False, justify="left",
+                               render_links=True, escape=False))
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -103,19 +104,22 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
     # maintains state of the current message, minus additional updates from
     # a callback function. E.g. "Step 1 of 6: Setting up pipeline"
-    current_message = ""
 
     def _update_job_step(id, status):
         # internal function implements a callback function for Pipeline.run().
         # :param id: PBS/Torque/or some other informative and current job id.
         # :param status: status message
-        qclient.update_job_step(job_id, current_message + f" ({id}:{status})")
+        qclient.update_job_step(job_id,
+                                _update_job_step.msg + f" ({id}: {status})")
+
+    # initialize static variable to maintain current message
+    _update_job_step.msg = ""
 
     def _update_current_message(msg):
         # internal function that sets current_message to the new value before
         # updating the job step in the UI.
-        current_message = msg
-        qclient.update_job_step(job_id, current_message)
+        _update_job_step.msg = msg
+        qclient.update_job_step(job_id, msg)
 
     _update_current_message("Step 1 of 6: Setting up pipeline")
 
@@ -150,10 +154,27 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             qsamples = {
                 s.replace(f'{qiita_id}.', '') for s in qclient.get(qurl)}
             sample_name_diff = sheet_samples - qsamples
+
+            # check that tube_id is defined in the Qiita study. If so,
+            # then any sample_names missing from the sample-sheet may simply
+            # have a leading zero present.
+            tube_id_present = 'tube_id' in qclient.get(f'{qurl}/info')[
+                'categories']
+
+            if sample_name_diff:
+                if tube_id_present:
+                    # strip any leading zeroes from the sample-ids. Note that
+                    # if a sample-id has more than one leading zero, all of
+                    # them will be removed.
+                    sheet_samples = {x.lstrip('0') for x in sheet_samples}
+                    # once any leading zeros have been removed, recalculate
+                    # sample_name_diff before continuing processing.
+                    sample_name_diff = sheet_samples - qsamples
+
             if sample_name_diff:
                 # before we report as an error, check tube_id
                 error_tube_id = 'No tube_id column in Qiita.'
-                if 'tube_id' in qclient.get(f'{qurl}/info')['categories']:
+                if tube_id_present:
                     tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
                     tids = {tid[0] for _, tid in tids.items()}
                     tube_id_diff = sheet_samples - tids
@@ -396,13 +417,14 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         data = []
         for qiita_id, project in touched_studies:
-            url = f'https://{qclient._server_url}/study/description/{qiita_id}'
+            url = f'{qclient._server_url}/study/description/{qiita_id}'
             data.append({'Project': project, 'Qiita Study ID': qiita_id,
                          'Qiita URL': url})
         df = pd.DataFrame(data)
 
         with open(join(out_dir, 'touched_studies.html'), 'w') as f:
-            f.write(df.to_html(border=2, index=False, justify="left"))
+            f.write(df.to_html(border=2, index=False, justify="left",
+                               render_links=True, escape=False))
 
         # copy all tgz files, including sample-files.tgz, to final_results.
         cmds.append(f'cd {out_dir}; mv *.tgz final_results')
