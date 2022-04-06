@@ -383,11 +383,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         touched_studies = []
 
         for project, upload_dir, qiita_id in special_map:
-            if sifs and [x for x in sifs if f'{project}_blanks.tsv' in x]:
+            # sif filenames are of the form:
+            blanks_file = f'{run_identifier}_{project}_blanks.tsv'
+            if sifs and [x for x in sifs if blanks_file in x]:
                 # move uncompressed sifs to upload_dir.
-                # sif filenames are of the form: '{project}_blanks.tsv'
-                cmds.append(f'cd {out_dir}; mv {project}_blanks.tsv'
-                            f' {upload_dir}')
+                cmds.append(f'cd {out_dir}; mv {blanks_file} {upload_dir}')
 
             # record that something is being moved into a Qiita Study.
             # this will allow us to notify the user which Studies to
