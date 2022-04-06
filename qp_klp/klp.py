@@ -46,14 +46,16 @@ def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
                 # not the best check but good enough for now.
                 if project in prep_file:
                     df = pd.read_csv(prep_file, sep='\t')
-                    # save a copy of sample_names column as 'old_sample_names'
-                    df['old_sample_names'] = df['sample_names']
+                    # save a copy of sample_name column as 'old_sample_name'
+                    df['old_sample_name'] = df['sample_name']
                     for i in df.index:
-                        sample_name = df.at[i, "sample_names"]
-                        # remove any leading zeroes if they exist
-                        sample_name = sample_name.lstrip('0')
-                        sample_name = sn_tid_map_by_proj[project][sample_name]
-                        df.at[i, "sample_names"] = sample_name
+                        sample_name = df.at[i, "sample_name"]
+                        if not sample_name.startswith('BLANK'):
+                            # remove any leading zeroes if they exist
+                            sample_name = sample_name.lstrip('0')
+                            sample_name = sn_tid_map_by_proj[project][
+                                sample_name]
+                            df.at[i, "sample_name"] = sample_name
                     # write modified results back out to file
                     df.to_csv(prep_file, sep="\t")
                     break
@@ -211,9 +213,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                     tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
                     # generate a map of sample_names to tube_ids for
                     # GenPrepFileJob.
-                    sn_tid_map_by_project[project_name] = {y[0]: x for x, y in
-                                                           tids.items()}
-                    tids = list(sn_tid_map_by_project[project_name].keys())
+                    sn_tid_map_by_project[project_name] = {
+                        y[0]: x.replace(f'{qiita_id}.', '') for x, y in
+                        tids.items()}
+                    tids = set(sn_tid_map_by_project[project_name].keys())
                     tube_id_diff = sheet_samples - tids
                     if not tube_id_diff:
                         continue
@@ -390,7 +393,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             gpf_job.run(callback=_update_job_step)
 
         map_sample_names_to_tube_ids(sn_tid_map_by_project,
-                                     join(pipeline.output_path, 'PrepFiles'))
+                                     join(pipeline.output_path,
+                                          'GenPrepFileJob', 'PrepFiles'))
 
         _update_current_message("Step 6 of 6: Copying results to archive")
 
