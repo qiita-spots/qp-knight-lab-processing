@@ -145,6 +145,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         sheet_df = sample_sheet_to_dataframe(sheet)
         errors = []
+        sn_tid_map_by_project = {}
         for project, _df in sheet_df.groupby('sample_project'):
             project_name = remove_qiita_id(project)
             qiita_id = project.replace(f'{project_name}_', '')
@@ -154,6 +155,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             qsamples = {
                 s.replace(f'{qiita_id}.', '') for s in qclient.get(qurl)}
             sample_name_diff = sheet_samples - qsamples
+            sn_tid_map_by_project[project_name] = None
 
             # check that tube_id is defined in the Qiita study. If so,
             # then any sample_names missing from the sample-sheet may simply
@@ -176,7 +178,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 error_tube_id = 'No tube_id column in Qiita.'
                 if tube_id_present:
                     tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
-                    tids = {tid[0] for _, tid in tids.items()}
+                    # generate a map of sample_names to tube_ids for
+                    # GenPrepFileJob.
+                    sn_tid_map_by_project[project_name] = {y[0]: x for x, y in
+                                                           tids.items()}
+                    tids = list(sn_tid_map_by_project[project_name].keys())
                     tube_id_diff = sheet_samples - tids
                     if not tube_id_diff:
                         continue
@@ -347,7 +353,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             config['seqpro_path'],
             project_list,
             config['modules_to_load'],
-            job_id)
+            job_id,
+            sn_tid_map_by_project)
 
         if not skip_exec:
             gpf_job.run(callback=_update_job_step)
