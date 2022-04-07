@@ -23,9 +23,42 @@ from metapool.sample_sheet import sample_sheet_to_dataframe
 from metapool.prep import remove_qiita_id
 from random import choices
 import pandas as pd
+import os
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
+
+
+def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
+    prep_files = []
+    for root, dirs, files in os.walk(output_dir):
+        for prep_file in files:
+            # sanity check the os.walk results
+            if prep_file.endswith('.tsv'):
+                # store the full path to the prep-file.
+                prep_files.append(join(root, prep_file))
+
+    for project in sn_tid_map_by_proj:
+        if sn_tid_map_by_proj[project] is not None:
+            # this project has tube-ids registered in Qiita.
+            # find the prep-file associated with this project.
+            for prep_file in prep_files:
+                # not the best check but good enough for now.
+                if project in prep_file:
+                    df = pd.read_csv(prep_file, sep='\t')
+                    # save a copy of sample_name column as 'old_sample_name'
+                    df['old_sample_name'] = df['sample_name']
+                    for i in df.index:
+                        sample_name = df.at[i, "sample_name"]
+                        if not sample_name.startswith('BLANK'):
+                            # remove any leading zeroes if they exist
+                            sample_name = sample_name.lstrip('0')
+                            sample_name = sn_tid_map_by_proj[project][
+                                sample_name]
+                            df.at[i, "sample_name"] = sample_name
+                    # write modified results back out to file
+                    df.to_csv(prep_file, index=False, sep="\t")
+                    break
 
 
 class FailedSamplesRecord:
@@ -145,6 +178,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         sheet_df = sample_sheet_to_dataframe(sheet)
         errors = []
+        sn_tid_map_by_project = {}
         for project, _df in sheet_df.groupby('sample_project'):
             project_name = remove_qiita_id(project)
             qiita_id = project.replace(f'{project_name}_', '')
@@ -154,6 +188,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             qsamples = {
                 s.replace(f'{qiita_id}.', '') for s in qclient.get(qurl)}
             sample_name_diff = sheet_samples - qsamples
+            sn_tid_map_by_project[project_name] = None
 
             # check that tube_id is defined in the Qiita study. If so,
             # then any sample_names missing from the sample-sheet may simply
@@ -176,7 +211,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 error_tube_id = 'No tube_id column in Qiita.'
                 if tube_id_present:
                     tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
-                    tids = {tid[0] for _, tid in tids.items()}
+                    # generate a map of sample_names to tube_ids for
+                    # GenPrepFileJob.
+                    sn_tid_map_by_project[project_name] = {
+                        y[0]: x.replace(f'{qiita_id}.', '') for x, y in
+                        tids.items()}
+                    tids = set(sn_tid_map_by_project[project_name].keys())
                     tube_id_diff = sheet_samples - tids
                     if not tube_id_diff:
                         continue
@@ -351,6 +391,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         if not skip_exec:
             gpf_job.run(callback=_update_job_step)
+
+        map_sample_names_to_tube_ids(sn_tid_map_by_project,
+                                     join(pipeline.output_path,
+                                          'GenPrepFileJob', 'PrepFiles'))
 
         _update_current_message("Step 6 of 6: Copying results to archive")
 
