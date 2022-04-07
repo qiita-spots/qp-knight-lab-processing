@@ -57,7 +57,7 @@ def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
                                 sample_name]
                             df.at[i, "sample_name"] = sample_name
                     # write modified results back out to file
-                    df.to_csv(prep_file, sep="\t")
+                    df.to_csv(prep_file, index=False, sep="\t")
                     break
 
 
