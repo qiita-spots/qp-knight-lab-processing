@@ -191,7 +191,8 @@ class KLPTests(PluginTestCase):
                     "nprocs": 16,
                     "queue": "qiita",
                     "wallclock_time_in_hours": 1,
-                    "mmi_db": "/databases/minimap2/human-phix-db.mmi",
+                    "filtering_databases": [("/databases/minimap2/human-phix"
+                                             "-db.mmi")],
                     "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
                                         "minimap2_2.18"],
                     "fastp_executable_path": "fastp",

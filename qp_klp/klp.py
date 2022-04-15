@@ -325,7 +325,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         qc_job = QCJob(raw_fastq_files_path,
                        pipeline.output_path,
                        sample_sheet_path,
-                       config['mmi_db'],
+                       config['filtering_databases'],
                        config['queue'],
                        config['nodes'],
                        config['nprocs'],
