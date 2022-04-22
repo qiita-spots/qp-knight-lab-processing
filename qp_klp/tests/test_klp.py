@@ -14,12 +14,15 @@ from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
-from qp_klp.klp import FailedSamplesRecord, sequence_processing_pipeline
+from qp_klp.klp import (FailedSamplesRecord, sequence_processing_pipeline,
+                        map_sample_names_to_tube_ids)
 from time import sleep
 from os import environ
 import logging
 import re
 from metapool import KLSampleSheet
+from shutil import copy
+
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(message)s',
@@ -503,6 +506,87 @@ class KLPTests(PluginTestCase):
                     'b</td></tr><tr><td>NYU_BMS_Melanoma_13059</td><td>EP07316'
                     '0B01</td><td>ConvertJob</td></tr></tbody></table>')
             self.assertEqual(obs3, exp3)
+
+    def test_map_sample_names_to_tube_ids(self):
+        sn_tid_map_by_proj = {'Sample_Project': {}}
+        sn_tid_map_by_proj['Sample_Project']['363192526'] = 'tube_id01'
+        sn_tid_map_by_proj['Sample_Project']['363192073'] = 'tube_id02'
+        sn_tid_map_by_proj['Sample_Project']['363193755'] = 'tube_id03'
+        sn_tid_map_by_proj['Sample_Project']['363192568'] = 'tube_id04'
+        sn_tid_map_by_proj['Sample_Project']['363193764'] = 'tube_id05'
+        sn_tid_map_by_proj['Sample_Project']['363197837'] = 'tube_id06'
+        sn_tid_map_by_proj['Sample_Project']['363193058'] = 'tube_id07'
+        sn_tid_map_by_proj['Sample_Project']['363192067'] = 'tube_id08'
+        sn_tid_map_by_proj['Sample_Project']['363192066'] = 'tube_id09'
+        sn_tid_map_by_proj['Sample_Project']['363193001'] = 'tube_id10'
+        sn_tid_map_by_proj['Sample_Project']['363197803'] = 'tube_id11'
+        sn_tid_map_by_proj['Sample_Project']['363192078'] = 'tube_id12'
+        sn_tid_map_by_proj['Sample_Project']['363192050'] = 'tube_id13'
+        sn_tid_map_by_proj['Sample_Project']['363197086'] = 'tube_id14'
+        sn_tid_map_by_proj['Sample_Project']['363197089'] = 'tube_id15'
+        sn_tid_map_by_proj['Sample_Project']['363193005'] = 'tube_id16'
+        sn_tid_map_by_proj['Sample_Project']['363193007'] = 'tube_id17'
+        sn_tid_map_by_proj['Sample_Project']['363197110'] = 'tube_id18'
+        sn_tid_map_by_proj['Sample_Project']['363192124'] = 'tube_id19'
+        sn_tid_map_by_proj['Sample_Project']['363193040'] = 'tube_id20'
+        sn_tid_map_by_proj['Sample_Project']['363192553'] = 'tube_id21'
+        sn_tid_map_by_proj['Sample_Project']['363197824'] = 'tube_id22'
+        sn_tid_map_by_proj['Sample_Project']['363192082'] = 'tube_id23'
+        sn_tid_map_by_proj['Sample_Project']['363192558'] = 'tube_id24'
+        sn_tid_map_by_proj['Sample_Project']['363192598'] = 'tube_id25'
+        sn_tid_map_by_proj['Sample_Project']['363192112'] = 'tube_id26'
+        sn_tid_map_by_proj['Sample_Project']['363197075'] = 'tube_id27'
+        sn_tid_map_by_proj['Sample_Project']['363192059'] = 'tube_id28'
+        sn_tid_map_by_proj['Sample_Project']['363192578'] = 'tube_id29'
+        sn_tid_map_by_proj['Sample_Project']['363192096'] = 'tube_id30'
+        sn_tid_map_by_proj['Sample_Project']['363192105'] = 'tube_id31'
+        sn_tid_map_by_proj['Sample_Project']['363193000'] = 'tube_id32'
+        sn_tid_map_by_proj['Sample_Project']['363193014'] = 'tube_id33'
+        sn_tid_map_by_proj['Sample_Project']['363193028'] = 'tube_id34'
+        sn_tid_map_by_proj['Sample_Project']['363192559'] = 'tube_id35'
+        sn_tid_map_by_proj['Sample_Project']['363193016'] = 'tube_id36'
+        sn_tid_map_by_proj['Sample_Project']['363193032'] = 'tube_id37'
+        sn_tid_map_by_proj['Sample_Project']['363191841'] = 'tube_id38'
+        sn_tid_map_by_proj['Sample_Project']['363192566'] = 'tube_id39'
+        sn_tid_map_by_proj['Sample_Project']['363193762'] = 'tube_id40'
+        sn_tid_map_by_proj['Sample_Project']['363192796'] = 'tube_id41'
+        sn_tid_map_by_proj['Sample_Project']['363192074'] = 'tube_id42'
+        sn_tid_map_by_proj['Sample_Project']['363193071'] = 'tube_id43'
+        sn_tid_map_by_proj['Sample_Project']['363192094'] = 'tube_id44'
+        sn_tid_map_by_proj['Sample_Project']['363193024'] = 'tube_id45'
+        sn_tid_map_by_proj['Sample_Project']['363197031'] = 'tube_id46'
+        sn_tid_map_by_proj['Sample_Project']['363193054'] = 'tube_id47'
+        sn_tid_map_by_proj['Sample_Project']['363192054'] = 'tube_id48'
+        sn_tid_map_by_proj['Sample_Project']['363192547'] = 'tube_id49'
+
+        output_dir = 'qp_klp/tests'
+
+        copy(join(output_dir, 'good-prep-file.txt'),
+             join(output_dir, 'Sample_Project.tsv'))
+
+        results = map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir)
+
+        for project in results:
+            for prep_file in results[project]:
+                df = results[project][prep_file]
+
+                # confirm .tsv file loaded everything as strings
+                types = dict(df.dtypes)
+                unique_types = set([types[k] for k in types])
+                bad_types_present = False
+                for type in unique_types:
+                    if type != object:
+                        bad_types_present = True
+                        break
+
+                self.assertFalse(bad_types_present)
+                foo = df['sample_name'].tolist()
+                foo = [x for x in foo if not x.startswith('tube_id')]
+
+                self.assertEquals(len(foo), 0)
+
+                # write modified results back out to file
+                df.to_csv(prep_file, index=False, sep="\t")
 
 
 if __name__ == "__main__":

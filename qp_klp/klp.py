@@ -38,14 +38,18 @@ def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
                 # store the full path to the prep-file.
                 prep_files.append(join(root, prep_file))
 
+    results = {}
+
     for project in sn_tid_map_by_proj:
         if sn_tid_map_by_proj[project] is not None:
             # this project has tube-ids registered in Qiita.
             # find the prep-file associated with this project.
+            results[project] = {}
             for prep_file in prep_files:
                 # not the best check but good enough for now.
                 if project in prep_file:
-                    df = pd.read_csv(prep_file, sep='\t')
+                    df = pd.read_csv(prep_file, sep='\t',
+                                     dtype=str, index_col=False)
                     # save a copy of sample_name column as 'old_sample_name'
                     df['old_sample_name'] = df['sample_name']
                     for i in df.index:
@@ -56,9 +60,10 @@ def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
                             sample_name = sn_tid_map_by_proj[project][
                                 sample_name]
                             df.at[i, "sample_name"] = sample_name
-                    # write modified results back out to file
-                    df.to_csv(prep_file, index=False, sep="\t")
+                    results[project][prep_file] = df
                     break
+
+    return results
 
 
 class FailedSamplesRecord:
@@ -393,9 +398,16 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         if not skip_exec:
             gpf_job.run(callback=_update_job_step)
 
-        map_sample_names_to_tube_ids(sn_tid_map_by_project,
-                                     join(pipeline.output_path,
-                                          'GenPrepFileJob', 'PrepFiles'))
+        results = map_sample_names_to_tube_ids(sn_tid_map_by_project,
+                                               join(pipeline.output_path,
+                                                    'GenPrepFileJob',
+                                                    'PrepFiles'))
+
+        for project in results:
+            for prep_file in results[project]:
+                df = results[project][prep_file]
+                # write modified results back out to file
+                df.to_csv(prep_file, index=False, sep="\t")
 
         _update_current_message("Step 6 of 6: Copying results to archive")
 
