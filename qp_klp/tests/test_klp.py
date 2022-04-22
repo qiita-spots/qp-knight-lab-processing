@@ -560,7 +560,6 @@ class KLPTests(PluginTestCase):
         sn_tid_map_by_proj['Sample_Project']['363192054'] = 'tube_id48'
         sn_tid_map_by_proj['Sample_Project']['363192547'] = 'tube_id49'
 
-        print(os.getcwd())
         output_dir = 'qp_klp/tests'
 
         copy(join(output_dir, 'good-prep-file.txt'),
