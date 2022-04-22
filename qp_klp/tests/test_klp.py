@@ -15,7 +15,8 @@ from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
-from qp_klp.klp import FailedSamplesRecord, sequence_processing_pipeline
+from qp_klp.klp import (FailedSamplesRecord, sequence_processing_pipeline,
+                        map_sample_names_to_tube_ids)
 from time import sleep
 from os import environ
 import logging
@@ -565,10 +566,7 @@ class KLPTests(PluginTestCase):
         copy(join(output_dir, 'good-prep-file.txt'),
              join(output_dir, 'Sample_Project.tsv'))
 
-        sheet = KLSampleSheet(f'{self.basedir}/good-sample-sheet.csv')
-
-        results = sheet.map_sample_names_to_tube_ids(sn_tid_map_by_proj,
-                                                     output_dir)
+        results = map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir)
 
         for project in results:
             for prep_file in results[project]:
