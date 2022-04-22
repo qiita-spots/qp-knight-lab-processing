@@ -5,6 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
+import os
 from unittest import main
 from os import remove, makedirs
 from shutil import rmtree
@@ -558,8 +559,8 @@ class KLPTests(PluginTestCase):
         sn_tid_map_by_proj['Sample_Project']['363192054'] = 'tube_id48'
         sn_tid_map_by_proj['Sample_Project']['363192547'] = 'tube_id49'
 
-        # output_dir = 'qp-knight-lab-processing/qp_klp/tests'
-        output_dir = '.'
+        print(os.getcwd())
+        output_dir = 'qp-knight-lab-processing/qp_klp/tests'
 
         copy(join(output_dir, 'good-prep-file.txt'),
              join(output_dir, 'Sample_Project.tsv'))
