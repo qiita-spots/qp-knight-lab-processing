@@ -20,9 +20,7 @@ from os import environ
 import logging
 import re
 from metapool import KLSampleSheet
-import pandas as pd
 from shutil import copy
-import os
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -508,38 +506,6 @@ class KLPTests(PluginTestCase):
                     '0B01</td><td>ConvertJob</td></tr></tbody></table>')
             self.assertEqual(obs3, exp3)
 
-    def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
-        prep_files = []
-        for root, dirs, files in os.walk(output_dir):
-            for prep_file in files:
-                # sanity check the os.walk results
-                if prep_file.endswith('.tsv'):
-                    # store the full path to the prep-file.
-                    prep_files.append(join(root, prep_file))
-
-        for project in sn_tid_map_by_proj:
-            if sn_tid_map_by_proj[project] is not None:
-                # this project has tube-ids registered in Qiita.
-                # find the prep-file associated with this project.
-                for prep_file in prep_files:
-                    # not the best check but good enough for now.
-                    if project in prep_file:
-                        df = pd.read_csv(prep_file, sep='\t', dtype=str)
-                        # save a copy of sample_name column as
-                        # 'old_sample_name'
-                        df['old_sample_name'] = df['sample_name']
-                        for i in df.index:
-                            sample_name = df.at[i, "sample_name"]
-                            if not sample_name.startswith('BLANK'):
-                                # remove any leading zeroes if they exist
-                                sample_name = sample_name.lstrip('0')
-                                sample_name = sn_tid_map_by_proj[project][
-                                    sample_name]
-                                df.at[i, "sample_name"] = sample_name
-                        # write modified results back out to file
-                        df.to_csv(prep_file, index=False, sep="\t")
-                        break
-
     def test_map_sample_names_to_tube_ids(self):
         sn_tid_map_by_proj = {'Sample_Project': {}}
         sn_tid_map_by_proj['Sample_Project']['363192526'] = 'tube_id01'
@@ -592,14 +558,16 @@ class KLPTests(PluginTestCase):
         sn_tid_map_by_proj['Sample_Project']['363192054'] = 'tube_id48'
         sn_tid_map_by_proj['Sample_Project']['363192547'] = 'tube_id49'
 
-        output_dir = 'qp-knight-lab-processing/qp_klp/tests'
+        # output_dir = 'qp-knight-lab-processing/qp_klp/tests'
         output_dir = '.'
 
         copy(join(output_dir, 'good-prep-file.txt'),
              join(output_dir, 'Sample_Project.tsv'))
 
-        results = self.map_sample_names_to_tube_ids(sn_tid_map_by_proj,
-                                                    output_dir)
+        sheet = KLSampleSheet(f'{self.basedir}/good-sample-sheet.csv')
+
+        results = sheet.map_sample_names_to_tube_ids(sn_tid_map_by_proj,
+                                                     output_dir)
 
         for project in results:
             for prep_file in results[project]:
