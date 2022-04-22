@@ -5,7 +5,6 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-import os
 from unittest import main
 from os import remove, makedirs
 from shutil import rmtree
