@@ -226,14 +226,29 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                     if not tube_id_diff:
                         continue
                     len_tube_id_overlap = len(tube_id_diff)
-                    tids_example = ', '.join(choices(list(tids), k=5))
+
+                    tids = list(tids)
+
+                    if len(tids) > 5:
+                        tids_example = ', '.join(choices(tids, k=5))
+                    else:
+                        tids_example = ', '.join(tids)
+
                     error_tube_id = (
                         f'tube_id in Qiita but {len_tube_id_overlap} missing '
                         f'samples. Some samples from tube_id: {tids_example}.')
 
                 len_overlap = len(sample_name_diff)
-                # selecting at random k=5 samples to minimize space in display
-                samples_example = ', '.join(choices(list(qsamples), k=5))
+
+                qsamples = list(qsamples)
+
+                if len(qsamples) > 5:
+                    # selecting at random k=5 samples to minimize space in
+                    # display
+                    samples_example = ', '.join(choices(qsamples), k=5)
+                else:
+                    samples_example = ', '.join(qsamples)
+
                 # selecting the up to 4 first samples to minimize space in
                 # display
                 missing = ', '.join(sorted(sample_name_diff)[:4])
