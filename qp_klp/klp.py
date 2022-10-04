@@ -245,7 +245,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 if len(qsamples) > 5:
                     # selecting at random k=5 samples to minimize space in
                     # display
-                    samples_example = ', '.join(choices(qsamples), k=5)
+                    samples_example = ', '.join(choices(qsamples, k=5))
                 else:
                     samples_example = ', '.join(qsamples)
 
