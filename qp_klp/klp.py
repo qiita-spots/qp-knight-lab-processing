@@ -11,8 +11,8 @@ from os import environ
 from os import makedirs
 from os.path import join
 from sequence_processing_pipeline.Amplicon import Amplicon
-from process_amplicon_job import process_amplicon_job
-from process_metagenomics_job import process_metagenomics_job
+from qp_klp.process_amplicon_job import process_amplicon_job
+from qp_klp.process_metagenomics_job import process_metagenomics_job
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
