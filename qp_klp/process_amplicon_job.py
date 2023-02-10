@@ -7,6 +7,7 @@ from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.AmpliconPipeline import AmpliconPipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.QCJob import QCJob
+import shutil
 
 
 def process_amplicon_job(mapping_file_path, lane_number, qclient,
@@ -71,39 +72,54 @@ def process_amplicon_job(mapping_file_path, lane_number, qclient,
     if not skip_exec:
         convert_job.run(callback=_update_job_step)
 
-    _update_current_message("Step 3 of 6: Adaptor & Host [optional] "
-                            "trimming")
-
-    raw_fastq_files_path = join(pipeline.output_path, 'ConvertJob')
-
-    config = pipeline.configuration['qc']
-    qc_job = QCJob(raw_fastq_files_path,
-                   pipeline.output_path,
-                   mapping_file_path,
-                   config['minimap_databases'],
-                   config['kraken2_database'],
-                   config['queue'],
-                   config['nodes'],
-                   config['nprocs'],
-                   config['wallclock_time_in_hours'],
-                   config['job_total_memory_limit'],
-                   config['fastp_executable_path'],
-                   config['minimap2_executable_path'],
-                   config['samtools_executable_path'],
-                   config['modules_to_load'],
-                   job_id,
-                   job_pool_size,
-                   config['job_max_array_length'])
-
-    if not skip_exec:
-        qc_job.run(callback=_update_job_step)
-
-    _update_current_message("Step 4 of 6: Generating FastQC & "
+    _update_current_message("Step 3 of 6: Generating FastQC & "
                             "MultiQC reports")
 
     config = pipeline.configuration['fastqc']
 
     raw_fastq_files_path = join(pipeline.output_path, 'ConvertJob')
+
+    # Fake QCJob output directory
+    my_projects = AmpliconPipeline.get_project_info()
+    my_projects = [x['project_name'] for x in my_projects]
+
+    # ConvertJob should have files organized by project:
+    # /$WKDIR/$QIITA_JOB_ID/ConvertJob/$PROJECTNAME_QIITAID/BLANK_XXXXX_2_1A_S97_L001_R1_001.fastq.gz
+
+    # outputs to QCJob should be at:
+    # /$WKDIR/$QIITA_JOB_ID/QCJob/$PROJECTNAME_QIITAID/fastp_reports_dir/json/BLANK_XXXXX_2_1A_S97_L001_R1_001.json
+    # /$WKDIR/$QIITA_JOB_ID/QCJob/$PROJECTNAME_QIITAID/fastp_reports_dir/html/BLANK_XXXXX_2_1A_S97_L001_R1_001.html
+    # /$WKDIR/$QIITA_JOB_ID/QCJob/$PROJECTNAME_QIITAID/filtered_sequences/BLANK_XXXXX_2_1A_S97_L001_R1_001.trimmed.fastq.gz
+    # /$WKDIR/$QIITA_JOB_ID/QCJob/$PROJECTNAME_QIITAID/filtered_sequences/BLANK_XXXXX_2_1A_S97_L001_R2_001.trimmed.fastq.gz'
+
+    # however, for our dummy sample-sheet, we will have just one project and
+    # the results will be in a project directory but just the one. We need to
+    # clone the one project directory n times, and name them after the n
+    # projects in the mapping file. This is for the convertjob directory.
+
+    # I think we may need to run QCJob on Amplicon after all, because why shouldn't
+    # we be able to run fastp only on the sole fastq file?
+
+    # we'll just want to copy into a faked QCJob folder that's 'amplicon' instead of
+    # filtered_sequences or trimmed_sequences
+
+    for some_project in my_projects:
+        # copy the files from ConvertJob output to QCJob 'processed' output
+        some_path = join(pipeline.output_path, 'QCJob', some_project,
+                         'amplicon')
+        makedirs(some_path)
+
+        # COPY here
+        src_folder = r"E:\demos\files\reports"
+        dst_folder = r"E:\demos\files\account"
+
+        # file names
+        src_file = src_folder + "\profit.txt"
+        dst_file = dst_folder + "\profit.txt"
+
+        shutil.copyfile(src_file, dst_file)
+        print('Copied')
+
     processed_fastq_files_path = join(pipeline.output_path, 'QCJob')
 
     fastqc_job = FastQCJob(pipeline.run_dir,
@@ -128,6 +144,7 @@ def process_amplicon_job(mapping_file_path, lane_number, qclient,
 
     project_list = fastqc_job.project_names
 
+    """
     _update_current_message("Step 5 of 6: Generating Prep "
                             "Information Files")
 
@@ -145,6 +162,7 @@ def process_amplicon_job(mapping_file_path, lane_number, qclient,
 
     if not skip_exec:
         gpf_job.run(callback=_update_job_step)
+    """
 
     ainfo = [
         ArtifactInfo('output', 'job-output-folder',
