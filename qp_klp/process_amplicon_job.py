@@ -109,16 +109,7 @@ def process_amplicon_job(mapping_file_path, lane_number, qclient,
                          'amplicon')
         makedirs(some_path)
 
-        # COPY here
-        src_folder = r"E:\demos\files\reports"
-        dst_folder = r"E:\demos\files\account"
-
-        # file names
-        src_file = src_folder + "\profit.txt"
-        dst_file = dst_folder + "\profit.txt"
-
-        shutil.copyfile(src_file, dst_file)
-        print('Copied')
+        #shutil.copyfile(src_file, dst_file)
 
     processed_fastq_files_path = join(pipeline.output_path, 'QCJob')
 

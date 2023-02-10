@@ -14,7 +14,7 @@ from metapool.sample_sheet import sample_sheet_to_dataframe
 from metapool.prep import remove_qiita_id
 from random import choices
 import pandas as pd
-from myutil import map_sample_names_to_tube_ids, FailedSamplesRecord
+from qp_klp.myutil import map_sample_names_to_tube_ids, FailedSamplesRecord
 
 
 def process_metagenomics_job(sample_sheet_path, lane_number, qclient,
