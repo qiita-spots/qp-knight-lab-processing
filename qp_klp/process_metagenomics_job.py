@@ -219,7 +219,8 @@ def process_metagenomics_job(sample_sheet_path, lane_number, qclient,
                            config['job_total_memory_limit'],
                            job_pool_size,
                            config['multiqc_config_file_path'],
-                           config['job_max_array_length'])
+                           config['job_max_array_length'],
+                           False)
 
     if not skip_exec:
         fastqc_job.run(callback=_update_job_step)
