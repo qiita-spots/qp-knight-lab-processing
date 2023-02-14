@@ -2,6 +2,7 @@ from os import walk
 from os.path import join
 import pandas as pd
 
+
 def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
     prep_files = []
     for root, dirs, files in walk(output_dir):

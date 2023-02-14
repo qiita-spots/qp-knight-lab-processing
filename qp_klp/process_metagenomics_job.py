@@ -14,14 +14,14 @@ from metapool.sample_sheet import sample_sheet_to_dataframe
 from metapool.prep import remove_qiita_id
 from random import choices
 import pandas as pd
-from qp_klp.myutil import map_sample_names_to_tube_ids, FailedSamplesRecord
+from qp_klp.klp_util import map_sample_names_to_tube_ids, FailedSamplesRecord
 
 
-def process_metagenomics_job(sample_sheet_path, lane_number, qclient,
-                             run_identifier, out_dir, job_id,
-                             _update_current_message, skip_exec,
-                             _update_job_step, job_pool_size,
-                             final_results_path, success, msg, config_fp):
+def process_metagenomics(sample_sheet_path, lane_number, qclient,
+                         run_identifier, out_dir, job_id,
+                         _update_current_message, skip_exec,
+                         _update_job_step, job_pool_size,
+                         final_results_path, success, msg, config_fp):
     # open new file as a KLSampleSheet
     # use KLSampleSheet functionality to add/overwrite lane number.
     sheet = KLSampleSheet(sample_sheet_path)

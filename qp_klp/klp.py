@@ -10,9 +10,9 @@ from inspect import stack
 from os import environ
 from os import makedirs
 from os.path import join
-from sequence_processing_pipeline.Amplicon import Amplicon
-from qp_klp.process_amplicon_job import process_amplicon_job
-from qp_klp.process_metagenomics_job import process_metagenomics_job
+from qp_klp.process_amplicon_job import process_amplicon
+from qp_klp.process_metagenomics_job import process_metagenomics
+from sequence_processing_pipeline import Pipeline
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
@@ -73,9 +73,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     _update_current_message("Step 1 of 6: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} == set(user_input_file):
-        # Pipeline now takes the path to a sample-sheet as a parameter.
-        # We must now save the sample-sheet to disk before creating a
-        # Pipeline object.
         outpath = partial(join, out_dir)
         final_results_path = outpath('final_results')
         makedirs(final_results_path, exist_ok=True)
@@ -85,9 +82,21 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         with open(uif_path, 'w') as f:
             f.write(user_input_file['body'])
 
-        foo = Amplicon()
-        if foo.is_mapping_file(uif_path):
-            success, ainfo, msg = process_amplicon_job(uif_path,
+        if Pipeline.is_mapping_file(uif_path):
+            success, ainfo, msg = process_amplicon(uif_path,
+                                                   qclient,
+                                                   run_identifier,
+                                                   out_dir,
+                                                   job_id,
+                                                   _update_current_message,
+                                                   skip_exec,
+                                                   _update_job_step,
+                                                   job_pool_size,
+                                                   final_results_path,
+                                                   success, msg,
+                                                   CONFIG_FP)
+        else:
+            success, ainfo, msg = process_metagenomics(uif_path,
                                                        lane_number,
                                                        qclient,
                                                        run_identifier,
@@ -100,20 +109,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                                        final_results_path,
                                                        success, msg,
                                                        CONFIG_FP)
-        else:
-            success, ainfo, msg = process_metagenomics_job(uif_path,
-                                                           lane_number,
-                                                           qclient,
-                                                           run_identifier,
-                                                           out_dir,
-                                                           job_id,
-                                                           _update_current_message,
-                                                           skip_exec,
-                                                           _update_job_step,
-                                                           job_pool_size,
-                                                           final_results_path,
-                                                           success, msg,
-                                                           CONFIG_FP)
     else:
         success = False
         msg = "This doesn't appear to be a valid sample sheet; please review."
