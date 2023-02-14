@@ -98,7 +98,8 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
     # Create a Pipeline object
     try:
         pipeline = Pipeline(config_fp, run_identifier, sample_sheet_path,
-                            out_dir, job_id)
+                            None, out_dir, job_id)
+
     except PipelineError as e:
         # Pipeline is the object that finds the input fp, based on
         # a search directory set in configuration.json and a run_id.
