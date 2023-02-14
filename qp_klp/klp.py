@@ -12,7 +12,7 @@ from os import makedirs
 from os.path import join
 from qp_klp.process_amplicon_job import process_amplicon
 from qp_klp.process_metagenomics_job import process_metagenomics
-from sequence_processing_pipeline import Pipeline
+from sequence_processing_pipeline.Pipeline import Pipeline
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
