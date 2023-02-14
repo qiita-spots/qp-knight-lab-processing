@@ -304,8 +304,19 @@ class KLPTests(PluginTestCase):
 
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        makedirs(join(qcj_output_fp, 'filtered_sequences'))
+        filtered_fastq_dir = join(qcj_output_fp, 'filtered_sequences')
+        makedirs(filtered_fastq_dir)
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
+
+        file_list2 = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1.trimmed.fastq.gz",
+                      "CDPH-SAL_Salmonella_Typhi_MDL-143_R2.trimmed.fastq.gz",
+                      "CDPH-SAL_Salmonella_Typhi_MDL-144_R1.trimmed.fastq.gz",
+                      "CDPH-SAL_Salmonella_Typhi_MDL-144_R2.trimmed.fastq.gz"]
+
+        for filtered_fastq_file in file_list2:
+            fp = join(filtered_fastq_dir, filtered_fastq_file)
+            with open(fp, 'w') as f:
+                f.write("Hello World\n")
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
