@@ -12,6 +12,7 @@ from os import environ
 from os import makedirs
 from os.path import join
 from qp_klp.process_metagenomics_job import process_metagenomics
+from qp_klp.process_amplicon_job import process_amplicon
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
 from qp_klp.klp_util import StatusUpdate
@@ -55,7 +56,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     # accustomed to. E.g. "Step 1 of 6: Setting up pipeline"
     status_line = StatusUpdate(qclient, job_id)
 
-    status_line.update_current_message("Step 1 of 6: Setting up pipeline")
+    status_line.update_current_message("Step 1: Setting up pipeline")
 
     if {'body', 'content_type', 'filename'} != set(user_input_file):
         return False, None, ("This doesn't appear to be a valid sample sheet "
@@ -71,7 +72,14 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         f.write(user_input_file['body'])
 
     if Pipeline.is_mapping_file(uif_path):
-        return False, None, "Not Implemented"
+        try:
+            ainfo = process_amplicon(uif_path, qclient, run_identifier,
+                                     out_dir, job_id, skip_exec,
+                                     job_pool_size, final_results_path,
+                                     CONFIG_FP, status_line)
+        except PipelineError as e:
+            return False, None, str(e)
+
     else:
         try:
             ainfo = process_metagenomics(uif_path, lane_number, qclient,
