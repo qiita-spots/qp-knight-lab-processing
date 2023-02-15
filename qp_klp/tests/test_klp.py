@@ -12,14 +12,14 @@ from json import dumps
 from tempfile import mkdtemp
 from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
-from qiita_client import ArtifactInfo
+# from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
 from qp_klp.klp_util import FailedSamplesRecord, map_sample_names_to_tube_ids
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 from os import environ
 import logging
-import re
+# import re
 from metapool import KLSampleSheet
 from shutil import copy
 
@@ -321,7 +321,7 @@ class KLPTests(PluginTestCase):
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
                               " or mapping file; please review.")
 
-    def dontest_sequence_processing_pipeline_success(self):
+    def test_sequence_processing_pipeline_success(self):
         params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
                   "sample_sheet": "NA",
                   "lane_number": 1}
@@ -354,13 +354,22 @@ class KLPTests(PluginTestCase):
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
+
+        print("SUCCESS VALUE: %s" % success)
+        print("MSG: '%s'" % msg)
+        print("AINFO:\n\t%s\n\t%s\n\t%s\n\t%s\n" % (str(ainfo.output_name),
+                                                    str(ainfo.artifact_type),
+                                                    str(ainfo.files),
+                                                    str(ainfo.archive)))
+        self.assertTrue(False)
+    '''
+        # returns True instead of false - why?
         self.assertFalse(success)
         self.assertTrue(
             msg.startswith("Feist_1 has 1 missing samples (i.e. "
                            "SKB8.640193XX). Some samples from Qiita:"))
         self.assertTrue(
            msg.endswith(". No tube_id column in Qiita."))
-
         # test success
         # both valid run_identifier and sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
@@ -428,7 +437,7 @@ class KLPTests(PluginTestCase):
             # replace randomly-generated tmp directory with fixed text.
             cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
 
-            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$',
+            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$', # noqa
                            r' PREFIX/support_files/test_data/uploads/11661',
                            x) for x in cmds]
 
@@ -449,6 +458,7 @@ class KLPTests(PluginTestCase):
                    'description/11661" target="_blank">https://localhost:21174'
                    '/study/description/11661</a></td></tr></tbody></table>')
             self.assertEqual(obs, exp)
+    '''
 
     def test_failed_samples_recorder(self):
         # since unittests can't run third-party code like bcl2fastq and
