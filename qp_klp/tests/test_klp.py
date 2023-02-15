@@ -321,7 +321,7 @@ class KLPTests(PluginTestCase):
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
                               " or mapping file; please review.")
 
-    def do_not_test_sequence_processing_pipeline_success(self):
+    def dontest_sequence_processing_pipeline_success(self):
         params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
                   "sample_sheet": "NA",
                   "lane_number": 1}
