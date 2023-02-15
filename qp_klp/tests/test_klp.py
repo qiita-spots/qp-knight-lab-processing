@@ -366,11 +366,15 @@ class KLPTests(PluginTestCase):
         }
 
         # add files to QCJob/filtered...
-        new_files = ['file1_R1_file1.trimmed.fastq.gz', 'file1_R2_file1.trimmed.fastq.gz',
-                     'file1_I1_file1.trimmed.fastq.gz', 'file1_I2_file1.trimmed.fastq.gz',
-                     'file2_R1_file2.trimmed.fastq.gz', 'file2_R2_file2.trimmed.fastq.gz',
-                     'file2_I1_file2.trimmed.fastq.gz', 'file2_I2_file2.trimmed.fastq.gz']
-        
+        new_files = ['file1_R1_file1.trimmed.fastq.gz',
+                     'file1_R2_file1.trimmed.fastq.gz',
+                     'file1_I1_file1.trimmed.fastq.gz',
+                     'file1_I2_file1.trimmed.fastq.gz',
+                     'file2_R1_file2.trimmed.fastq.gz',
+                     'file2_R2_file2.trimmed.fastq.gz',
+                     'file2_I1_file2.trimmed.fastq.gz',
+                     'file2_I2_file2.trimmed.fastq.gz']
+
         for new_file in new_files:
             foo = join(qcj_filtered_sequences, new_file)
             with open(foo, 'w') as nf:
