@@ -14,8 +14,8 @@ from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
-from qp_klp.klp import (FailedSamplesRecord, sequence_processing_pipeline,
-                        map_sample_names_to_tube_ids)
+from qp_klp.klp_util import FailedSamplesRecord, map_sample_names_to_tube_ids
+from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 from os import environ
 import logging
@@ -319,7 +319,7 @@ class KLPTests(PluginTestCase):
         self.assertFalse(success)
 
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
-                              "; please review.")
+                              " or mapping file; please review.")
 
         # test error due to missing sample_names
 
