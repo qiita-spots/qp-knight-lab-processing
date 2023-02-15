@@ -86,7 +86,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # return success, ainfo, and the last status message.
         return True, ainfo, status_line.msg
 
-    except PipelineError as e:
+    except (PipelineError, ValueError) as e:
         # capture all expected errors (no stack-frames please!) and return
         # failure and the error message properly formatted.
         return False, None, str(e)

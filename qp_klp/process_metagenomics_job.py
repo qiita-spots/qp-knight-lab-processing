@@ -90,7 +90,7 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                 f'{error_tube_id}')
 
     if errors:
-        return False, None, '\n'.join(errors)
+        raise PipelineError('\n'.join(errors))
 
     with open(sample_sheet_path, 'w') as f:
         sheet.write(f)
@@ -105,7 +105,7 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         # a search directory set in configuration.json and a run_id.
         if str(e).endswith("could not be found"):
             msg = f"A path for {run_identifier} could not be found."
-            return False, None, msg
+            raise PipelineError(msg)
         elif str(e).startswith("Sample-sheet has the following errors:"):
             status_line.update_current_message(str(e))
             raise ValueError(str(e))

@@ -12,14 +12,14 @@ from json import dumps
 from tempfile import mkdtemp
 from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
-# from qiita_client import ArtifactInfo
+from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
 from qp_klp.klp_util import FailedSamplesRecord, map_sample_names_to_tube_ids
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 from os import environ
 import logging
-# import re
+import re
 from metapool import KLSampleSheet
 from shutil import copy
 
@@ -242,7 +242,7 @@ class KLPTests(PluginTestCase):
                 else:
                     remove(fp)
 
-    def test_sequence_processing_pipeline_failure(self):
+    def test_sequence_processing_pipeline(self):
         # not a valid run_identifier folder and sample_sheet
         params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
                   "sample_sheet": "NA",
@@ -259,7 +259,7 @@ class KLPTests(PluginTestCase):
         job_id = self.qclient.post("/apitest/processing_job/",
                                    data=data)["job"]
 
-        success, ainfo, msg = sequence_processing_pipeline(
+        success, _, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
         self.assertFalse(success)
@@ -304,7 +304,8 @@ class KLPTests(PluginTestCase):
 
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        makedirs(join(qcj_output_fp, 'filtered_sequences'))
+        qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
+        makedirs(qcj_filtered_sequences)
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         # valid run_identifier folder but not sample_sheet
@@ -313,29 +314,13 @@ class KLPTests(PluginTestCase):
                   "sample_sheet": "NA",
                   "lane_number": 1}
 
-        success, ainfo, msg = sequence_processing_pipeline(
+        success, _, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
         self.assertFalse(success)
 
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
                               " or mapping file; please review.")
-
-    def test_sequence_processing_pipeline_success(self):
-        params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
-                  "sample_sheet": "NA",
-                  "lane_number": 1}
-
-        data = {
-            "user": "demo@microbio.me",
-            "command": dumps(["qp-klp", __version__,
-                              "Sequence Processing Pipeline"]),
-            "status": "running",
-            "parameters": dumps(params),
-        }
-
-        job_id = self.qclient.post("/apitest/processing_job/",
-                                   data=data)["job"]
 
         # test error due to missing sample_names
 
@@ -351,25 +336,16 @@ class KLPTests(PluginTestCase):
             "lane_number": 2
         }
 
-        success, ainfo, msg = sequence_processing_pipeline(
-            self.qclient, job_id, params, self.out_dir
-        )
+        success, _, msg = sequence_processing_pipeline(
+            self.qclient, job_id, params, self.out_dir)
 
-        print("SUCCESS VALUE: %s" % success)
-        print("MSG: '%s'" % msg)
-        print("AINFO:\n\t%s\n\t%s\n\t%s\n\t%s\n" % (str(ainfo.output_name),
-                                                    str(ainfo.artifact_type),
-                                                    str(ainfo.files),
-                                                    str(ainfo.archive)))
-        self.assertTrue(False)
-    '''
-        # returns True instead of false - why?
         self.assertFalse(success)
         self.assertTrue(
             msg.startswith("Feist_1 has 1 missing samples (i.e. "
                            "SKB8.640193XX). Some samples from Qiita:"))
         self.assertTrue(
            msg.endswith(". No tube_id column in Qiita."))
+
         # test success
         # both valid run_identifier and sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
@@ -389,14 +365,21 @@ class KLPTests(PluginTestCase):
             "lane_number": 2
         }
 
+        # add files to QCJob/filtered...
+        new_files = ['file1_R1_file1.trimmed.fastq.gz', 'file1_R2_file1.trimmed.fastq.gz',
+                     'file1_I1_file1.trimmed.fastq.gz', 'file1_I2_file1.trimmed.fastq.gz',
+                     'file2_R1_file2.trimmed.fastq.gz', 'file2_R2_file2.trimmed.fastq.gz',
+                     'file2_I1_file2.trimmed.fastq.gz', 'file2_I2_file2.trimmed.fastq.gz']
+        
+        for new_file in new_files:
+            foo = join(qcj_filtered_sequences, new_file)
+            with open(foo, 'w') as nf:
+                nf.write("Hello World!\n")
+
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
-
-        # AssertionError: 'There are no fastq files for FastQCJob to process in
-        # /tmp/tmpcw4ft6cp/QCJob.' is not None
-        # this code needs to disable that check or add files - one of the two.
-        self.assertIsNone(msg)
+        self.assertEquals(msg, 'Main Pipeline Finished, processing results')
         self.assertTrue(success)
 
         exp = [ArtifactInfo("output",
@@ -458,7 +441,6 @@ class KLPTests(PluginTestCase):
                    'description/11661" target="_blank">https://localhost:21174'
                    '/study/description/11661</a></td></tr></tbody></table>')
             self.assertEqual(obs, exp)
-    '''
 
     def test_failed_samples_recorder(self):
         # since unittests can't run third-party code like bcl2fastq and
