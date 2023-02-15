@@ -15,9 +15,11 @@ from qp_klp.process_metagenomics_job import process_metagenomics
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
 from qp_klp.klp_util import StatusUpdate
+from traceback import print_exc
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
+LOG_FP = environ["QP_KLP_LOG_FP"]
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -88,5 +90,18 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
     except (PipelineError, ValueError) as e:
         # capture all expected errors (no stack-frames please!) and return
-        # failure and the error message properly formatted.
+        # failure and the error message properly formatted for the user.
+
+        # print job_id, run_identifier, and full stacktrace to logfile
+        # for developers.
+        with open(LOG_FP, 'a') as f:
+            # highlight stacktrace with a single blank line before and
+            # after. Explicitly mark the end of the stacktrace and separate
+            # from other stacktraces with two blank lines.
+            f.write(f"JOB ID: {job_id}\n")
+            f.write(f"RUN ID: {run_identifier}\n\n")
+            f.write(print_exc() + '\n\n')
+            f.write("END STACKTRACE\n\n\n")
+
+        # return proper error status to plugin manager.
         return False, None, str(e)
