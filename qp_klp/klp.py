@@ -15,11 +15,9 @@ from qp_klp.process_metagenomics_job import process_metagenomics
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
 from qp_klp.klp_util import StatusUpdate
-from traceback import print_exc
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
-LOG_FP = environ["QP_KLP_LOG_FP"]
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -57,51 +55,35 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     # accustomed to. E.g. "Step 1 of 6: Setting up pipeline"
     status_line = StatusUpdate(qclient, job_id)
 
-    try:
-        status_line.update_current_message("Step 1 of 6: Setting up pipeline")
+    status_line.update_current_message("Step 1 of 6: Setting up pipeline")
 
-        if {'body', 'content_type', 'filename'} == set(user_input_file):
-            outpath = partial(join, out_dir)
-            final_results_path = outpath('final_results')
-            makedirs(final_results_path, exist_ok=True)
-            # replace any whitespace in the filename with underscores
-            uif_path = outpath(user_input_file['filename'].replace(' ', '_'))
-            # save raw data to file
-            with open(uif_path, 'w') as f:
-                f.write(user_input_file['body'])
+    if {'body', 'content_type', 'filename'} != set(user_input_file):
+        return False, None, ("This doesn't appear to be a valid sample sheet "
+                             "or mapping file; please review.")
 
-            if Pipeline.is_mapping_file(uif_path):
-                raise PipelineError("Not implemented")
-            else:
-                ainfo = process_metagenomics(uif_path, lane_number, qclient,
-                                             run_identifier, out_dir, job_id,
-                                             skip_exec, job_pool_size,
-                                             final_results_path, CONFIG_FP,
-                                             status_line)
-        else:
-            raise PipelineError("This doesn't appear to be a valid sample "
-                                "sheet or mapping file; please review.")
+    outpath = partial(join, out_dir)
+    final_results_path = outpath('final_results')
+    makedirs(final_results_path, exist_ok=True)
+    # replace any whitespace in the filename with underscores
+    uif_path = outpath(user_input_file['filename'].replace(' ', '_'))
+    # save raw data to file
+    with open(uif_path, 'w') as f:
+        f.write(user_input_file['body'])
 
-        status_line.update_current_message("Main Pipeline Finished, processing"
-                                           " results")
-
-        # return success, ainfo, and the last status message.
-        return True, ainfo, status_line.msg
-
-    except (PipelineError, ValueError) as e:
-        # capture all expected errors (no stack-frames please!) and return
-        # failure and the error message properly formatted for the user.
-
-        # print job_id, run_identifier, and full stacktrace to logfile
-        # for developers.
-        with open(LOG_FP, 'a') as f:
-            # highlight stacktrace with a single blank line before and
-            # after. Explicitly mark the end of the stacktrace and separate
-            # from other stacktraces with two blank lines.
-            f.write(f"JOB ID: {job_id}\n")
-            f.write(f"RUN ID: {run_identifier}\n\n")
-            f.write(print_exc() + '\n\n')
-            f.write("END STACKTRACE\n\n\n")
-
-        # return proper error status to plugin manager.
-        return False, None, str(e)
+    if Pipeline.is_mapping_file(uif_path):
+        return False, None, "Not Implemented"
+    else:
+        try:
+            ainfo = process_metagenomics(uif_path, lane_number, qclient,
+                                         run_identifier, out_dir, job_id,
+                                         skip_exec, job_pool_size,
+                                         final_results_path, CONFIG_FP,
+                                         status_line)
+        except PipelineError as e:
+            return False, None, str(e)
+                
+    status_line.update_current_message("Main Pipeline Finished, processing "
+                                       "results")
+    
+    # return success, ainfo, and the last status message.
+    return True, ainfo, status_line.msg
