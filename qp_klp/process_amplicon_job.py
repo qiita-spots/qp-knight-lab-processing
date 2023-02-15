@@ -1,12 +1,11 @@
-# from metapool.prep import remove_qiita_id
-# from metapool.sample_sheet import sample_sheet_to_dataframe
+from metapool.prep import remove_qiita_id
 from os import listdir, makedirs
 # from os import walk
 # from os.path import basename, join, exists
 from os.path import exists, join, isfile, basename
 from qiita_client import ArtifactInfo
 # from qp_klp.klp_util import map_sample_names_to_tube_ids
-# from random import choices
+from random import choices
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 # from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
@@ -41,7 +40,86 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         else:
             raise e
 
-    # perform sample-id validation against Qiita here
+    # perform sample-id validation against Qiita
+
+    # extract a list of sample-names organized by project-name from
+    # the mapping file.
+    sample_project_map = {pn: _df.sample_name.values for pn, _df in
+                          pipeline.mapping_file.groupby('project_name')}
+
+    errors = []
+    sn_tid_map_by_project = {}
+
+    for project, _df in sample_project_map:
+        # remove the qiita-id prepending the project_name
+        project_name = remove_qiita_id(project)
+        # use the result to extract the qiita-id as well
+        qiita_id = project.replace(f'{project_name}_', '')
+
+        # assume the BLANKS in the mapping-file are not prepended w/qiita-id
+        # or some other value. Confirmed w/wet-lab.
+        mf_samples = {s for s in _df['sample_name'] if
+                      not s.startswith('BLANK')}
+
+        # collect needed info from Qiita here.
+        url = f'/api/v1/study/{qiita_id}/samples'
+        qsamples = qclient.get(url)
+        qsamples = {x.replace(f'{qiita_id}.', '') for x in qsamples}
+        tube_id_present = 'tube_id' in qclient.get(f'{url}/info')['categories']
+        if tube_id_present:
+            tids = qclient.get(f'{url}/categories=tube_id')['samples']
+
+        # compare the list of samples from the mapping file against the
+        # list of samples from Qiita.
+        sample_name_diff = mf_samples - qsamples
+        sn_tid_map_by_project[project_name] = None
+
+        if sample_name_diff:
+            # if tube_id is defined in the Qiita study, then any sample_names
+            # missing from the mapping-file may simply have a leading zero
+            # present.
+            if tube_id_present:
+                # strip any leading zeroes from the sample-ids. Note that
+                # if a sample-id has more than one leading zero, all of
+                # them will be removed.
+                mf_samples = {x.lstrip('0') for x in mf_samples}
+                # once any leading zeros have been removed, recalculate
+                # sample_name_diff before continuing processing.
+                sample_name_diff = mf_samples - qsamples
+
+        if sample_name_diff:
+            # before we report as an error, check tube_id
+            if tube_id_present:
+                # generate a map of sample_names to tube_ids for
+                # GenPrepFileJob.
+                sn_tid_map_by_project[project_name] = {
+                    y[0]: x.replace(f'{qiita_id}.', '') for x, y in
+                    tids.items()}
+                tids = set(sn_tid_map_by_project[project_name].keys())
+                tube_id_diff = mf_samples - tids
+                if not tube_id_diff:
+                    continue
+                len_tube_id_overlap = len(tube_id_diff)
+                tids_example = ', '.join(choices(list(tids), k=5))
+                error_tube_id = (
+                    f'tube_id in Qiita but {len_tube_id_overlap} missing '
+                    f'samples. Some samples from tube_id: {tids_example}.')
+            else:
+                error_tube_id = 'No tube_id column in Qiita.'
+
+            len_overlap = len(sample_name_diff)
+            # selecting at random k=5 samples to minimize space in display
+            samples_example = ', '.join(choices(list(qsamples), k=5))
+            # selecting the up to 4 first samples to minimize space in
+            # display
+            missing = ', '.join(sorted(sample_name_diff)[:4])
+            errors.append(
+                f'{project} has {len_overlap} missing samples (i.e. '
+                f'{missing}). Some samples from Qiita: {samples_example}. '
+                f'{error_tube_id}')
+
+    if errors:
+        raise PipelineError('\n'.join(errors))
 
     sifs = pipeline.generate_sample_information_files()
 
