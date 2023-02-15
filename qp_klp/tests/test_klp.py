@@ -264,7 +264,7 @@ class KLPTests(PluginTestCase):
         )
         self.assertFalse(success)
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
-                              "; please review.")
+                              " or mapping file; please review.")
 
         test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
         makedirs(test_dir)
