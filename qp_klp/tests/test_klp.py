@@ -14,8 +14,8 @@ from os.path import exists, isdir, join, realpath, dirname
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
-from qp_klp.klp import (FailedSamplesRecord, sequence_processing_pipeline,
-                        map_sample_names_to_tube_ids)
+from qp_klp.klp_util import FailedSamplesRecord, map_sample_names_to_tube_ids
+from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 from os import environ
 import logging
@@ -259,12 +259,12 @@ class KLPTests(PluginTestCase):
         job_id = self.qclient.post("/apitest/processing_job/",
                                    data=data)["job"]
 
-        success, ainfo, msg = sequence_processing_pipeline(
+        success, _, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
         self.assertFalse(success)
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
-                              "; please review.")
+                              " or mapping file; please review.")
 
         test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
         makedirs(test_dir)
@@ -304,7 +304,8 @@ class KLPTests(PluginTestCase):
 
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        makedirs(join(qcj_output_fp, 'filtered_sequences'))
+        qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
+        makedirs(qcj_filtered_sequences)
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         # valid run_identifier folder but not sample_sheet
@@ -313,13 +314,13 @@ class KLPTests(PluginTestCase):
                   "sample_sheet": "NA",
                   "lane_number": 1}
 
-        success, ainfo, msg = sequence_processing_pipeline(
+        success, _, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
         self.assertFalse(success)
 
         self.assertEqual(msg, "This doesn't appear to be a valid sample sheet"
-                              "; please review.")
+                              " or mapping file; please review.")
 
         # test error due to missing sample_names
 
@@ -335,9 +336,9 @@ class KLPTests(PluginTestCase):
             "lane_number": 2
         }
 
-        success, ainfo, msg = sequence_processing_pipeline(
-            self.qclient, job_id, params, self.out_dir
-        )
+        success, _, msg = sequence_processing_pipeline(
+            self.qclient, job_id, params, self.out_dir)
+
         self.assertFalse(success)
         self.assertTrue(
             msg.startswith("Feist_1 has 1 missing samples (i.e. "
@@ -364,10 +365,25 @@ class KLPTests(PluginTestCase):
             "lane_number": 2
         }
 
+        # add files to QCJob/filtered...
+        new_files = ['file1_R1_file1.trimmed.fastq.gz',
+                     'file1_R2_file1.trimmed.fastq.gz',
+                     'file1_I1_file1.trimmed.fastq.gz',
+                     'file1_I2_file1.trimmed.fastq.gz',
+                     'file2_R1_file2.trimmed.fastq.gz',
+                     'file2_R2_file2.trimmed.fastq.gz',
+                     'file2_I1_file2.trimmed.fastq.gz',
+                     'file2_I2_file2.trimmed.fastq.gz']
+
+        for new_file in new_files:
+            foo = join(qcj_filtered_sequences, new_file)
+            with open(foo, 'w') as nf:
+                nf.write("Hello World!\n")
+
         success, ainfo, msg = sequence_processing_pipeline(
             self.qclient, job_id, params, self.out_dir
         )
-        self.assertIsNone(msg)
+        self.assertEquals(msg, 'Main Pipeline Finished, processing results')
         self.assertTrue(success)
 
         exp = [ArtifactInfo("output",
@@ -408,7 +424,7 @@ class KLPTests(PluginTestCase):
             # replace randomly-generated tmp directory with fixed text.
             cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
 
-            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$',
+            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$', # noqa
                            r' PREFIX/support_files/test_data/uploads/11661',
                            x) for x in cmds]
 
