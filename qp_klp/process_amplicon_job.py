@@ -41,24 +41,23 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
             raise e
 
     # perform sample-id validation against Qiita
+    projects = pipeline.get_project_info()
 
-    # extract a list of sample-names organized by project-name from
-    # the mapping file.
-    sample_project_map = {pn: _df.sample_name.values for pn, _df in
-                          pipeline.mapping_file.groupby('project_name')}
 
     errors = []
     sn_tid_map_by_project = {}
 
-    for project, _df in sample_project_map:
+    for project in projects:
         # remove the qiita-id prepending the project_name
-        project_name = remove_qiita_id(project)
-        # use the result to extract the qiita-id as well
-        qiita_id = project.replace(f'{project_name}_', '')
+        project_name = remove_qiita_id(project['project_name'])
+        qiita_id = project['qiita_id']
+
+        df = pipeline.mapping_file
+        df = df.loc[df['project_name'] == project_name]
 
         # assume the BLANKS in the mapping-file are not prepended w/qiita-id
         # or some other value. Confirmed w/wet-lab.
-        mf_samples = {s for s in _df['sample_name'] if
+        mf_samples = {s for s in df['sample_name'] if
                       not s.startswith('BLANK')}
 
         # collect needed info from Qiita here.
@@ -114,7 +113,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
             # display
             missing = ', '.join(sorted(sample_name_diff)[:4])
             errors.append(
-                f'{project} has {len_overlap} missing samples (i.e. '
+                f'{project_name} has {len_overlap} missing samples (i.e. '
                 f'{missing}). Some samples from Qiita: {samples_example}. '
                 f'{error_tube_id}')
 

@@ -169,7 +169,8 @@ class KLPTests(PluginTestCase):
                     "younger_than": 90,
                     "older_than": 24,
                     "archive_path": '/not/out_dir',
-                    "search_paths": [self.search_dir]
+                    "search_paths": [self.search_dir],
+                    "amplicon_search_paths": [self.search_dir]
                 },
                 "bcl2fastq": {
                     "nodes": 1,
@@ -376,8 +377,8 @@ class KLPTests(PluginTestCase):
                      'file2_I2_file2.trimmed.fastq.gz']
 
         for new_file in new_files:
-            foo = join(qcj_filtered_sequences, new_file)
-            with open(foo, 'w') as nf:
+            nfp = join(qcj_filtered_sequences, new_file)
+            with open(nfp, 'w') as nf:
                 nf.write("Hello World!\n")
 
         success, ainfo, msg = sequence_processing_pipeline(
@@ -596,13 +597,262 @@ class KLPTests(PluginTestCase):
                         break
 
                 self.assertFalse(bad_types_present)
-                foo = df['sample_name'].tolist()
-                foo = [x for x in foo if not x.startswith('tube_id')]
+                res = df['sample_name'].tolist()
+                res = [x for x in res if not x.startswith('tube_id')]
 
-                self.assertEquals(len(foo), 0)
+                self.assertEquals(len(res), 0)
 
                 # write modified results back out to file
                 df.to_csv(prep_file, index=False, sep="\t")
+
+
+class KLPAmpliconTests(PluginTestCase):
+    def _make_temp_dir(self):
+        new_dir = mkdtemp()
+        self._clean_up_files.append(new_dir)
+        return new_dir
+
+    def setUp(self):
+        # this will allow us to see the full errors
+        self.maxDiff = None
+        self.logger = logging.getLogger(__name__)
+
+        plugin('https://localhost:8383', 'register', 'ignored')
+        sleep(2)
+
+        self._clean_up_files = []
+
+        self.basedir = dirname(realpath(__file__))
+
+        self.multiqc_config_filepath = join(self._make_temp_dir(),
+                                            'multiqc-config.yaml')
+        self.multiqc_config_data = [
+            "title: 'Sequence processing summaries'\n",
+            "output_fn_name: 'index.html'\n",
+            "show_analysis_paths: False\n",
+            "show_analysis_time: False\n",
+            "run_modules:\n",
+            "    - bclconvert\n",
+            "    - fastqc\n",
+            "    - fastp\n",
+            "sample_names_ignore:\n",
+            "    - 'blank*'\n",
+            "    - 'BLANK*'\n",
+            "no_version_check: False\n",
+            "plots_force_interactive: True\n",
+            "num_datasets_plot_limit: 1\n",
+            "max_table_rows: 10000\n",
+            "table_columns_visible:\n",
+            "    'Sequence Quality (bclconvert raw)':\n",
+            "        percent_fails: False\n",
+            "        percent_duplicates: False\n",
+            "        percent_gc: False\n",
+            "        avg_sequence_length: True\n",
+            "        total_sequences: True\n",
+            "    'Trimming':\n",
+            "        input_format: False\n",
+            "        avg_sequence_length: False\n",
+            "        total_record_count: False\n",
+            "        mean_sequence_length: False\n",
+            "        fraction_bp_trimmed: False\n",
+            "        fraction_records_with_adapters: False\n",
+            "    'Sequence Quality (trimmed)':\n",
+            "        percent_fails: False\n",
+            "        percent_duplicates: False\n",
+            "        percent_gc: False\n",
+            "        avg_sequence_length: True\n",
+            "        total_sequences: True\n",
+            "    'Human Filtering':\n",
+            "        overall_alignment_rate: True\n",
+            "    'Sequence Quality (filtered)':\n",
+            "        percent_fails: False\n",
+            "        percent_duplicates: False\n",
+            "        percent_gc: False\n",
+            "        avg_sequence_length: True\n",
+            "        total_sequences: True\n",
+            "module_order:\n",
+            "    - bclconvert:\n",
+            "         name: 'Base Calling'\n",
+            "         info: 'Conversion from BCL files to FASTQ files.'\n",
+            "    - fastqc:\n",
+            "        name: 'Sequence Quality (raw)'\n",
+            "        info: 'Sequence quality and summary statistics for raw s",
+            "equences.'\n",
+            "        path_filters:\n",
+            "            - '*fastqc.zip'\n",
+            "            - '*.csv'\n",
+            "    - fastp:\n",
+            "        name: 'Sequence Quality (adapter trimmed)'\n",
+            "        info: 'Summary statistics from adapter trimming and qual",
+            "ity control with fastp.'\n",
+            "        fn: '*.json'\n",
+            "    - fastqc:\n",
+            "        name: 'Sequence Quality (trimmed)'\n",
+            "        info: 'Sequence quality and summary statistics after qua",
+            "lity-control and adapter trimming.'\n",
+            "        path_filters:\n",
+            "          - '*trimmed_fastqc.zip'\n",
+            "          - '*fastp_fastqc.zip'\n"
+        ]
+
+        self.out_dir = self._make_temp_dir()
+        self.search_dir = self._make_temp_dir()
+
+        spp_config = {
+            "configuration": {
+                "pipeline": {
+                    "younger_than": 90,
+                    "older_than": 24,
+                    "archive_path": '/not/out_dir',
+                    "search_paths": [self.search_dir],
+                    "amplicon_search_paths": [self.search_dir]
+                },
+                "bcl2fastq": {
+                    "nodes": 1,
+                    "nprocs": 16,
+                    "queue": "qiita",
+                    "wallclock_time_in_hours": 36,
+                    "modules_to_load": ["bcl2fastq_2.20.0.422"],
+                    "executable_path": "bcl2fastq",
+                    "per_process_memory_limit": "10gb"
+                },
+                "bcl-convert": {
+                    "nodes": 1,
+                    "nprocs": 16,
+                    "queue": "qiita",
+                    "wallclock_time_in_hours": 36,
+                    "modules_to_load": ["bclconvert_3.7.5"],
+                    "executable_path": "bcl-convert",
+                    "per_process_memory_limit": "10gb"
+                },
+                "qc": {
+                    "nodes": 1,
+                    "nprocs": 16,
+                    "queue": "qiita",
+                    "wallclock_time_in_hours": 1,
+                    "minimap_databases": [("/databases/minimap2/human-phix-db."
+                                           "mmi")],
+                    "kraken2_database": "/databases/minimap2/hp_kraken-db.mmi",
+                    "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
+                                        "minimap2_2.18"],
+                    "fastp_executable_path": "fastp",
+                    "minimap2_executable_path": "minimap2",
+                    "samtools_executable_path": "samtools",
+                    "job_total_memory_limit": "20gb",
+                    "job_pool_size": 30,
+                    "job_max_array_length": 1000
+                },
+                "seqpro": {
+                    "seqpro_path": "seqpro",
+                    "modules_to_load": []
+                },
+                "fastqc": {
+                    "nodes": 1,
+                    "nprocs": 16,
+                    "queue": "qiita",
+                    "nthreads": 16,
+                    "wallclock_time_in_hours": 1,
+                    "modules_to_load": ["fastqc_0.11.5"],
+                    "fastqc_executable_path": "fastqc",
+                    "multiqc_executable_path": "multiqc",
+                    "multiqc_config_file_path": self.multiqc_config_filepath,
+                    "job_total_memory_limit": "20gb",
+                    "job_pool_size": 30,
+                    "job_max_array_length": 1000
+                }
+            }
+        }
+
+        # create the file and write the configuration out to disk
+        # for use by sequence_processing_pipeline().
+        config_filepath = environ['QP_KLP_CONFIG_FP']
+
+        with open(config_filepath, 'w') as f:
+            f.write(dumps(spp_config, indent=2))
+
+    def tearDown(self):
+        for fp in self._clean_up_files:
+            if exists(fp):
+                if isdir(fp):
+                    rmtree(fp)
+                else:
+                    remove(fp)
+
+    def test_sequence_processing_pipeline(self):
+        test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
+        makedirs(test_dir)
+
+        # create the sentinel files ConvertJob will check for.
+        with open(join(test_dir, 'RTAComplete.txt'), 'w') as f:
+            f.write("Hello World\n")
+
+        # copy example RunInfo.xml into its proper location for testing.
+        copy(f'{self.basedir}/RunInfo.xml', join(test_dir, 'RunInfo.xml'))
+
+        # create the project directory sequence_processing_pipeline() will
+        # expect to find fastq files in. Note amplicon pipeline expects
+        # fastq files in ConvertJob folder, rather than ConvertJob/{Project}
+        # folders.
+        fastq_dir = join(self.out_dir, 'ConvertJob')
+        makedirs(fastq_dir)
+
+        file_list = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
+                     "CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz",
+                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz",
+                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz"]
+
+        for fastq_file in file_list:
+            fp = join(fastq_dir, fastq_file)
+            with open(fp, 'w') as f:
+                f.write("Hello World\n")
+
+        # write multi-qc config file to a known location
+        with open(self.multiqc_config_filepath, 'w') as f:
+            for line in self.multiqc_config_data:
+                f.write(f"{line}\n")
+
+        # create the Reports directory in the location GenPrepFileJob
+        # expects.
+        reports_dir = join(self.out_dir, 'ConvertJob', 'Reports')
+        makedirs(reports_dir, exist_ok=True)
+
+        # create QCJobs output directory for use by GenPrepFileJob
+        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
+        qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
+        makedirs(qcj_filtered_sequences)
+        makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
+
+        with open(f'{self.basedir}/mapping_file.csv', 'r') as f:
+            mapping_file = f.readlines()
+            mapping_file = ''.join(mapping_file)
+
+        params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
+                  "sample_sheet": {
+                      "body": mapping_file,
+                      "content_type": "text/plain",
+                      # verify sequence_processing_pipeline() will convert
+                      # spaces to underscores ('_').
+                      "filename": "A sample sheet.csv",
+                  },
+                  "lane_number": 1}
+
+        data = {
+            "user": "demo@microbio.me",
+            "command": dumps(["qp-klp", __version__,
+                              "Sequence Processing Pipeline"]),
+            "status": "running",
+            "parameters": dumps(params),
+        }
+
+        job_id = self.qclient.post("/apitest/processing_job/",
+                                   data=data)["job"]
+
+        success, _, msg = sequence_processing_pipeline(
+            self.qclient, job_id, params, self.out_dir
+        )
+
+        self.assertTrue(success)
+        self.assertEqual(msg, 'Main Pipeline Finished, processing results')
 
 
 if __name__ == "__main__":
