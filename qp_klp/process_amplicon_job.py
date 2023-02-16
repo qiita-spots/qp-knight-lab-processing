@@ -43,7 +43,6 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
     # perform sample-id validation against Qiita
     projects = pipeline.get_project_info()
 
-
     errors = []
     sn_tid_map_by_project = {}
 
