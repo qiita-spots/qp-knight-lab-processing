@@ -277,7 +277,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
             'FastQCJob/logs',
             f'cd {out_dir}; tar zcvf reports-FastQCJob.tgz '
             'FastQCJob/fastqc',
-            f 'cd {out_dir}; tar zcvf logs-GenPrepFileJob.tgz '
+            f'cd {out_dir}; tar zcvf logs-GenPrepFileJob.tgz '
             'GenPrepFileJob/logs',
             f'cd {out_dir}; tar zcvf prep-files.tgz '
             'GenPrepFileJob/PrepFiles'
