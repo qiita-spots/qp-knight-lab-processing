@@ -239,12 +239,11 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
     status_line.update_current_message("Step 4 of 5: Generating Prep "
                                        "Information Files")
 
-    # until seqpro_mf is merged into seqpro, modify seqpro_path to
-    # reference the former rahter than the latter.
-    seqpro_path = config['seqpro_path'].replace('seqpro', 'seqpro_mf')
-
-    project_list = fastqc_job.project_names
     config = pipeline.configuration['seqpro']
+    # until seqpro_mf is merged into seqpro, modify seqpro_path to
+    # reference the former rather than the latter.
+    seqpro_path = config['seqpro_path'].replace('seqpro', 'seqpro_mf')
+    project_list = fastqc_job.project_names
     gpf_job = GenPrepFileJob(
         pipeline.run_dir,
         raw_fastq_files_path,
