@@ -50,13 +50,12 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         project_name = remove_qiita_id(project['project_name'])
         qiita_id = project['qiita_id']
 
-        df = pipeline.mapping_file
-        df = df.loc[df['project_name'] == project_name]
-
         # assume the BLANKS in the mapping-file are not prepended w/qiita-id
         # or some other value. Confirmed w/wet-lab.
-        mf_samples = {s for s in df['sample_name'] if
-                      not s.startswith('BLANK')}
+        df = pipeline.mapping_file
+        df = df.loc[df['project_name'] == project_name]
+        mf_samples = {s for s in df['sample_name']
+                      if not s.startswith('BLANK')}
 
         # collect needed info from Qiita here.
         url = f'/api/v1/study/{qiita_id}/samples'
@@ -84,9 +83,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 # sample_name_diff before continuing processing.
                 sample_name_diff = mf_samples - qsamples
 
-        if sample_name_diff:
-            # before we report as an error, check tube_id
-            if tube_id_present:
+                # before we report as an error, check tube_id.
+
                 # generate a map of sample_names to tube_ids for
                 # GenPrepFileJob.
                 sn_tid_map_by_project[project_name] = {

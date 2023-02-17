@@ -35,6 +35,7 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         project_name = remove_qiita_id(project)
         qiita_id = project.replace(f'{project_name}_', '')
         qurl = f'/api/v1/study/{qiita_id}/samples'
+
         sheet_samples = {
             s for s in _df['sample_name'] if not s.startswith('BLANK')}
         qsamples = {
@@ -49,6 +50,9 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
             'categories']
 
         if sample_name_diff:
+            # before we report as an error, check tube_id
+            error_tube_id = 'No tube_id column in Qiita.'
+
             if tube_id_present:
                 # strip any leading zeroes from the sample-ids. Note that
                 # if a sample-id has more than one leading zero, all of
@@ -58,10 +62,6 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                 # sample_name_diff before continuing processing.
                 sample_name_diff = sheet_samples - qsamples
 
-        if sample_name_diff:
-            # before we report as an error, check tube_id
-            error_tube_id = 'No tube_id column in Qiita.'
-            if tube_id_present:
                 tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
                 # generate a map of sample_names to tube_ids for
                 # GenPrepFileJob.
