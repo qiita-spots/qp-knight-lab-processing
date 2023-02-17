@@ -1,105 +1,32 @@
+from metapool.prep import remove_qiita_id
+from os import listdir, makedirs
 from os import walk
-from os import makedirs
-from os.path import basename, join, exists
+from os.path import exists, join, isfile, basename
 from qiita_client import ArtifactInfo
+from qp_klp.klp_util import map_sample_names_to_tube_ids
+from random import choices
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
-from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
-from metapool import KLSampleSheet
-from metapool.sample_sheet import sample_sheet_to_dataframe
-from metapool.prep import remove_qiita_id
-from random import choices
 import pandas as pd
-from qp_klp.klp_util import map_sample_names_to_tube_ids, FailedSamplesRecord
+import shutil
 
 
-def process_metagenomics(sample_sheet_path, lane_number, qclient,
-                         run_identifier, out_dir, job_id, skip_exec,
-                         job_pool_size, final_results_path, config_fp,
-                         status_line):
+def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
+                     job_id, skip_exec, job_pool_size, final_results_path,
+                     config_fp, status_line):
 
-    # open new file as a KLSampleSheet
-    # use KLSampleSheet functionality to add/overwrite lane number.
-    sheet = KLSampleSheet(sample_sheet_path)
-    for sample in sheet:
-        sample['Lane'] = f'{lane_number}'
-
-    sheet_df = sample_sheet_to_dataframe(sheet)
-    errors = []
-    sn_tid_map_by_project = {}
-    for project, _df in sheet_df.groupby('sample_project'):
-        project_name = remove_qiita_id(project)
-        qiita_id = project.replace(f'{project_name}_', '')
-        qurl = f'/api/v1/study/{qiita_id}/samples'
-
-        sheet_samples = {
-            s for s in _df['sample_name'] if not s.startswith('BLANK')}
-        qsamples = {
-            s.replace(f'{qiita_id}.', '') for s in qclient.get(qurl)}
-        sample_name_diff = sheet_samples - qsamples
-        sn_tid_map_by_project[project_name] = None
-
-        # check that tube_id is defined in the Qiita study. If so,
-        # then any sample_names missing from the sample-sheet may simply
-        # have a leading zero present.
-        tube_id_present = 'tube_id' in qclient.get(f'{qurl}/info')[
-            'categories']
-
-        if sample_name_diff:
-            # before we report as an error, check tube_id
-            error_tube_id = 'No tube_id column in Qiita.'
-
-            if tube_id_present:
-                # strip any leading zeroes from the sample-ids. Note that
-                # if a sample-id has more than one leading zero, all of
-                # them will be removed.
-                sheet_samples = {x.lstrip('0') for x in sheet_samples}
-                # once any leading zeros have been removed, recalculate
-                # sample_name_diff before continuing processing.
-                sample_name_diff = sheet_samples - qsamples
-
-                tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
-                # generate a map of sample_names to tube_ids for
-                # GenPrepFileJob.
-                sn_tid_map_by_project[project_name] = {
-                    y[0]: x.replace(f'{qiita_id}.', '') for x, y in
-                    tids.items()}
-                tids = set(sn_tid_map_by_project[project_name].keys())
-                tube_id_diff = sheet_samples - tids
-                if not tube_id_diff:
-                    continue
-                len_tube_id_overlap = len(tube_id_diff)
-                tids_example = ', '.join(choices(list(tids), k=5))
-                error_tube_id = (
-                    f'tube_id in Qiita but {len_tube_id_overlap} missing '
-                    f'samples. Some samples from tube_id: {tids_example}.')
-
-            len_overlap = len(sample_name_diff)
-            # selecting at random k=5 samples to minimize space in display
-            samples_example = ', '.join(choices(list(qsamples), k=5))
-            # selecting the up to 4 first samples to minimize space in
-            # display
-            missing = ', '.join(sorted(sample_name_diff)[:4])
-            errors.append(
-                f'{project} has {len_overlap} missing samples (i.e. '
-                f'{missing}). Some samples from Qiita: {samples_example}. '
-                f'{error_tube_id}')
-
-    if errors:
-        raise PipelineError('\n'.join(errors))
-
-    with open(sample_sheet_path, 'w') as f:
-        sheet.write(f)
+    # Note: FailedSamplesRecord is not used by process_amplicon as the
+    # samples are processed as a single fastq file and hence that info
+    # is not available.
 
     # Create a Pipeline object
     try:
-        pipeline = Pipeline(config_fp, run_identifier, sample_sheet_path,
-                            None, out_dir, job_id)
-
+        pipeline = Pipeline(config_fp, run_identifier, None,
+                            mapping_file_path, out_dir, job_id)
     except PipelineError as e:
         # Pipeline is the object that finds the input fp, based on
         # a search directory set in configuration.json and a run_id.
@@ -112,24 +39,84 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         else:
             raise e
 
-    # if an Error has not been raised, assume there are no errors
-    # in the sample-sheet. A successfully-created Pipeline object can
-    # still contain a list of warnings about sample-sheet validation.
-    # If any warnings are present, they should be reported to the user.
-    if pipeline.warnings:
-        msg = '\n'.join(pipeline.warnings)
-        status_line.update_current_message('Sample-sheet has been flagged with'
-                                           f' the following warnings: {msg}')
+    # perform sample-id validation against Qiita
+    projects = pipeline.get_project_info()
+
+    errors = []
+    sn_tid_map_by_project = {}
+
+    for project in projects:
+        # remove the qiita-id prepending the project_name
+        project_name = remove_qiita_id(project['project_name'])
+        qiita_id = project['qiita_id']
+
+        # assume the BLANKS in the mapping-file are not prepended w/qiita-id
+        # or some other value. Confirmed w/wet-lab.
+        df = pipeline.mapping_file
+        df = df[df['project_name'] == project_name]
+        mf_samples = {s for s in df['sample_name']
+                      if not s.startswith('BLANK')}
+
+        # collect needed info from Qiita here.
+        url = f'/api/v1/study/{qiita_id}/samples'
+        qsamples = qclient.get(url)
+        qsamples = {x.replace(f'{qiita_id}.', '') for x in qsamples}
+        tube_id_present = 'tube_id' in qclient.get(f'{url}/info')['categories']
+        if tube_id_present:
+            tids = qclient.get(f'{url}/categories=tube_id')['samples']
+
+        # compare the list of samples from the mapping file against the
+        # list of samples from Qiita.
+        sample_name_diff = mf_samples - qsamples
+        sn_tid_map_by_project[project_name] = None
+
+        if sample_name_diff:
+            # if tube_id is defined in the Qiita study, then any sample_names
+            # missing from the mapping-file may simply have a leading zero
+            # present.
+            if tube_id_present:
+                # strip any leading zeroes from the sample-ids. Note that
+                # if a sample-id has more than one leading zero, all of
+                # them will be removed.
+                mf_samples = {x.lstrip('0') for x in mf_samples}
+                # once any leading zeros have been removed, recalculate
+                # sample_name_diff before continuing processing.
+                sample_name_diff = mf_samples - qsamples
+
+                # before we report as an error, check tube_id.
+
+                # generate a map of sample_names to tube_ids for
+                # GenPrepFileJob.
+                sn_tid_map_by_project[project_name] = {
+                    y[0]: x.replace(f'{qiita_id}.', '') for x, y in
+                    tids.items()}
+                tids = set(sn_tid_map_by_project[project_name].keys())
+                tube_id_diff = mf_samples - tids
+                if not tube_id_diff:
+                    continue
+                len_tube_id_overlap = len(tube_id_diff)
+                tids_example = ', '.join(choices(list(tids), k=5))
+                error_tube_id = (
+                    f'tube_id in Qiita but {len_tube_id_overlap} missing '
+                    f'samples. Some samples from tube_id: {tids_example}.')
+            else:
+                error_tube_id = 'No tube_id column in Qiita.'
+
+            len_overlap = len(sample_name_diff)
+            # selecting at random k=5 samples to minimize space in display
+            samples_example = ', '.join(choices(list(qsamples), k=5))
+            # selecting the up to 4 first samples to minimize space in
+            # display
+            missing = ', '.join(sorted(sample_name_diff)[:4])
+            errors.append(
+                f'{project_name} has {len_overlap} missing samples (i.e. '
+                f'{missing}). Some samples from Qiita: {samples_example}. '
+                f'{error_tube_id}')
+
+    if errors:
+        raise PipelineError('\n'.join(errors))
 
     sifs = pipeline.generate_sample_information_files()
-
-    # get a list of unique sample ids from the sample-sheet.
-    # comparing them against the list of samples found in the results
-    # of each stage of the pipeline will let us know when and where
-    # samples failed to process.
-    samples = pipeline.get_sample_ids()
-
-    fsr = FailedSamplesRecord(out_dir, pipeline.sample_sheet.samples)
 
     # find the uploads directory all trimmed files will need to be
     # moved to.
@@ -145,12 +132,14 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         special_map.append((project['project_name'], upload_path,
                             project['qiita_id']))
 
-    status_line.update_current_message("Step 2 of 6: Converting BCL to fastq")
+    status_line.update_current_message("Step 2 of 5: Converting BCL to fastq")
 
     config = pipeline.configuration['bcl-convert']
     convert_job = ConvertJob(pipeline.run_dir,
                              pipeline.output_path,
-                             sample_sheet_path,
+                             # note that pipeline.sample_sheet in this case
+                             # is the dummy sample-sheet created by Pipeline.
+                             pipeline.sample_sheet,
                              config['queue'],
                              config['nodes'],
                              config['nprocs'],
@@ -166,42 +155,62 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
     # be executed. This is useful for testing.
     if not skip_exec:
         convert_job.run(callback=status_line.update_job_step)
-        fsr.write(convert_job.audit(samples), 'ConvertJob')
 
-    status_line.update_current_message("Step 3 of 6: Adaptor & Host "
-                                       "[optional] trimming")
-
-    raw_fastq_files_path = join(pipeline.output_path, 'ConvertJob')
-
-    config = pipeline.configuration['qc']
-    qc_job = QCJob(raw_fastq_files_path,
-                   pipeline.output_path,
-                   sample_sheet_path,
-                   config['minimap_databases'],
-                   config['kraken2_database'],
-                   config['queue'],
-                   config['nodes'],
-                   config['nprocs'],
-                   config['wallclock_time_in_hours'],
-                   config['job_total_memory_limit'],
-                   config['fastp_executable_path'],
-                   config['minimap2_executable_path'],
-                   config['samtools_executable_path'],
-                   config['modules_to_load'],
-                   job_id,
-                   job_pool_size,
-                   config['job_max_array_length'])
-
-    if not skip_exec:
-        qc_job.run(callback=status_line.update_job_step)
-        fsr.write(qc_job.audit(samples), 'QCJob')
-
-    status_line.update_current_message("Step 4 of 6: Generating FastQC & "
+    status_line.update_current_message("Step 3 of 5: Generating FastQC & "
                                        "MultiQC reports")
 
     config = pipeline.configuration['fastqc']
 
     raw_fastq_files_path = join(pipeline.output_path, 'ConvertJob')
+
+    # Since amplicon jobs do not require human-filtering or adapter-trimming,
+    # QCJob is not used. Simulate QCJob's output directory for use as input
+    # into FastQCJob.
+    projects = pipeline.get_project_info()
+    projects = [x['project_name'] for x in projects]
+
+    for project_name in projects:
+        # copy the files from ConvertJob output to faked QCJob output folder.
+        # $WKDIR/$RUN_ID/QCJob/$PROJ_NAME/amplicon
+        faked_output_folder = join(pipeline.output_path, 'QCJob',
+                                   project_name, 'amplicon')
+        makedirs(faked_output_folder)
+
+        # get list of all raw output files to be copied.
+        job_output = [join(raw_fastq_files_path, x) for x in
+                      listdir(raw_fastq_files_path)]
+        job_output = [x for x in job_output if isfile(x)]
+        job_output = [x for x in job_output if x.endswith('fastq.gz')]
+        # Undetermined files are very small and should be filtered from
+        # results.
+        job_output = [x for x in job_output if
+                      not basename(x).startswith('Undetermined')]
+
+        # copy the file
+        for fastq_file in job_output:
+            new_path = join(faked_output_folder, basename(fastq_file))
+            shutil.copyfile(fastq_file, new_path)
+
+        # FastQC expects the ConvertJob output to also be organized by
+        # project. Since this would entail running the same ConvertJob
+        # multiple times on the same input with just a name-change in
+        # the dummy sample-sheet, we instead perform ConvertJob once
+        # and copy the output from ConvertJob's output folder into
+        # ConvertJob's output folder/project1, project2 ... projectN.
+        faked_output_folder = join(raw_fastq_files_path, project_name)
+        makedirs(faked_output_folder)
+        job_output = [join(raw_fastq_files_path, x) for x in
+                      listdir(raw_fastq_files_path)]
+        job_output = [x for x in job_output if isfile(x)]
+        job_output = [x for x in job_output if x.endswith('fastq.gz')]
+        job_output = [x for x in job_output if
+                      not basename(x).startswith('Undetermined')]
+
+        for raw_fastq_file in job_output:
+            new_path = join(faked_output_folder, basename(raw_fastq_file))
+            shutil.copyfile(raw_fastq_file, new_path)
+
+    # Run FastQCJob on faked directories
     processed_fastq_files_path = join(pipeline.output_path, 'QCJob')
 
     fastqc_job = FastQCJob(pipeline.run_dir,
@@ -220,25 +229,26 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                            job_pool_size,
                            config['multiqc_config_file_path'],
                            config['job_max_array_length'],
-                           False)
+                           True)
 
     if not skip_exec:
         fastqc_job.run(callback=status_line.update_job_step)
-        fsr.write(fastqc_job.audit(samples), 'FastQCJob')
 
-    project_list = fastqc_job.project_names
-
-    status_line.update_current_message("Step 5 of 6: Generating Prep "
+    status_line.update_current_message("Step 4 of 5: Generating Prep "
                                        "Information Files")
 
     config = pipeline.configuration['seqpro']
+    # until seqpro_mf is merged into seqpro, modify seqpro_path to
+    # reference the former rather than the latter.
+    seqpro_path = config['seqpro_path'].replace('seqpro', 'seqpro_mf')
+    project_list = fastqc_job.project_names
     gpf_job = GenPrepFileJob(
         pipeline.run_dir,
         raw_fastq_files_path,
         processed_fastq_files_path,
         pipeline.output_path,
-        sample_sheet_path,
-        config['seqpro_path'],
+        mapping_file_path,
+        seqpro_path,
         project_list,
         config['modules_to_load'],
         job_id)
@@ -257,13 +267,12 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
             # write modified results back out to file
             df.to_csv(prep_file, index=False, sep="\t")
 
-    status_line.update_current_message("Step 6 of 6: Copying results to "
+    status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")
 
     cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
             f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
             'ConvertJob/Reports ConvertJob/Logs',
-            f'cd {out_dir}; tar zcvf logs-QCJob.tgz QCJob/logs',
             f'cd {out_dir}; tar zcvf logs-FastQCJob.tgz '
             'FastQCJob/logs',
             f'cd {out_dir}; tar zcvf reports-FastQCJob.tgz '
@@ -271,7 +280,8 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
             f'cd {out_dir}; tar zcvf logs-GenPrepFileJob.tgz '
             'GenPrepFileJob/logs',
             f'cd {out_dir}; tar zcvf prep-files.tgz '
-            'GenPrepFileJob/PrepFiles']
+            'GenPrepFileJob/PrepFiles'
+            ]
 
     # just use the filenames for tarballing the sifs.
     # the sifs should all be stored in the {out_dir} by default.
@@ -300,17 +310,22 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         # review upon completion.
         touched_studies.append((qiita_id, project))
 
-        cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
-                    f'QCJob/{project}/fastp_reports_dir')
-
+        # Note that even though QCJob was invoked, the output directories
+        # were faked and hence existing tested code is reused here.
         if exists(f'{out_dir}/QCJob/{project}/filtered_sequences'):
             cmds.append(f'cd {out_dir}; mv '
                         f'QCJob/{project}/filtered_sequences/* '
                         f'{upload_dir}')
-        else:
+        elif exists(f'{out_dir}/QCJob/{project}/trimmed_sequences'):
             cmds.append(f'cd {out_dir}; mv '
                         f'QCJob/{project}/trimmed_sequences/* '
                         f'{upload_dir}')
+        elif exists(f'{out_dir}/QCJob/{project}/amplicon'):
+            cmds.append(f'cd {out_dir}; mv '
+                        f'QCJob/{project}/amplicon/* '
+                        f'{upload_dir}')
+        else:
+            raise PipelineError("QCJob output not in expected location")
 
         for csv_file in csv_fps:
             if project in csv_file:
