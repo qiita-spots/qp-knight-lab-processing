@@ -1,7 +1,6 @@
 from metapool.prep import remove_qiita_id
 from os import listdir, makedirs
 from os import walk
-from os.path import basename, join, exists
 from os.path import exists, join, isfile, basename
 from qiita_client import ArtifactInfo
 from qp_klp.klp_util import map_sample_names_to_tube_ids
