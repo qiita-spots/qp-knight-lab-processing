@@ -53,7 +53,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         # assume the BLANKS in the mapping-file are not prepended w/qiita-id
         # or some other value. Confirmed w/wet-lab.
         df = pipeline.mapping_file
-        df = df.loc[df['project_name'] == project_name]
+        df = df[df['project_name'] == project_name]
         mf_samples = {s for s in df['sample_name']
                       if not s.startswith('BLANK')}
 
