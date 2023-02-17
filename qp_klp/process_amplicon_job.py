@@ -1,10 +1,14 @@
 from metapool.prep import remove_qiita_id
 from os import listdir, makedirs
+from os import walk
+from os.path import basename, join, exists
 from os.path import exists, join, isfile, basename
 from qiita_client import ArtifactInfo
+from qp_klp.klp_util import map_sample_names_to_tube_ids
 from random import choices
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
+from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
 from subprocess import Popen, PIPE
@@ -233,7 +237,35 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
     if not skip_exec:
         fastqc_job.run(callback=status_line.update_job_step)
 
-    status_line.update_current_message("Skipping Prep Info File Generation")
+    status_line.update_current_message("Step 4 of 5: Generating Prep "
+                                       "Information Files")
+
+    project_list = fastqc_job.project_names
+    config = pipeline.configuration['seqpro']
+    gpf_job = GenPrepFileJob(
+        pipeline.run_dir,
+        raw_fastq_files_path,
+        processed_fastq_files_path,
+        pipeline.output_path,
+        mapping_file_path,
+        config['seqpro_path'],
+        project_list,
+        config['modules_to_load'],
+        job_id)
+
+    if not skip_exec:
+        gpf_job.run(callback=status_line.update_job_step)
+
+    results = map_sample_names_to_tube_ids(sn_tid_map_by_project,
+                                           join(pipeline.output_path,
+                                                'GenPrepFileJob',
+                                                'PrepFiles'))
+
+    for project in results:
+        for prep_file in results[project]:
+            df = results[project][prep_file]
+            # write modified results back out to file
+            df.to_csv(prep_file, index=False, sep="\t")
 
     status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")
@@ -245,10 +277,10 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
             'FastQCJob/logs',
             f'cd {out_dir}; tar zcvf reports-FastQCJob.tgz '
             'FastQCJob/fastqc',
-            # f 'cd {out_dir}; tar zcvf logs-GenPrepFileJob.tgz '
-            # 'GenPrepFileJob/logs',
-            # f'cd {out_dir}; tar zcvf prep-files.tgz '
-            # 'GenPrepFileJob/PrepFiles'
+            f 'cd {out_dir}; tar zcvf logs-GenPrepFileJob.tgz '
+            'GenPrepFileJob/logs',
+            f'cd {out_dir}; tar zcvf prep-files.tgz '
+            'GenPrepFileJob/PrepFiles'
             ]
 
     # just use the filenames for tarballing the sifs.
@@ -258,6 +290,11 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         # convert sifs into a list of filenames.
         tmp = ' '.join(tmp)
         cmds.append(f'cd {out_dir}; tar zcvf sample-files.tgz {tmp}')
+
+    csv_fps = []
+    for root, dirs, files in walk(join(gpf_job.output_path, 'PrepFiles')):
+        for csv_file in files:
+            csv_fps.append(join(root, csv_file))
 
     touched_studies = []
 
@@ -289,6 +326,11 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                         f'{upload_dir}')
         else:
             raise PipelineError("QCJob output not in expected location")
+
+        for csv_file in csv_fps:
+            if project in csv_file:
+                cmds.append(f'cd {out_dir}; mv {csv_file} {upload_dir}')
+                break
 
     # create a set of unique study-ids that were touched by the Pipeline
     # and return this information to the user.
