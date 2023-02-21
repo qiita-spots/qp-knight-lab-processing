@@ -96,7 +96,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     else:
         # file doesn't look like a sample-sheet, or a valid mapping file.
         return False, None, ("Your uploaded file doesn't appear to be a sample"
-                              "-sheet or a mapping-file.")
+                             "-sheet or a mapping-file.")
 
     status_line.update_current_message("Main Pipeline Finished, processing "
                                        "results")
