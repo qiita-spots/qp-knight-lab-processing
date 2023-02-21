@@ -71,16 +71,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     with open(uif_path, 'w') as f:
         f.write(user_input_file['body'])
 
-    if Pipeline.is_mapping_file(uif_path):
-        try:
-            ainfo = process_amplicon(uif_path, qclient, run_identifier,
-                                     out_dir, job_id, skip_exec,
-                                     job_pool_size, final_results_path,
-                                     CONFIG_FP, status_line)
-        except PipelineError as e:
-            return False, None, str(e)
-
-    else:
+    if Pipeline.is_sample_sheet(uif_path):
+        # if file follows basic sample-sheet format, then it is most likely
+        # a sample-sheet, even if it's an invalid one.
         try:
             ainfo = process_metagenomics(uif_path, lane_number, qclient,
                                          run_identifier, out_dir, job_id,
@@ -89,6 +82,21 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                          status_line)
         except PipelineError as e:
             return False, None, str(e)
+    elif Pipeline.is_mapping_file(uif_path):
+        # if file is readable as a basic TSV and contains all of the required
+        # headers, then treat this as a mapping file, even if it's an invalid
+        # one.
+        try:
+            ainfo = process_amplicon(uif_path, qclient, run_identifier,
+                                     out_dir, job_id, skip_exec,
+                                     job_pool_size, final_results_path,
+                                     CONFIG_FP, status_line)
+        except PipelineError as e:
+            return False, None, str(e)
+    else:
+        # file doesn't look like a sample-sheet, or a valid mapping file.
+        return False, None, ("Your uploaded file doesn't appear to be a sample"
+                              "-sheet or a mapping-file.")
 
     status_line.update_current_message("Main Pipeline Finished, processing "
                                        "results")
