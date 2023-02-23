@@ -46,6 +46,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
     sn_tid_map_by_project = {}
 
     for project in projects:
+        project_name_with_qid = project['project_name']
+
         # remove the qiita-id prepending the project_name
         project_name = remove_qiita_id(project['project_name'])
         qiita_id = project['qiita_id']
@@ -57,7 +59,11 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         # assume the BLANKS in the mapping-file are not prepended w/qiita-id
         # or some other value. Confirmed w/wet-lab.
         df = pipeline.mapping_file
-        df = df[df['project_name'] == project_name]
+        df = df[df['project_name'] == project_name_with_qid]
+
+        if df.shape[0] == 0:
+            raise PipelineError("project '%s' has zero samples in mapping-file (%s)" % (project_name_with_qid, str(df.shape)))
+
         mf_samples = {s for s in df['sample_name']
                       if not s.startswith('BLANK')}
 
