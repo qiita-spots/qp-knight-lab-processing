@@ -255,7 +255,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         seqpro_path,
         project_list,
         config['modules_to_load'],
-        job_id)
+        job_id,
+        is_amplicon=True)
 
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
