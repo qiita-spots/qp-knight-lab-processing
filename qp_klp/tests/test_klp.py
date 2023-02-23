@@ -822,7 +822,7 @@ class KLPAmpliconTests(PluginTestCase):
         makedirs(qcj_filtered_sequences)
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
-        with open(f'{self.basedir}/mapping_file.csv', 'r') as f:
+        with open(f'{self.basedir}/good_mapping_file.txt', 'r') as f:
             mapping_file = f.readlines()
             mapping_file = ''.join(mapping_file)
 
@@ -853,6 +853,83 @@ class KLPAmpliconTests(PluginTestCase):
 
         self.assertTrue(success)
         self.assertEqual(msg, 'Main Pipeline Finished, processing results')
+
+    def test_spp_no_qiita_id_error(self):
+        test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
+        makedirs(test_dir)
+
+        # create the sentinel files ConvertJob will check for.
+        with open(join(test_dir, 'RTAComplete.txt'), 'w') as f:
+            f.write("Hello World\n")
+
+        # copy example RunInfo.xml into its proper location for testing.
+        copy(f'{self.basedir}/RunInfo.xml', join(test_dir, 'RunInfo.xml'))
+
+        # create the project directory sequence_processing_pipeline() will
+        # expect to find fastq files in. Note amplicon pipeline expects
+        # fastq files in ConvertJob folder, rather than ConvertJob/{Project}
+        # folders.
+        fastq_dir = join(self.out_dir, 'ConvertJob')
+        makedirs(fastq_dir)
+
+        file_list = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
+                     "CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz",
+                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz",
+                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz"]
+
+        for fastq_file in file_list:
+            fp = join(fastq_dir, fastq_file)
+            with open(fp, 'w') as f:
+                f.write("Hello World\n")
+
+        # write multi-qc config file to a known location
+        with open(self.multiqc_config_filepath, 'w') as f:
+            for line in self.multiqc_config_data:
+                f.write(f"{line}\n")
+
+        # create the Reports directory in the location GenPrepFileJob
+        # expects.
+        reports_dir = join(self.out_dir, 'ConvertJob', 'Reports')
+        makedirs(reports_dir, exist_ok=True)
+
+        # create QCJobs output directory for use by GenPrepFileJob
+        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
+        qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
+        makedirs(qcj_filtered_sequences)
+        makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
+
+        with open(f'{self.basedir}/bad_mapping_file.txt', 'r') as f:
+            mapping_file = f.readlines()
+            mapping_file = ''.join(mapping_file)
+
+        params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
+                  "sample_sheet": {
+                      "body": mapping_file,
+                      "content_type": "text/plain",
+                      # verify sequence_processing_pipeline() will convert
+                      # spaces to underscores ('_').
+                      "filename": "A sample sheet.csv",
+                  },
+                  "lane_number": 1}
+
+        data = {
+            "user": "demo@microbio.me",
+            "command": dumps(["qp-klp", __version__,
+                              "Sequence Processing Pipeline"]),
+            "status": "running",
+            "parameters": dumps(params),
+        }
+
+        job_id = self.qclient.post("/apitest/processing_job/",
+                                   data=data)["job"]
+
+        success, _, msg = sequence_processing_pipeline(
+            self.qclient, job_id, params, self.out_dir
+        )
+
+        self.assertFalse(success)
+        self.assertEqual(msg, "Values in the project_name column must be "
+                              "appended with a Qiita ID.")
 
 
 if __name__ == "__main__":
