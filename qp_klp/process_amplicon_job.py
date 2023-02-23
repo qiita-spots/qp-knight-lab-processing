@@ -50,6 +50,10 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         project_name = remove_qiita_id(project['project_name'])
         qiita_id = project['qiita_id']
 
+        if qiita_id == project_name:
+            raise PipelineError("Values in the project_name column must "
+                                "be appended with a Qiita ID.")
+
         # assume the BLANKS in the mapping-file are not prepended w/qiita-id
         # or some other value. Confirmed w/wet-lab.
         df = pipeline.mapping_file
