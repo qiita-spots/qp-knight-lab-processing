@@ -62,7 +62,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         df = df[df['project_name'] == project_name_with_qid]
 
         if df.shape[0] == 0:
-            raise PipelineError("project '%s' has zero samples in mapping-file (%s)" % (project_name_with_qid, str(df.shape)))
+            raise PipelineError(f"project '{project_name_with_qid}' has zero "
+                                f"samples in mapping-file ({str(df.shape)})")
 
         mf_samples = {s for s in df['sample_name']
                       if not s.startswith('BLANK')}

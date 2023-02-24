@@ -822,6 +822,8 @@ class KLPAmpliconTests(PluginTestCase):
         makedirs(qcj_filtered_sequences)
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
+        # the only difference between this test and test_spp_no_qiita_id_error
+        # is project_names are missing qiita_id in bad_mapping_file.txt.
         with open(f'{self.basedir}/good_mapping_file.txt', 'r') as f:
             mapping_file = f.readlines()
             mapping_file = ''.join(mapping_file)
@@ -851,8 +853,9 @@ class KLPAmpliconTests(PluginTestCase):
             self.qclient, job_id, params, self.out_dir
         )
 
-        self.assertTrue(success)
+        # on error, it is beneficial to report the msg.
         self.assertEqual(msg, 'Main Pipeline Finished, processing results')
+        self.assertTrue(success)
 
     def test_spp_no_qiita_id_error(self):
         test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
@@ -927,9 +930,9 @@ class KLPAmpliconTests(PluginTestCase):
             self.qclient, job_id, params, self.out_dir
         )
 
-        self.assertFalse(success)
         self.assertEqual(msg, "Values in the project_name column must be "
                               "appended with a Qiita ID.")
+        self.assertFalse(success)
 
 
 if __name__ == "__main__":
