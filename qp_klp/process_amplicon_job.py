@@ -141,7 +141,11 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
     status_line.update_current_message("Step 2 of 5: Converting BCL to fastq")
 
-    config = pipeline.configuration['bcl-convert']
+    using_bcl_convert = False
+
+    config = pipeline.configuration['bcl-convert'] if \
+        using_bcl_convert is True else pipeline.configuration['bcl2fastq']
+
     convert_job = ConvertJob(pipeline.run_dir,
                              pipeline.output_path,
                              # note that pipeline.sample_sheet in this case
@@ -278,9 +282,13 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
     status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")
 
+    # bcl2fastq logs operation to stdout, which is captured by Slurm in
+    # ConvertJob/logs. ConvertJob/Logs will not exist.
+    tmp = 'ConvertJob/Reports ConvertJob/Logs' if using_bcl_convert is True \
+        else 'ConvertJob/Reports'
+
     cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
-            f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
-            'ConvertJob/Reports ConvertJob/Logs',
+            f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz {tmp}',
             f'cd {out_dir}; tar zcvf logs-FastQCJob.tgz '
             'FastQCJob/logs',
             f'cd {out_dir}; tar zcvf reports-FastQCJob.tgz '
