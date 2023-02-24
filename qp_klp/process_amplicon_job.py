@@ -141,7 +141,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
     status_line.update_current_message("Step 2 of 5: Converting BCL to fastq")
 
-    config = pipeline.configuration['bcl-convert']
+    config = pipeline.configuration['bcl2fastq']
     convert_job = ConvertJob(pipeline.run_dir,
                              pipeline.output_path,
                              # note that pipeline.sample_sheet in this case
@@ -280,7 +280,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
     cmds = [f'cd {out_dir}; tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
             f'cd {out_dir}; tar zcvf reports-ConvertJob.tgz '
-            'ConvertJob/Reports ConvertJob/Logs',
+            'ConvertJob/Reports',
             f'cd {out_dir}; tar zcvf logs-FastQCJob.tgz '
             'FastQCJob/logs',
             f'cd {out_dir}; tar zcvf reports-FastQCJob.tgz '
