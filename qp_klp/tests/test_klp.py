@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import main
-from os import remove, makedirs
+from os import remove, makedirs, walk
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
@@ -822,6 +822,21 @@ class KLPAmpliconTests(PluginTestCase):
         makedirs(qcj_filtered_sequences)
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
+        ############
+        # create GenPrepFileJob output directory for use by packaging code and
+        # downstream-testing.
+        gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
+        prep_files_root_fp = join(gp_root_fp, 'PrepFiles')
+        prep_file_name = ('20221227_FS10001773_45_BTC69702-1016.'
+                          'AGMP_P3_3XTG_U19_1-3_14748.1.tsv')
+
+        # generate dummy file
+        with open(join(prep_files_root_fp, prep_file_name), 'w') as f:
+            f.write("This is a file.")
+
+        print("prep_file_path: %s" % join(prep_files_root_fp, prep_file_name))
+        #############
+
         # the only difference between this test and test_spp_no_qiita_id_error
         # is project_names are missing qiita_id in bad_mapping_file.txt.
         with open(f'{self.basedir}/good_mapping_file.txt', 'r') as f:
@@ -853,9 +868,14 @@ class KLPAmpliconTests(PluginTestCase):
             self.qclient, job_id, params, self.out_dir
         )
 
+        for root, dirs, files in walk(self.out_dir):
+            for some_file in files:
+                print(join(root, some_file))
+
         # on error, it is beneficial to report the msg.
         self.assertEqual(msg, 'Main Pipeline Finished, processing results')
         self.assertTrue(success)
+        self.assertTrue(False)
 
     def test_spp_no_qiita_id_error(self):
         test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")

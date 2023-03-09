@@ -385,5 +385,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         if return_code != 0:
             raise PipelineError(f"'{cmd}' returned {return_code}")
 
+    print(final_results_path)
+
     return [ArtifactInfo('output', 'job-output-folder',
                          [(f'{final_results_path}/', 'directory')])]
