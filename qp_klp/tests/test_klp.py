@@ -823,10 +823,12 @@ class KLPAmpliconTests(PluginTestCase):
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         ############
+
         # create GenPrepFileJob output directory for use by packaging code and
         # downstream-testing.
         gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
         prep_files_root_fp = join(gp_root_fp, 'PrepFiles')
+        makedirs(prep_files_root_fp, exist_ok=True)
         prep_file_name = ('20221227_FS10001773_45_BTC69702-1016.'
                           'AGMP_P3_3XTG_U19_1-3_14748.1.tsv')
 
