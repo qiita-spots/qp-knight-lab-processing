@@ -374,18 +374,19 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
     # if execution was skipped, reinitialze the cmds list to empty after
     # writing to log and before actually executing commands.
-    if skip_exec:
-        cmds = []
+    # if skip_exec:
+    #    cmds = []
 
     for cmd in cmds:
         p = Popen(cmd, universal_newlines=True, shell=True,
                   stdout=PIPE, stderr=PIPE)
         std_out, std_err = p.communicate()
         return_code = p.returncode
-        if return_code != 0:
-            raise PipelineError(f"'{cmd}' returned {return_code}")
 
-    print(final_results_path)
+        if return_code != 0 and not skip_exec:
+            # during testing, ignore processes that fail and continue
+            # to test other commands.
+            raise PipelineError(f"'{cmd}' returned {return_code}")
 
     return [ArtifactInfo('output', 'job-output-folder',
                          [(f'{final_results_path}/', 'directory')])]

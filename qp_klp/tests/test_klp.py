@@ -823,7 +823,6 @@ class KLPAmpliconTests(PluginTestCase):
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         ############
-
         # create GenPrepFileJob output directory for use by packaging code and
         # downstream-testing.
         gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
@@ -835,8 +834,6 @@ class KLPAmpliconTests(PluginTestCase):
         # generate dummy file
         with open(join(prep_files_root_fp, prep_file_name), 'w') as f:
             f.write("This is a file.")
-
-        print("prep_file_path: %s" % join(prep_files_root_fp, prep_file_name))
         #############
 
         # the only difference between this test and test_spp_no_qiita_id_error
@@ -877,6 +874,13 @@ class KLPAmpliconTests(PluginTestCase):
         # on error, it is beneficial to report the msg.
         self.assertEqual(msg, 'Main Pipeline Finished, processing results')
         self.assertTrue(success)
+
+        # confirm that an output directory named 'final_results' was created
+        # by the pipeline and that 'prep_files.tgz' is one of the products
+        # inside.
+        self.assertTrue(exists(join(self.out_dir, 'final_results',
+                                    'prep_files.tgz')))
+
         self.assertTrue(False)
 
     def test_spp_no_qiita_id_error(self):
