@@ -934,12 +934,6 @@ class KLPAmpliconTests(PluginTestCase):
         reports_dir = join(self.out_dir, 'ConvertJob', 'Reports')
         makedirs(reports_dir, exist_ok=True)
 
-        # create QCJobs output directory for use by GenPrepFileJob
-        # qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        # qcj_amplicon = join(qcj_output_fp, 'amplicon')
-        # makedirs(qcj_amplicon)
-        # makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
-
         with open(f'{self.basedir}/bad_mapping_file.txt', 'r') as f:
             mapping_file = f.readlines()
             mapping_file = ''.join(mapping_file)

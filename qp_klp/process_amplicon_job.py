@@ -372,11 +372,6 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         for cmd in cmds:
             cmd_log_f.write(f'{cmd}\n')
 
-    # if execution was skipped, reinitialze the cmds list to empty after
-    # writing to log and before actually executing commands.
-    # if skip_exec:
-    #    cmds = []
-
     for cmd in cmds:
         p = Popen(cmd, universal_newlines=True, shell=True,
                   stdout=PIPE, stderr=PIPE)
