@@ -419,10 +419,11 @@ class KLPTests(PluginTestCase):
         # confirm that fastq files were copied to uploads directory.
         uploads_fp = ('/home/runner/work/qp-knight-lab-processing/'
                       'qp-knight-lab-processing/qiita-dev/qiita_db/'
-                      'support_files/test_data/uploads/1')
+                      'support_files/test_data/uploads/11661')
 
         for some_file in file_list:
             some_path = join(uploads_fp, some_file)
+            print("checking '%s' exists..." % some_path)
             self.assertTrue(exists(some_path))
 
         # confirm that an output directory named 'final_results' was created
