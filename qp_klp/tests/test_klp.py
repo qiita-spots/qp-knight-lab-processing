@@ -496,8 +496,8 @@ class KLPTests(PluginTestCase):
             # replace randomly-generated tmp directory with fixed text.
             cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
 
-            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$', # noqa
-                           r' PREFIX/support_files/test_data/uploads/11661',
+            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/1$', # noqa
+                           r' PREFIX/support_files/test_data/uploads/1',
                            x) for x in cmds]
 
             self.assertEqual(exp, cmds)
