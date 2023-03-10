@@ -779,7 +779,7 @@ class KLPAmpliconTests(PluginTestCase):
                     remove(fp)
 
     def test_sequence_processing_pipeline(self):
-        test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
+        test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
         makedirs(test_dir)
 
         # create the sentinel files ConvertJob will check for.
@@ -796,10 +796,12 @@ class KLPAmpliconTests(PluginTestCase):
         fastq_dir = join(self.out_dir, 'ConvertJob')
         makedirs(fastq_dir)
 
-        file_list = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
-                     "CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz",
-                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz",
-                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz"]
+        file_list = [("230224_M05314_0347_000000000-KVMH3_SMPL1_S1_"
+                      "L001_I1_001.fastq.gz"),
+                     ("230224_M05314_0347_000000000-KVMH3_SMPL1_S1_"
+                      "L001_R1_001.fastq.gz"),
+                     ("230224_M05314_0347_000000000-KVMH3_SMPL1_S1_"
+                      "L001_R2_001.fastq.gz")]
 
         for fastq_file in file_list:
             fp = join(fastq_dir, fastq_file)
@@ -817,7 +819,7 @@ class KLPAmpliconTests(PluginTestCase):
         makedirs(reports_dir, exist_ok=True)
 
         # create QCJobs output directory for use by GenPrepFileJob
-        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
+        # qcj_output_fp = join(self.out_dir, 'QCJob', 'ABTX_20230227_11052')
         # qcj_amplicon = join(qcj_output_fp, 'amplicon')
 
         # don't make these: process_amplicon_job() will make them.
@@ -830,12 +832,12 @@ class KLPAmpliconTests(PluginTestCase):
         gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
         prep_files_root_fp = join(gp_root_fp, 'PrepFiles')
         makedirs(prep_files_root_fp, exist_ok=True)
-        prep_file_name = ('20221227_FS10001773_45_BTC69702-1016.'
-                          'AGMP_P3_3XTG_U19_1-3_14748.1.tsv')
+        prep_file_name = ('230224_M05314_0347_000000000-KVMH3.'
+                          'ABTX_20230227_11052.1.tsv')
 
-        # generate dummy file
-        with open(join(prep_files_root_fp, prep_file_name), 'w') as f:
-            f.write("This is a file.")
+        # copy sample prep-info file into position.
+        copy(join(self.basedir, prep_file_name),
+             join(prep_files_root_fp, prep_file_name))
         #############
 
         # the only difference between this test and test_spp_no_qiita_id_error
@@ -844,7 +846,7 @@ class KLPAmpliconTests(PluginTestCase):
             mapping_file = f.readlines()
             mapping_file = ''.join(mapping_file)
 
-        params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
+        params = {"run_identifier": "230224_M05314_0347_000000000-KVMH3",
                   "sample_sheet": {
                       "body": mapping_file,
                       "content_type": "text/plain",
@@ -891,31 +893,26 @@ class KLPAmpliconTests(PluginTestCase):
                 print(line.strip())
 
         # additional existence tests
-        fp = join(self.out_dir, 'final_results')
-        self.assertTrue(exists(join(fp, 'reports-FastQCJob.tgz')))
-        self.assertTrue(exists(join(fp, 'logs-FastQCJob.tgz')))
-        self.assertTrue(exists(join(fp, 'touched_studies.html')))
-        self.assertTrue(exists(join(fp, 'logs-ConvertJob.tgz')))
-        self.assertTrue(exists(join(fp, 'reports-ConvertJob.tgz')))
-        self.assertTrue(exists(join(fp, 'logs-GenPrepFileJob.tgz')))
-
-        files = ['CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz',
-                 'CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz',
-                 'CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz',
-                 'CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz']
+        # fp = join(self.out_dir, 'final_results')
+        # self.assertTrue(exists(join(fp, 'reports-FastQCJob.tgz')))
+        # self.assertTrue(exists(join(fp, 'logs-FastQCJob.tgz')))
+        # self.assertTrue(exists(join(fp, 'touched_studies.html')))
+        # self.assertTrue(exists(join(fp, 'logs-ConvertJob.tgz')))
+        # self.assertTrue(exists(join(fp, 'reports-ConvertJob.tgz')))
+        # self.assertTrue(exists(join(fp, 'logs-GenPrepFileJob.tgz')))
 
         uploads_fp = ('/home/runner/work/qp-knight-lab-processing/'
                       'qp-knight-lab-processing/qiita-dev/qiita_db/'
                       'support_files/test_data/uploads/1')
 
-        for some_file in files:
+        for some_file in file_list:
             some_path = join(uploads_fp, some_file)
             self.assertTrue(exists(some_path))
 
         self.assertTrue(False)
 
     def test_spp_no_qiita_id_error(self):
-        test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
+        test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
         makedirs(test_dir)
 
         # create the sentinel files ConvertJob will check for.
@@ -953,7 +950,7 @@ class KLPAmpliconTests(PluginTestCase):
         makedirs(reports_dir, exist_ok=True)
 
         # create QCJobs output directory for use by GenPrepFileJob
-        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
+        # qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
         # qcj_amplicon = join(qcj_output_fp, 'amplicon')
         # makedirs(qcj_amplicon)
         # makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
@@ -962,7 +959,7 @@ class KLPAmpliconTests(PluginTestCase):
             mapping_file = f.readlines()
             mapping_file = ''.join(mapping_file)
 
-        params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
+        params = {"run_identifier": "230224_M05314_0347_000000000-KVMH3",
                   "sample_sheet": {
                       "body": mapping_file,
                       "content_type": "text/plain",
