@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import main
-from os import remove, makedirs, walk
+from os import remove, makedirs
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
@@ -306,8 +306,21 @@ class KLPTests(PluginTestCase):
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
         qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
-        makedirs(qcj_filtered_sequences)
-        makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
+        # these dirs should now be made by the pipeline.
+        # makedirs(qcj_filtered_sequences)
+        # makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
+
+        # create GenPrepFileJob output directory for use by packaging code and
+        # downstream-testing.
+        gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
+        prep_files_root_fp = join(gp_root_fp, 'PrepFiles')
+        makedirs(prep_files_root_fp, exist_ok=True)
+        prep_file_name = ('230224_M05314_0347_000000000-KVMH3.'
+                          'ABTX_20230227_11052.1.tsv')
+
+        # copy sample prep-info file into position.
+        copy(join(self.basedir, prep_file_name),
+             join(prep_files_root_fp, prep_file_name))
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
@@ -395,6 +408,33 @@ class KLPTests(PluginTestCase):
 
         self.assertEqual(ainfo, exp)
 
+        # confirm that 'cmds.log' exists.
+        cmd_log_fp = join(self.out_dir, 'cmds.log')
+        self.assertTrue(exists(cmd_log_fp))
+        with open(cmd_log_fp, 'r') as f:
+            lines = f.readlines()
+            for line in lines:
+                print(line.strip())
+
+        # confirm that fastq files were copied to uploads directory.
+        uploads_fp = ('/home/runner/work/qp-knight-lab-processing/'
+                      'qp-knight-lab-processing/qiita-dev/qiita_db/'
+                      'support_files/test_data/uploads/1')
+
+        for some_file in file_list:
+            some_path = join(uploads_fp, some_file)
+            self.assertTrue(exists(some_path))
+
+        # confirm that an output directory named 'final_results' was created
+        # by the pipeline and that 'prep_files.tgz' is one of the products
+        # inside.
+        self.assertTrue(exists(join(self.out_dir, 'final_results',
+                                    'prep-files.tgz')))
+
+        # confirm touched_studies.html was generated.
+        self.assertTrue(exists(join(self.out_dir, 'final_results',
+                                    'touched_studies.html')))
+
         # verify sequence_processing_pipeline() will convert spaces
         # to underscores ('_').
         self.assertTrue(exists(join(f"{self.out_dir}", 'A_sample_sheet.csv')))
@@ -446,6 +486,8 @@ class KLPTests(PluginTestCase):
                    'description/11661" target="_blank">https://localhost:21174'
                    '/study/description/11661</a></td></tr></tbody></table>')
             self.assertEqual(obs, exp)
+
+        self.assertTrue(False)
 
     def test_failed_samples_recorder(self):
         # since unittests can't run third-party code like bcl2fastq and
@@ -861,10 +903,6 @@ class KLPAmpliconTests(PluginTestCase):
             self.qclient, job_id, params, self.out_dir
         )
 
-        for root, dirs, files in walk(self.out_dir):
-            for some_file in files:
-                print(join(root, some_file))
-
         # on error, it is beneficial to report the msg.
         self.assertEqual(msg, 'Main Pipeline Finished, processing results')
         self.assertTrue(success)
@@ -872,10 +910,6 @@ class KLPAmpliconTests(PluginTestCase):
         # confirm that 'cmds.log' exists.
         cmd_log_fp = join(self.out_dir, 'cmds.log')
         self.assertTrue(exists(cmd_log_fp))
-        with open(cmd_log_fp, 'r') as f:
-            lines = f.readlines()
-            for line in lines:
-                print(line.strip())
 
         # confirm that fastq files were copied to uploads directory.
         uploads_fp = ('/home/runner/work/qp-knight-lab-processing/'
