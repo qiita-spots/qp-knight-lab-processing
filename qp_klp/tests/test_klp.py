@@ -442,6 +442,15 @@ class KLPTests(PluginTestCase):
 
         print("UPLOADS FP: %s" % uploads_fp)
 
+        # DEBUG CMDS.LOG
+        with open(join(self.out_dir, 'cmds.log'), 'r') as f:
+            print("BEGIN CMD LOG")
+            lines = f.readlines()
+            lines = [x.strip() for x in lines]
+            for line in lines:
+                print(line)
+            print("END CMD LOG")
+
         for some_file in new_files:
             some_path = join(uploads_fp, some_file)
             msg = f"'{some_path}' does not exist."
