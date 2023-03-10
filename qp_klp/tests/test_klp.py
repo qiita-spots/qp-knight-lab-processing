@@ -307,7 +307,7 @@ class KLPTests(PluginTestCase):
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
         qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
         # these dirs should now be made by the pipeline.
-        # makedirs(qcj_filtered_sequences)
+        makedirs(qcj_filtered_sequences)
         # makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         # create GenPrepFileJob output directory for use by packaging code and
