@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import main
-from os import remove, makedirs, walk
+from os import remove, makedirs
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
@@ -416,7 +416,7 @@ class KLPTests(PluginTestCase):
                       'qp-knight-lab-processing/qiita-dev/qiita_db/'
                       'support_files/test_data/uploads/11661')
 
-        for some_file in file_list:
+        for some_file in new_files:
             some_path = join(uploads_fp, some_file)
             print("checking '%s' exists..." % some_path)
             self.assertTrue(exists(some_path))
