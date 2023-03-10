@@ -879,7 +879,14 @@ class KLPAmpliconTests(PluginTestCase):
         # by the pipeline and that 'prep_files.tgz' is one of the products
         # inside.
         self.assertTrue(exists(join(self.out_dir, 'final_results',
-                                    'prep_files.tgz')))
+                                    'prep-files.tgz')))
+
+        cmd_log_fp = join(self.out_dir, 'cmd.log')
+        self.assertTrue(exists(cmd_log_fp))
+        with open(cmd_log_fp, 'r') as f:
+            lines = f.readlines()
+            for line in lines:
+                print(line.strip())
 
         self.assertTrue(False)
 
