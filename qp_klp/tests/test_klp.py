@@ -151,7 +151,7 @@ class KLPTests(PluginTestCase):
             "Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapt"
             "er,HumanFiltering,library_construction_protocol,experiment_desig"
             "n_description,,,\n",
-            "Feist_1,11661,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Equip"
+            "Feist_1,1,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Equip"
             "eriment,,,\n",
             ",,,,,,,,,,\n",
             "[Contact],,,,,,,,,,\n",
