@@ -891,12 +891,13 @@ class KLPAmpliconTests(PluginTestCase):
                 print(line.strip())
 
         # additional existence tests
-        self.assertTrue(exists(join(self.out_dir, 'reports-FastQCJob.tgz')))
-        self.assertTrue(exists(join(self.out_dir, 'logs-FastQCJob.tgz')))
-        self.assertTrue(exists(join(self.out_dir, 'touched_studies.html')))
-        self.assertTrue(exists(join(self.out_dir, 'logs-ConvertJob.tgz')))
-        self.assertTrue(exists(join(self.out_dir, 'reports-ConvertJob.tgz')))
-        self.assertTrue(exists(join(self.out_dir, 'logs-GenPrepFileJob.tgz')))
+        fp = join(self.out_dir, 'final_results')
+        self.assertTrue(exists(join(fp, 'reports-FastQCJob.tgz')))
+        self.assertTrue(exists(join(fp, 'logs-FastQCJob.tgz')))
+        self.assertTrue(exists(join(fp, 'touched_studies.html')))
+        self.assertTrue(exists(join(fp, 'logs-ConvertJob.tgz')))
+        self.assertTrue(exists(join(fp, 'reports-ConvertJob.tgz')))
+        self.assertTrue(exists(join(fp, 'logs-GenPrepFileJob.tgz')))
 
         files = ['CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz',
                  'CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz',
