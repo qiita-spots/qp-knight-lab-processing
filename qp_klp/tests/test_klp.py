@@ -448,10 +448,11 @@ class KLPTests(PluginTestCase):
         self.assertTrue(exists(join(self.out_dir, 'final_results',
                                     'prep-files.tgz')))
 
-        # not working
         # confirm touched_studies.html was generated.
-        # self.assertTrue(exists(join(self.out_dir, 'final_results',
-        #                            'touched_studies.html')))
+        # /tmp/tmprcv1zj5b/final_results/touched_studies.html
+        tmp_fp = join(self.out_dir, 'final_results', 'touched_studies.html')
+        print(tmp_fp)
+        self.assertTrue(exists(tmp_fp))
 
         # verify sequence_processing_pipeline() will convert spaces
         # to underscores ('_').
@@ -493,7 +494,7 @@ class KLPTests(PluginTestCase):
         # good-sample-sheet.csv as our sample-sheet, touched_studies.html
         # will include only the one project Feist_1, instead of all
         # three studies found in good-sample-sheet.csv.
-        with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
+        with open(tmp_fp, 'r') as f:
             obs = f.readlines()
             obs = [x.strip() for x in obs]
             obs = ''.join(obs)
@@ -504,8 +505,6 @@ class KLPTests(PluginTestCase):
                    'description/11661" target="_blank">https://localhost:21174'
                    '/study/description/11661</a></td></tr></tbody></table>')
             self.assertEqual(obs, exp)
-
-        self.assertTrue(False)
 
     def test_failed_samples_recorder(self):
         # since unittests can't run third-party code like bcl2fastq and
