@@ -818,8 +818,8 @@ class KLPAmpliconTests(PluginTestCase):
 
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
-        makedirs(qcj_filtered_sequences)
+        qcj_amplicon = join(qcj_output_fp, 'amplicon')
+        makedirs(qcj_amplicon)
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         ############
@@ -889,12 +889,25 @@ class KLPAmpliconTests(PluginTestCase):
                 print(line.strip())
 
         # additional existence tests
-        self.assertTrue(exists(self.out_dir, 'reports-FastQCJob.tgz'))
-        self.assertTrue(exists(self.out_dir, 'logs-FastQCJob.tgz'))
-        self.assertTrue(exists(self.out_dir, 'touched_studies.html'))
-        self.assertTrue(exists(self.out_dir, 'logs-ConvertJob.tgz'))
-        self.assertTrue(exists(self.out_dir, 'reports-ConvertJob.tgz'))
-        self.assertTrue(exists(self.out_dir, 'logs-GenPrepFileJob.tgz'))
+        self.assertTrue(exists(join(self.out_dir, 'reports-FastQCJob.tgz')))
+        self.assertTrue(exists(join(self.out_dir, 'logs-FastQCJob.tgz')))
+        self.assertTrue(exists(join(self.out_dir, 'touched_studies.html')))
+        self.assertTrue(exists(join(self.out_dir, 'logs-ConvertJob.tgz')))
+        self.assertTrue(exists(join(self.out_dir, 'reports-ConvertJob.tgz')))
+        self.assertTrue(exists(join(self.out_dir, 'logs-GenPrepFileJob.tgz')))
+
+        files = ['CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz',
+                 'CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz',
+                 'CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz',
+                 'CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz']
+
+        uploads_fp = ('/home/runner/work/qp-knight-lab-processing/'
+                      'qp-knight-lab-processing/qiita-dev/qiita_db/'
+                      'support_files/test_data/uploads/1')
+
+        for some_file in files:
+            some_path = join(uploads_fp, some_file)
+            self.assertTrue(exists(some_path))
 
         self.assertTrue(False)
 
@@ -938,8 +951,8 @@ class KLPAmpliconTests(PluginTestCase):
 
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
-        makedirs(qcj_filtered_sequences)
+        qcj_amplicon = join(qcj_output_fp, 'amplicon')
+        makedirs(qcj_amplicon)
         makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         with open(f'{self.basedir}/bad_mapping_file.txt', 'r') as f:
