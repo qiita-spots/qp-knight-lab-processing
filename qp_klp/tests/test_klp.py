@@ -881,12 +881,20 @@ class KLPAmpliconTests(PluginTestCase):
         self.assertTrue(exists(join(self.out_dir, 'final_results',
                                     'prep-files.tgz')))
 
-        cmd_log_fp = join(self.out_dir, 'cmd.log')
+        cmd_log_fp = join(self.out_dir, 'cmds.log')
         self.assertTrue(exists(cmd_log_fp))
         with open(cmd_log_fp, 'r') as f:
             lines = f.readlines()
             for line in lines:
                 print(line.strip())
+
+        # additional existence tests
+        self.assertTrue(exists(self.out_dir, 'reports-FastQCJob.tgz'))
+        self.assertTrue(exists(self.out_dir, 'logs-FastQCJob.tgz'))
+        self.assertTrue(exists(self.out_dir, 'touched_studies.html'))
+        self.assertTrue(exists(self.out_dir, 'logs-ConvertJob.tgz'))
+        self.assertTrue(exists(self.out_dir, 'reports-ConvertJob.tgz'))
+        self.assertTrue(exists(self.out_dir, 'logs-GenPrepFileJob.tgz'))
 
         self.assertTrue(False)
 
