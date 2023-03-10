@@ -818,15 +818,6 @@ class KLPAmpliconTests(PluginTestCase):
         reports_dir = join(self.out_dir, 'ConvertJob', 'Reports')
         makedirs(reports_dir, exist_ok=True)
 
-        # create QCJobs output directory for use by GenPrepFileJob
-        # qcj_output_fp = join(self.out_dir, 'QCJob', 'ABTX_20230227_11052')
-        # qcj_amplicon = join(qcj_output_fp, 'amplicon')
-
-        # don't make these: process_amplicon_job() will make them.
-        # makedirs(qcj_amplicon)
-        # makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
-
-        ############
         # create GenPrepFileJob output directory for use by packaging code and
         # downstream-testing.
         gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
@@ -838,7 +829,6 @@ class KLPAmpliconTests(PluginTestCase):
         # copy sample prep-info file into position.
         copy(join(self.basedir, prep_file_name),
              join(prep_files_root_fp, prep_file_name))
-        #############
 
         # the only difference between this test and test_spp_no_qiita_id_error
         # is project_names are missing qiita_id in bad_mapping_file.txt.
@@ -879,12 +869,7 @@ class KLPAmpliconTests(PluginTestCase):
         self.assertEqual(msg, 'Main Pipeline Finished, processing results')
         self.assertTrue(success)
 
-        # confirm that an output directory named 'final_results' was created
-        # by the pipeline and that 'prep_files.tgz' is one of the products
-        # inside.
-        self.assertTrue(exists(join(self.out_dir, 'final_results',
-                                    'prep-files.tgz')))
-
+        # confirm that 'cmds.log' exists.
         cmd_log_fp = join(self.out_dir, 'cmds.log')
         self.assertTrue(exists(cmd_log_fp))
         with open(cmd_log_fp, 'r') as f:
@@ -892,15 +877,7 @@ class KLPAmpliconTests(PluginTestCase):
             for line in lines:
                 print(line.strip())
 
-        # additional existence tests
-        # fp = join(self.out_dir, 'final_results')
-        # self.assertTrue(exists(join(fp, 'reports-FastQCJob.tgz')))
-        # self.assertTrue(exists(join(fp, 'logs-FastQCJob.tgz')))
-        # self.assertTrue(exists(join(fp, 'touched_studies.html')))
-        # self.assertTrue(exists(join(fp, 'logs-ConvertJob.tgz')))
-        # self.assertTrue(exists(join(fp, 'reports-ConvertJob.tgz')))
-        # self.assertTrue(exists(join(fp, 'logs-GenPrepFileJob.tgz')))
-
+        # confirm that fastq files were copied to uploads directory.
         uploads_fp = ('/home/runner/work/qp-knight-lab-processing/'
                       'qp-knight-lab-processing/qiita-dev/qiita_db/'
                       'support_files/test_data/uploads/1')
@@ -909,7 +886,15 @@ class KLPAmpliconTests(PluginTestCase):
             some_path = join(uploads_fp, some_file)
             self.assertTrue(exists(some_path))
 
-        self.assertTrue(False)
+        # confirm that an output directory named 'final_results' was created
+        # by the pipeline and that 'prep_files.tgz' is one of the products
+        # inside.
+        self.assertTrue(exists(join(self.out_dir, 'final_results',
+                                    'prep-files.tgz')))
+
+        # confirm touched_studies.html was generated.
+        self.assertTrue(exists(join(self.out_dir, 'final_results',
+                                    'touched_studies.html')))
 
     def test_spp_no_qiita_id_error(self):
         test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
