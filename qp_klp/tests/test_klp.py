@@ -10,7 +10,7 @@ from os import remove, makedirs
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
-from os.path import exists, isdir, join, realpath, dirname
+from os.path import exists, isdir, join, realpath, dirname, split
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
@@ -243,6 +243,16 @@ class KLPTests(PluginTestCase):
                 else:
                     remove(fp)
 
+    def _get_uploads_path(self):
+        # determine expected uploads directory using self.basedir.
+        tmp = self.basedir
+
+        for i in range(0, 2):
+            tmp = split(tmp)[0]
+
+        return join(tmp, 'qiita-dev', 'qiita_db', 'support_files', 'test_data',
+                    'uploads', '1')
+
     def test_sequence_processing_pipeline(self):
         # not a valid run_identifier folder and sample_sheet
         params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
@@ -313,7 +323,7 @@ class KLPTests(PluginTestCase):
         gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
         prep_files_root_fp = join(gp_root_fp, 'PrepFiles')
         makedirs(prep_files_root_fp, exist_ok=True)
-        # TODO: Fix name
+
         prep_file_name = ('230224_M05314_0347_000000000-KVMH3.'
                           'ABTX_20230227_11052.1.tsv')
 
@@ -412,13 +422,11 @@ class KLPTests(PluginTestCase):
         self.assertTrue(exists(cmd_log_fp))
 
         # confirm that fastq files were copied to uploads directory.
-        uploads_fp = ('/home/runner/work/qp-knight-lab-processing/'
-                      'qp-knight-lab-processing/qiita-dev/qiita_db/'
-                      'support_files/test_data/uploads/11661')
+
+        uploads_fp = self._get_uploads_path()
 
         for some_file in new_files:
             some_path = join(uploads_fp, some_file)
-            print("checking '%s' exists..." % some_path)
             self.assertTrue(exists(some_path))
 
         # confirm that an output directory named 'final_results' was created
@@ -814,6 +822,16 @@ class KLPAmpliconTests(PluginTestCase):
                 else:
                     remove(fp)
 
+    def _get_uploads_path(self):
+        # determine expected uploads directory using self.basedir.
+        tmp = self.basedir
+
+        for i in range(0, 2):
+            tmp = split(tmp)[0]
+
+        return join(tmp, 'qiita-dev', 'qiita_db', 'support_files', 'test_data',
+                    'uploads', '1')
+
     def test_sequence_processing_pipeline(self):
         test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
         makedirs(test_dir)
@@ -906,9 +924,8 @@ class KLPAmpliconTests(PluginTestCase):
         self.assertTrue(exists(cmd_log_fp))
 
         # confirm that fastq files were copied to uploads directory.
-        uploads_fp = ('/home/runner/work/qp-knight-lab-processing/'
-                      'qp-knight-lab-processing/qiita-dev/qiita_db/'
-                      'support_files/test_data/uploads/1')
+
+        uploads_fp = self._get_uploads_path()
 
         for some_file in file_list:
             some_path = join(uploads_fp, some_file)
