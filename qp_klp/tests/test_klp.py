@@ -482,7 +482,8 @@ class KLPTests(PluginTestCase):
                'cd OUT_DIR; tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles',
                ('cd OUT_DIR; tar zcvf reports-QCJob.tgz QCJob/Feist_1/fas'
                 'tp_reports_dir'),
-               'cd PREFIX/support_files/test_data/uploads/11661',
+               ('cd OUT_DIR; mv QCJob/Feist_1/filtered_sequences/* '
+                f'{uploads_fp}'),
                'cd OUT_DIR; mv *.tgz final_results',
                'cd OUT_DIR; mv FastQCJob/multiqc final_results',
                'cd OUT_DIR; mv touched_studies.html final_results']
@@ -495,11 +496,6 @@ class KLPTests(PluginTestCase):
             cmds = [x.strip() for x in cmds]
             # replace randomly-generated tmp directory with fixed text.
             cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
-
-            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/1$', # noqa
-                           r' PREFIX/support_files/test_data/uploads/1',
-                           x) for x in cmds]
-
             self.assertEqual(exp, cmds)
 
         # Note that because we are using self.sample_csv_data instead of
