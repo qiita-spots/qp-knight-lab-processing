@@ -306,15 +306,14 @@ class KLPTests(PluginTestCase):
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
         qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
-        # these dirs should now be made by the pipeline.
         makedirs(qcj_filtered_sequences)
-        # makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         # create GenPrepFileJob output directory for use by packaging code and
         # downstream-testing.
         gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
         prep_files_root_fp = join(gp_root_fp, 'PrepFiles')
         makedirs(prep_files_root_fp, exist_ok=True)
+        # TODO: Fix name
         prep_file_name = ('230224_M05314_0347_000000000-KVMH3.'
                           'ABTX_20230227_11052.1.tsv')
 
@@ -411,36 +410,16 @@ class KLPTests(PluginTestCase):
         # confirm that 'cmds.log' exists.
         cmd_log_fp = join(self.out_dir, 'cmds.log')
         self.assertTrue(exists(cmd_log_fp))
-        with open(cmd_log_fp, 'r') as f:
-            lines = f.readlines()
-            for line in lines:
-                print(line.strip())
 
         # confirm that fastq files were copied to uploads directory.
         uploads_fp = ('/home/runner/work/qp-knight-lab-processing/'
                       'qp-knight-lab-processing/qiita-dev/qiita_db/'
                       'support_files/test_data/uploads/11661')
 
-        # use it, don't comment it out
-        print(uploads_fp)
-
-        for root, dirs, files in walk('/home/runner/work/'):
-            for some_file in files:
-                some_path = join(root, some_file)
-                if 'uploads' in some_path:
-                    # confirm existence of uploads path
-                    print(some_path)
-
-        for root, dirs, files in walk(self.out_dir):
-            for some_file in files:
-                some_path = join(root, some_file)
-                print(some_path)
-
-        # bypass to test additional tests. return to this after
-        # for some_file in file_list:
-        #     some_path = join(uploads_fp, some_file)
-        #     print("checking '%s' exists..." % some_path)
-        #     self.assertTrue(exists(some_path))
+        for some_file in file_list:
+            some_path = join(uploads_fp, some_file)
+            print("checking '%s' exists..." % some_path)
+            self.assertTrue(exists(some_path))
 
         # confirm that an output directory named 'final_results' was created
         # by the pipeline and that 'prep_files.tgz' is one of the products
@@ -449,10 +428,8 @@ class KLPTests(PluginTestCase):
                                     'prep-files.tgz')))
 
         # confirm touched_studies.html was generated.
-        # /tmp/tmprcv1zj5b/final_results/touched_studies.html
-        tmp_fp = join(self.out_dir, 'final_results', 'touched_studies.html')
-        print(tmp_fp)
-        self.assertTrue(exists(tmp_fp))
+        ts_fp = join(self.out_dir, 'final_results', 'touched_studies.html')
+        self.assertTrue(exists(ts_fp))
 
         # verify sequence_processing_pipeline() will convert spaces
         # to underscores ('_').
@@ -494,7 +471,7 @@ class KLPTests(PluginTestCase):
         # good-sample-sheet.csv as our sample-sheet, touched_studies.html
         # will include only the one project Feist_1, instead of all
         # three studies found in good-sample-sheet.csv.
-        with open(tmp_fp, 'r') as f:
+        with open(ts_fp, 'r') as f:
             obs = f.readlines()
             obs = [x.strip() for x in obs]
             obs = ''.join(obs)
