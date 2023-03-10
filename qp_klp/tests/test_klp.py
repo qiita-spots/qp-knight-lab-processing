@@ -818,9 +818,11 @@ class KLPAmpliconTests(PluginTestCase):
 
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        qcj_amplicon = join(qcj_output_fp, 'amplicon')
-        makedirs(qcj_amplicon)
-        makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
+        # qcj_amplicon = join(qcj_output_fp, 'amplicon')
+
+        # don't make these: process_amplicon_job() will make them.
+        # makedirs(qcj_amplicon)
+        # makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         ############
         # create GenPrepFileJob output directory for use by packaging code and
@@ -951,9 +953,9 @@ class KLPAmpliconTests(PluginTestCase):
 
         # create QCJobs output directory for use by GenPrepFileJob
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        qcj_amplicon = join(qcj_output_fp, 'amplicon')
-        makedirs(qcj_amplicon)
-        makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
+        # qcj_amplicon = join(qcj_output_fp, 'amplicon')
+        # makedirs(qcj_amplicon)
+        # makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
 
         with open(f'{self.basedir}/bad_mapping_file.txt', 'r') as f:
             mapping_file = f.readlines()
