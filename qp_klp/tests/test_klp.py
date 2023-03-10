@@ -434,22 +434,18 @@ class KLPTests(PluginTestCase):
         for root, dirs, files in walk(tmp):
             for some_file in files:
                 some_path = join(root, some_file)
-                print(some_path)
+                if 'uploads' in some_path:
+                    print(some_path)
         # ###
 
         uploads_fp = self._get_uploads_path()
 
-        '''
-        /home/runner/work/qp-knight-lab-processing/qp-knight-lab-processing/qiita-dev/qiita_db/support_files/test_data/uploads/1
-        /home/runner/work/qp-knight-lab-processing/qp-knight-lab-processing/qiita-dev/qiita_db/support_files/test_data/uploads/1/file1_R1_file1.trimmed.fastq.gz
-        '''
-
-        print(uploads_fp)
+        print("UPLOADS FP: %s" % uploads_fp)
 
         for some_file in new_files:
             some_path = join(uploads_fp, some_file)
-            print(some_path)
-            self.assertTrue(exists(some_path))
+            msg = f"'{some_path}' does not exist."
+            self.assertTrue(exists(some_path), msg=msg)
 
         # confirm that an output directory named 'final_results' was created
         # by the pipeline and that 'prep_files.tgz' is one of the products
