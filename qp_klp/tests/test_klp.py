@@ -10,7 +10,7 @@ from os import remove, makedirs
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
-from os.path import exists, isdir, join, realpath, dirname
+from os.path import exists, isdir, join, realpath, dirname, split
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
@@ -151,7 +151,7 @@ class KLPTests(PluginTestCase):
             "Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapt"
             "er,HumanFiltering,library_construction_protocol,experiment_desig"
             "n_description,,,\n",
-            "Feist_1,11661,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Equip"
+            "Feist_1,1,FALSE,AACC,GGTT,FALSE,Knight Lab Kapa HP,Equip"
             "eriment,,,\n",
             ",,,,,,,,,,\n",
             "[Contact],,,,,,,,,,\n",
@@ -243,6 +243,16 @@ class KLPTests(PluginTestCase):
                 else:
                     remove(fp)
 
+    def _get_uploads_path(self):
+        # determine expected uploads directory using self.basedir.
+        tmp = self.basedir
+
+        for i in range(0, 2):
+            tmp = split(tmp)[0]
+
+        return join(tmp, 'qiita-dev', 'qiita_db', 'support_files', 'test_data',
+                    'uploads', '1')
+
     def test_sequence_processing_pipeline(self):
         # not a valid run_identifier folder and sample_sheet
         params = {"run_identifier": "NOT_A_RUN_IDENTIFIER",
@@ -307,7 +317,19 @@ class KLPTests(PluginTestCase):
         qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
         qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
         makedirs(qcj_filtered_sequences)
-        makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
+
+        # create GenPrepFileJob output directory for use by packaging code and
+        # downstream-testing.
+        gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
+        prep_files_root_fp = join(gp_root_fp, 'PrepFiles')
+        makedirs(prep_files_root_fp, exist_ok=True)
+
+        prep_file_name = ('230224_M05314_0347_000000000-KVMH3.'
+                          'ABTX_20230227_11052.1.tsv')
+
+        # copy sample prep-info file into position.
+        copy(join(self.basedir, prep_file_name),
+             join(prep_files_root_fp, prep_file_name))
 
         # valid run_identifier folder but not sample_sheet
         # NOTE: we are not creating a new job for this test, which is fine
@@ -395,6 +417,29 @@ class KLPTests(PluginTestCase):
 
         self.assertEqual(ainfo, exp)
 
+        # confirm that 'cmds.log' exists.
+        cmd_log_fp = join(self.out_dir, 'cmds.log')
+        self.assertTrue(exists(cmd_log_fp))
+
+        # confirm that fastq files were copied to uploads directory.
+
+        uploads_fp = self._get_uploads_path()
+
+        for some_file in new_files:
+            some_path = join(uploads_fp, some_file)
+            self.assertTrue(exists(some_path), msg=(f"'{some_path}' does not"
+                                                    " exist."))
+
+        # confirm that an output directory named 'final_results' was created
+        # by the pipeline and that 'prep_files.tgz' is one of the products
+        # inside.
+        self.assertTrue(exists(join(self.out_dir, 'final_results',
+                                    'prep-files.tgz')))
+
+        # confirm touched_studies.html was generated.
+        ts_fp = join(self.out_dir, 'final_results', 'touched_studies.html')
+        self.assertTrue(exists(ts_fp))
+
         # verify sequence_processing_pipeline() will convert spaces
         # to underscores ('_').
         self.assertTrue(exists(join(f"{self.out_dir}", 'A_sample_sheet.csv')))
@@ -411,7 +456,8 @@ class KLPTests(PluginTestCase):
                'cd OUT_DIR; tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles',
                ('cd OUT_DIR; tar zcvf reports-QCJob.tgz QCJob/Feist_1/fas'
                 'tp_reports_dir'),
-               'cd PREFIX/support_files/test_data/uploads/11661',
+               ('cd OUT_DIR; mv QCJob/Feist_1/filtered_sequences/* '
+                f'{uploads_fp}'),
                'cd OUT_DIR; mv *.tgz final_results',
                'cd OUT_DIR; mv FastQCJob/multiqc final_results',
                'cd OUT_DIR; mv touched_studies.html final_results']
@@ -424,27 +470,22 @@ class KLPTests(PluginTestCase):
             cmds = [x.strip() for x in cmds]
             # replace randomly-generated tmp directory with fixed text.
             cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
-
-            cmds = [re.sub(r' .*\/support_files\/test_data\/uploads\/11661$', # noqa
-                           r' PREFIX/support_files/test_data/uploads/11661',
-                           x) for x in cmds]
-
             self.assertEqual(exp, cmds)
 
         # Note that because we are using self.sample_csv_data instead of
         # good-sample-sheet.csv as our sample-sheet, touched_studies.html
         # will include only the one project Feist_1, instead of all
         # three studies found in good-sample-sheet.csv.
-        with open(join(self.out_dir, 'touched_studies.html'), 'r') as f:
+        with open(ts_fp, 'r') as f:
             obs = f.readlines()
             obs = [x.strip() for x in obs]
             obs = ''.join(obs)
             exp = ('<table border="2" class="dataframe"><thead><tr style="text'
                    '-align: left;"><th>Project</th><th>Qiita Study ID</th><th>'
                    'Qiita URL</th></tr></thead><tbody><tr><td>Feist_1</td>'
-                   '<td>11661</td><td><a href="https://localhost:21174/study/'
-                   'description/11661" target="_blank">https://localhost:21174'
-                   '/study/description/11661</a></td></tr></tbody></table>')
+                   '<td>1</td><td><a href="https://localhost:21174/study/'
+                   'description/1" target="_blank">https://localhost:21174'
+                   '/study/description/1</a></td></tr></tbody></table>')
             self.assertEqual(obs, exp)
 
     def test_failed_samples_recorder(self):
@@ -778,8 +819,18 @@ class KLPAmpliconTests(PluginTestCase):
                 else:
                     remove(fp)
 
+    def _get_uploads_path(self):
+        # determine expected uploads directory using self.basedir.
+        tmp = self.basedir
+
+        for i in range(0, 2):
+            tmp = split(tmp)[0]
+
+        return join(tmp, 'qiita-dev', 'qiita_db', 'support_files', 'test_data',
+                    'uploads', '1')
+
     def test_sequence_processing_pipeline(self):
-        test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
+        test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
         makedirs(test_dir)
 
         # create the sentinel files ConvertJob will check for.
@@ -796,10 +847,12 @@ class KLPAmpliconTests(PluginTestCase):
         fastq_dir = join(self.out_dir, 'ConvertJob')
         makedirs(fastq_dir)
 
-        file_list = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
-                     "CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz",
-                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz",
-                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz"]
+        file_list = [("230224_M05314_0347_000000000-KVMH3_SMPL1_S1_"
+                      "L001_I1_001.fastq.gz"),
+                     ("230224_M05314_0347_000000000-KVMH3_SMPL1_S1_"
+                      "L001_R1_001.fastq.gz"),
+                     ("230224_M05314_0347_000000000-KVMH3_SMPL1_S1_"
+                      "L001_R2_001.fastq.gz")]
 
         for fastq_file in file_list:
             fp = join(fastq_dir, fastq_file)
@@ -816,11 +869,17 @@ class KLPAmpliconTests(PluginTestCase):
         reports_dir = join(self.out_dir, 'ConvertJob', 'Reports')
         makedirs(reports_dir, exist_ok=True)
 
-        # create QCJobs output directory for use by GenPrepFileJob
-        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
-        makedirs(qcj_filtered_sequences)
-        makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
+        # create GenPrepFileJob output directory for use by packaging code and
+        # downstream-testing.
+        gp_root_fp = join(self.out_dir, 'GenPrepFileJob')
+        prep_files_root_fp = join(gp_root_fp, 'PrepFiles')
+        makedirs(prep_files_root_fp, exist_ok=True)
+        prep_file_name = ('230224_M05314_0347_000000000-KVMH3.'
+                          'ABTX_20230227_11052.1.tsv')
+
+        # copy sample prep-info file into position.
+        copy(join(self.basedir, prep_file_name),
+             join(prep_files_root_fp, prep_file_name))
 
         # the only difference between this test and test_spp_no_qiita_id_error
         # is project_names are missing qiita_id in bad_mapping_file.txt.
@@ -828,7 +887,7 @@ class KLPAmpliconTests(PluginTestCase):
             mapping_file = f.readlines()
             mapping_file = ''.join(mapping_file)
 
-        params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
+        params = {"run_identifier": "230224_M05314_0347_000000000-KVMH3",
                   "sample_sheet": {
                       "body": mapping_file,
                       "content_type": "text/plain",
@@ -857,8 +916,30 @@ class KLPAmpliconTests(PluginTestCase):
         self.assertEqual(msg, 'Main Pipeline Finished, processing results')
         self.assertTrue(success)
 
+        # confirm that 'cmds.log' exists.
+        cmd_log_fp = join(self.out_dir, 'cmds.log')
+        self.assertTrue(exists(cmd_log_fp))
+
+        # confirm that fastq files were copied to uploads directory.
+
+        uploads_fp = self._get_uploads_path()
+
+        for some_file in file_list:
+            some_path = join(uploads_fp, some_file)
+            self.assertTrue(exists(some_path))
+
+        # confirm that an output directory named 'final_results' was created
+        # by the pipeline and that 'prep_files.tgz' is one of the products
+        # inside.
+        self.assertTrue(exists(join(self.out_dir, 'final_results',
+                                    'prep-files.tgz')))
+
+        # confirm touched_studies.html was generated.
+        self.assertTrue(exists(join(self.out_dir, 'final_results',
+                                    'touched_studies.html')))
+
     def test_spp_no_qiita_id_error(self):
-        test_dir = join(self.search_dir, "200318_A00953_0082_AH5TWYDSXY")
+        test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
         makedirs(test_dir)
 
         # create the sentinel files ConvertJob will check for.
@@ -895,17 +976,11 @@ class KLPAmpliconTests(PluginTestCase):
         reports_dir = join(self.out_dir, 'ConvertJob', 'Reports')
         makedirs(reports_dir, exist_ok=True)
 
-        # create QCJobs output directory for use by GenPrepFileJob
-        qcj_output_fp = join(self.out_dir, 'QCJob', 'Feist_1')
-        qcj_filtered_sequences = join(qcj_output_fp, 'filtered_sequences')
-        makedirs(qcj_filtered_sequences)
-        makedirs(join(qcj_output_fp, 'fastp_reports_dir', 'json'))
-
         with open(f'{self.basedir}/bad_mapping_file.txt', 'r') as f:
             mapping_file = f.readlines()
             mapping_file = ''.join(mapping_file)
 
-        params = {"run_identifier": "200318_A00953_0082_AH5TWYDSXY",
+        params = {"run_identifier": "230224_M05314_0347_000000000-KVMH3",
                   "sample_sheet": {
                       "body": mapping_file,
                       "content_type": "text/plain",
