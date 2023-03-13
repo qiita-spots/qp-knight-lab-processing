@@ -130,3 +130,6 @@ dmypy.json
 
 # Plugin configuration file
 configuration.json
+
+# test generated files
+qp_klp/tests/*

@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import main
-from os import remove, makedirs
+from os import remove, makedirs, environ
 from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
@@ -17,7 +17,6 @@ from qp_klp import __version__, plugin
 from qp_klp.klp_util import FailedSamplesRecord, map_sample_names_to_tube_ids
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
-from os import environ
 import logging
 import re
 from metapool import KLSampleSheet
@@ -244,14 +243,11 @@ class KLPTests(PluginTestCase):
                     remove(fp)
 
     def _get_uploads_path(self):
-        # determine expected uploads directory using self.basedir.
-        tmp = self.basedir
+        # determine expected uploads directory using a valid artifact
+        example_file = self.qclient.get("/qiita_db/artifacts/1/")[
+            'files']['raw_forward_seqs'][0]['filepath']
 
-        for i in range(0, 2):
-            tmp = split(tmp)[0]
-
-        return join(tmp, 'qiita-dev', 'qiita_db', 'support_files', 'test_data',
-                    'uploads', '1')
+        return join(dirname(dirname(example_file)), 'uploads', '1')
 
     def test_sequence_processing_pipeline(self):
         # not a valid run_identifier folder and sample_sheet
