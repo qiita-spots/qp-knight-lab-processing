@@ -264,16 +264,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
 
-    results = map_sample_names_to_tube_ids(sn_tid_map_by_project,
-                                           join(pipeline.output_path,
-                                                'GenPrepFileJob',
-                                                'PrepFiles'))
-
-    for project in results:
-        for prep_file in results[project]:
-            df = results[project][prep_file]
-            # write modified results back out to file
-            df.to_csv(prep_file, index=False, sep="\t")
+    prep_file_paths = gpf_job._get_prep_file_paths
+    map_sample_names_to_tube_ids(prep_file_paths, sn_tid_map_by_project)
 
     status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")

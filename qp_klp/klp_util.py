@@ -3,15 +3,7 @@ from os.path import join
 import pandas as pd
 
 
-def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
-    prep_files = []
-    for root, dirs, files in walk(output_dir):
-        for prep_file in files:
-            # sanity check the os.walk results
-            if prep_file.endswith('.tsv'):
-                # store the full path to the prep-file.
-                prep_files.append(join(root, prep_file))
-
+def map_sample_names_to_tube_ids(prep_info_file_paths, sn_tid_map_by_proj):
     results = {}
 
     for project in sn_tid_map_by_proj:
@@ -19,7 +11,7 @@ def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
             # this project has tube-ids registered in Qiita.
             # find the prep-file associated with this project.
             results[project] = {}
-            for prep_file in prep_files:
+            for prep_file in prep_info_file_paths:
                 # not the best check but good enough for now.
                 if project in prep_file:
                     df = pd.read_csv(prep_file, sep='\t',
@@ -37,7 +29,11 @@ def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
                     results[project][prep_file] = df
                     break
 
-    return results
+    for project in results:
+        for prep_file in results[project]:
+            df = results[project][prep_file]
+            # write modified results back out to file
+            df.to_csv(prep_file, index=False, sep="\t")
 
 
 class StatusUpdate():
