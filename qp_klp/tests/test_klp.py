@@ -244,10 +244,9 @@ class KLPTests(PluginTestCase):
 
     def _get_uploads_path(self):
         # determine expected uploads directory using a valid artifact
-        example_file = self.qclient.get("/qiita_db/artifacts/1/")[
-            'files']['raw_forward_seqs'][0]['filepath']
+        results = self.qclient.get("/qiita_db/artifacts/types/")
 
-        return join(dirname(dirname(example_file)), 'uploads', '1')
+        return join(results['uploads'], '1')
 
     def test_sequence_processing_pipeline(self):
         # not a valid run_identifier folder and sample_sheet
