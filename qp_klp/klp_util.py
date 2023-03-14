@@ -23,7 +23,6 @@ def map_sample_names_to_tube_ids(prep_info_file_paths, sn_tid_map_by_proj):
                                 tube_id = sn_tid_map_by_proj[proj][smpl_name]
                                 df.at[i, "sample_name"] = tube_id
                     df.to_csv(prep_file, index=False, sep="\t")
-                    break
 
 
 class StatusUpdate():
