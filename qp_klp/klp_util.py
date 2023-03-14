@@ -1,43 +1,28 @@
-from os import walk
 from os.path import join
 import pandas as pd
 
 
-def map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir):
-    prep_files = []
-    for root, dirs, files in walk(output_dir):
-        for prep_file in files:
-            # sanity check the os.walk results
-            if prep_file.endswith('.tsv'):
-                # store the full path to the prep-file.
-                prep_files.append(join(root, prep_file))
-
-    results = {}
-
-    for project in sn_tid_map_by_proj:
-        if sn_tid_map_by_proj[project] is not None:
+def map_sample_names_to_tube_ids(prep_info_file_paths, sn_tid_map_by_proj):
+    for proj in sn_tid_map_by_proj:
+        if sn_tid_map_by_proj[proj] is not None:
             # this project has tube-ids registered in Qiita.
             # find the prep-file associated with this project.
-            results[project] = {}
-            for prep_file in prep_files:
+            for prep_file in prep_info_file_paths:
                 # not the best check but good enough for now.
-                if project in prep_file:
+                if proj in prep_file:
                     df = pd.read_csv(prep_file, sep='\t',
                                      dtype=str, index_col=False)
                     # save a copy of sample_name column as 'old_sample_name'
                     df['old_sample_name'] = df['sample_name']
                     for i in df.index:
-                        sample_name = df.at[i, "sample_name"]
-                        if not sample_name.startswith('BLANK'):
+                        smpl_name = df.at[i, "sample_name"]
+                        if not smpl_name.startswith('BLANK'):
                             # remove any leading zeroes if they exist
-                            sample_name = sample_name.lstrip('0')
-                            sample_name = sn_tid_map_by_proj[project][
-                                sample_name]
-                            df.at[i, "sample_name"] = sample_name
-                    results[project][prep_file] = df
-                    break
-
-    return results
+                            smpl_name = smpl_name.lstrip('0')
+                            if smpl_name in sn_tid_map_by_proj[proj]:
+                                tube_id = sn_tid_map_by_proj[proj][smpl_name]
+                                df.at[i, "sample_name"] = tube_id
+                    df.to_csv(prep_file, index=False, sep="\t")
 
 
 class StatusUpdate():

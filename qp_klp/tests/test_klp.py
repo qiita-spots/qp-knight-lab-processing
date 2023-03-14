@@ -11,6 +11,8 @@ from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
 from os.path import exists, isdir, join, realpath, dirname, split
+
+import pandas as pd
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
@@ -561,6 +563,7 @@ class KLPTests(PluginTestCase):
             self.assertEqual(obs3, exp3)
 
     def test_map_sample_names_to_tube_ids(self):
+        # create a mapping of sample-names to tube-ids.
         sn_tid_map_by_proj = {'Sample_Project': {}}
         sn_tid_map_by_proj['Sample_Project']['363192526'] = 'tube_id01'
         sn_tid_map_by_proj['Sample_Project']['363192073'] = 'tube_id02'
@@ -614,32 +617,28 @@ class KLPTests(PluginTestCase):
 
         output_dir = 'qp_klp/tests'
 
+        # make a copy of a good prep-file, and name it after the name of the
+        # project: 'Sample_Project'.
         copy(join(output_dir, 'good-prep-file.txt'),
              join(output_dir, 'Sample_Project.tsv'))
 
-        results = map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir)
+        # this is a file list w/only one output prep-file.
+        files_list = ['qp_klp/tests/Sample_Project.tsv']
 
-        for project in results:
-            for prep_file in results[project]:
-                df = results[project][prep_file]
+        # if map_sample_names_to_tube_ids() works correctly, Sample_Project.tsv
+        # should have the contents of its sample-name column changed to reflect
+        # the tube-ids above.
+        map_sample_names_to_tube_ids(files_list, sn_tid_map_by_proj)
 
-                # confirm .tsv file loaded everything as strings
-                types = dict(df.dtypes)
-                unique_types = set([types[k] for k in types])
-                bad_types_present = False
-                for type in unique_types:
-                    if type != object:
-                        bad_types_present = True
-                        break
+        for prep_file in files_list:
+            # confirm prep-file loaded.
+            df = pd.read_csv(prep_file, delimiter='\t')
 
-                self.assertFalse(bad_types_present)
-                res = df['sample_name'].tolist()
-                res = [x for x in res if not x.startswith('tube_id')]
-
-                self.assertEquals(len(res), 0)
-
-                # write modified results back out to file
-                df.to_csv(prep_file, index=False, sep="\t")
+            # get a list of all column values in sample_name and confirm that
+            # all entries now begin w/'tube_id'.
+            res = df['sample_name'].tolist()
+            res = [x for x in res if not x.startswith('tube_id')]
+            self.assertEquals(len(res), 0, msg=f"'{res}' remain unchanged")
 
 
 class KLPAmpliconTests(PluginTestCase):

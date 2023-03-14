@@ -13,6 +13,7 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from subprocess import Popen, PIPE
 import pandas as pd
 import shutil
+from itertools import chain
 
 
 def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
@@ -263,17 +264,22 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
+        # if seq_pro is run, prep_file_paths will be populated by run().
+        prep_file_paths = gpf_job.prep_file_paths
+        # concatenate the lists of paths across all study_ids into a single
+        # list.
+        pfp_list = list(chain.from_iterable(prep_file_paths.values()))
+    else:
+        # under testing conditions, gpf_job.prep_file_paths will not be
+        # populated. Generate pfp_list from walking the expected location.
+        pfp_list = []
+        for root, dirs, files in walk(join(pipeline.output_path,
+                                           'GenPrepFileJob', 'PrepFiles')):
+            for prep_file in files:
+                if prep_file.endswith('.tsv'):
+                    pfp_list.append(join(root, prep_file))
 
-    results = map_sample_names_to_tube_ids(sn_tid_map_by_project,
-                                           join(pipeline.output_path,
-                                                'GenPrepFileJob',
-                                                'PrepFiles'))
-
-    for project in results:
-        for prep_file in results[project]:
-            df = results[project][prep_file]
-            # write modified results back out to file
-            df.to_csv(prep_file, index=False, sep="\t")
+    map_sample_names_to_tube_ids(pfp_list, sn_tid_map_by_project)
 
     status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")
