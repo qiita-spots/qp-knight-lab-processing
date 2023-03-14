@@ -14,6 +14,7 @@ from subprocess import Popen, PIPE
 import pandas as pd
 import shutil
 from json import dumps, loads
+from itertools import chain
 
 
 def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
@@ -265,6 +266,11 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
     touched_studies_prep_info = {}
 
     if not skip_exec:
+        # concatenate the lists of paths across all study_ids into a single
+        # list. Replace sample-names w/tube-ids in all relevant prep-files.
+        preps = list(chain.from_iterable(gpf_job.prep_file_paths.values()))
+        map_sample_names_to_tube_ids(preps, sn_tid_map_by_project)
+
         gpf_job.run(callback=status_line.update_job_step)
         # if seq_pro is run, prep_file_paths will be populated by run().
         for study_id in gpf_job.prep_file_paths:
@@ -289,42 +295,31 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                     touched_studies_prep_info[study_id] = []
                 touched_studies_prep_info[study_id].append(prep_id)
     else:
-        # under testing conditions, gpf_job.prep_file_paths will not be
-        # populated. Generate file_paths from walking the expected location.
-        file_paths = []
-        for root, dirs, files in walk(join(pipeline.output_path,
-                                           'GenPrepFileJob', 'PrepFiles')):
-            for prep_file in files:
-                if prep_file.endswith('.tsv'):
-                    file_paths.append(join(root, prep_file))
+        # replace sample-names w/tube-ids in all relevant prep-files.
+        map_sample_names_to_tube_ids(join(pipeline.output_path,
+                                          'GenPrepFileJob', 'PrepFiles',
+                                          ('230224_M05314_0347_000000000-KVMH3'
+                                           '.ABTX_20230227_11052.1.tsv')),
+                                     sn_tid_map_by_project)
 
-        print(file_paths)
+        # assume testing conditions and assign preps to study 1.
+        metadata_dict = {
+            'SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                            'barcode': 'GTCCGCAAGTTA',
+                            'platform': 'Illumina',
+                            'instrument_model': 'Illumina MiSeq'},
+            'SKD8.640184': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                            'barcode': 'GTCCGCAAGTTA',
+                            'platform': 'Illumina',
+                            'instrument_model': 'Illumina MiSeq'}}
 
-        '''
-        for study_id in gpf_job.prep_file_paths:
-            for prep_file_path in gpf_job.prep_file_paths[study_id]:
-                metadata_dict = {
-                    'SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
-                                    'barcode': 'GTCCGCAAGTTA',
-                                    'platform': 'Illumina',
-                                    'instrument_model': 'Illumina MiSeq'},
-                    'SKD8.640184': {'primer': 'GTGCCAGCMGCCGCGGTAA',
-                                    'barcode': 'GTCCGCAAGTTA',
-                                    'platform': 'Illumina',
-                                    'instrument_model': 'Illumina MiSeq'}}
-                data = {'prep_info': dumps(metadata_dict),
-                        'study': 1,
-                        'data_type': '16S'}
+        data = {'prep_info': dumps(metadata_dict),
+                'study': '1',
+                'data_type': '16S'}
 
-                reply = qclient.post('/apitest/prep_template/', data=data)
-                prep_id = loads(reply.body)['prep']
-
-                if study_id not in touched_studies_prep_info:
-                    touched_studies_prep_info[study_id] = []
-                touched_studies_prep_info[study_id].append(prep_id)
-        '''
-
-    map_sample_names_to_tube_ids(file_paths, sn_tid_map_by_project)
+        reply = qclient.post('/apitest/prep_template/', data=data)
+        prep_id = loads(reply.body)['prep']
+        touched_studies_prep_info['1'] = [prep_id]
 
     status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")
