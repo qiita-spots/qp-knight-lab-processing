@@ -929,8 +929,17 @@ class KLPAmpliconTests(PluginTestCase):
                                     'prep-files.tgz')))
 
         # confirm touched_studies.html was generated.
-        self.assertTrue(exists(join(self.out_dir, 'final_results',
-                                    'touched_studies.html')))
+        fp = join(self.out_dir, 'final_results', 'touched_studies.html')
+        self.assertTrue(exists(fp))
+
+        with open(fp) as f:
+            lines = f.readlines()
+            lines = [x.strip() for x in lines]
+            print(lines)
+
+        reply = self.qclient.get('/apitest/prep_template/')
+        print("")
+        print(reply)
 
     def test_spp_no_qiita_id_error(self):
         test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")

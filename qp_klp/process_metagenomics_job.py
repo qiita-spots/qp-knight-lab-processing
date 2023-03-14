@@ -292,11 +292,6 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                             'platform': 'Illumina',
                             'instrument_model': 'Illumina MiSeq'}}
 
-        # valid entries include:
-        # ['16S', '18S', 'ITS', 'Proteomic', 'Metabolomic', 'Metagenomic',
-        #  'Multiomic', 'Metatranscriptomics', 'Viromics', 'Genomics',
-        #  'Transcriptomics']
-
         data = {'prep_info': dumps(metadata_dict),
                 'study': '1',
                 'data_type': 'Metagenomic'}
