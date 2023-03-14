@@ -616,6 +616,21 @@ class KLPTests(PluginTestCase):
 
         output_dir = 'qp_klp/tests'
 
+        # #### double-check paths list
+        from os import walk
+
+        s = join(output_dir, 'GenPrepFileJob', 'PrepFiles')
+        print("output dir: %s" % s)
+
+        pfp_list = []
+        for root, dirs, files in walk(s):
+            for prep_file in files:
+                if prep_file.endswith('.tsv'):
+                    pfp_list.append(join(root, prep_file))
+
+        print(pfp_list)
+        # ####
+
         copy(join(output_dir, 'good-prep-file.txt'),
              join(output_dir, 'Sample_Project.tsv'))
 
