@@ -933,11 +933,26 @@ class KLPAmpliconTests(PluginTestCase):
         self.assertTrue(exists(fp))
 
         with open(fp) as f:
-            lines = f.readlines()
-            lines = [x.strip() for x in lines]
-            print(lines)
+            obs = f.readlines()
+            obs = [x.strip() for x in obs]
 
-        reply = self.qclient.get('/apitest/prep_template/')
+        exp = ['<table border="2" class="dataframe">', '<thead>',
+               '<tr style="text-align: left;">', '<th>Project</th>',
+               '<th>Qiita Study ID</th>', '<th>Qiita Prep ID</th>',
+               '<th>Qiita URL</th>', '<th>Prep URL</th>', '</tr>',
+               '</thead>', '<tbody>', '<tr>', '<td>Feist_1</td>',
+               '<td>1</td>', '<td>3</td>',
+               ('<td><a href="https://localhost:21174/study/description/1" '
+                'target="_blank">https://localhost:21174/study/description/1'
+                '</a></td>'),
+               ('<td><a href="https://localhost:21174/study/description/1?'
+                'prep_id=3" target="_blank">https://localhost:21174/study/'
+                'description/1?prep_id=3</a></td>'), '</tr>', '</tbody>',
+               '</table>']
+
+        self.assertEqual(obs, exp)
+
+        reply = self.qclient.get('/apitest/prep_template?prep_id=3')
         print("")
         print(reply)
 
