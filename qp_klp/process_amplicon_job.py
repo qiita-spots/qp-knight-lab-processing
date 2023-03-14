@@ -13,7 +13,7 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from subprocess import Popen, PIPE
 import pandas as pd
 import shutil
-from json import dumps, loads
+from json import dumps
 from itertools import chain
 
 
@@ -266,12 +266,13 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
     touched_studies_prep_info = {}
 
     if not skip_exec:
+        gpf_job.run(callback=status_line.update_job_step)
+
         # concatenate the lists of paths across all study_ids into a single
         # list. Replace sample-names w/tube-ids in all relevant prep-files.
         preps = list(chain.from_iterable(gpf_job.prep_file_paths.values()))
         map_sample_names_to_tube_ids(preps, sn_tid_map_by_project)
 
-        gpf_job.run(callback=status_line.update_job_step)
         # if seq_pro is run, prep_file_paths will be populated by run().
         for study_id in gpf_job.prep_file_paths:
             for prep_file_path in gpf_job.prep_file_paths[study_id]:
@@ -289,7 +290,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                         'data_type': data_type}
 
                 reply = qclient.post('/apitest/prep_template/', data=data)
-                prep_id = loads(reply.body)['prep']
+                prep_id = reply['prep']
 
                 if study_id not in touched_studies_prep_info:
                     touched_studies_prep_info[study_id] = []
@@ -318,7 +319,6 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 'data_type': '16S'}
 
         reply = qclient.post('/apitest/prep_template/', data=data)
-        print(type(reply))
         prep_id = reply['prep']
         touched_studies_prep_info['1'] = [prep_id]
 

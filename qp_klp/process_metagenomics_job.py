@@ -15,6 +15,7 @@ from metapool.prep import remove_qiita_id
 from random import choices
 import pandas as pd
 from qp_klp.klp_util import map_sample_names_to_tube_ids, FailedSamplesRecord
+from json import dumps
 from itertools import chain
 
 
@@ -28,6 +29,8 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
     sheet = KLSampleSheet(sample_sheet_path)
     for sample in sheet:
         sample['Lane'] = f'{lane_number}'
+
+    assay_type = sheet.Header.Assay
 
     sheet_df = sample_sheet_to_dataframe(sheet)
     errors = []
@@ -244,24 +247,58 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         config['modules_to_load'],
         job_id)
 
+    touched_studies_prep_info = {}
+
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
-        # if seq_pro is run, prep_file_paths will be populated by run().
-        prep_file_paths = gpf_job.prep_file_paths
-        # concatenate the lists of paths across all study_ids into a single
-        # list.
-        pfp_list = list(chain.from_iterable(prep_file_paths.values()))
-    else:
-        # under testing conditions, gpf_job.prep_file_paths will not be
-        # populated. Generate pfp_list from walking the expected location.
-        pfp_list = []
-        for root, dirs, files in walk(join(pipeline.output_path,
-                                           'GenPrepFileJob', 'PrepFiles')):
-            for prep_file in files:
-                if prep_file.endswith('.tsv'):
-                    pfp_list.append(join(root, prep_file))
 
-    map_sample_names_to_tube_ids(pfp_list, sn_tid_map_by_project)
+        # concatenate the lists of paths across all study_ids into a single
+        # list. Replace sample-names w/tube-ids in all relevant prep-files.
+        preps = list(chain.from_iterable(gpf_job.prep_file_paths.values()))
+        map_sample_names_to_tube_ids(preps, sn_tid_map_by_project)
+
+        for study_id in gpf_job.prep_file_paths:
+            for prep_file_path in gpf_job.prep_file_paths[study_id]:
+                metadata_dict = pd.read_csv(prep_file_path,
+                                            delimiter='\t').to_dict('index')
+
+                # determine data_type based on sample-sheet
+                # value will be from the Assay field
+                data = {'prep_info': dumps(metadata_dict),
+                        'study': study_id,
+                        'data_type': assay_type}
+
+                reply = qclient.post('/apitest/prep_template/', data=data)
+                prep_id = reply['prep']
+
+                if study_id not in touched_studies_prep_info:
+                    touched_studies_prep_info[study_id] = []
+                touched_studies_prep_info[study_id].append(prep_id)
+    else:
+        # replace sample-names w/tube-ids in all relevant prep-files.
+        map_sample_names_to_tube_ids(join(pipeline.output_path,
+                                          'GenPrepFileJob', 'PrepFiles',
+                                          ('good-prep-file.txt')),
+                                     sn_tid_map_by_project)
+
+        # assume testing conditions and assign preps to study 1.
+        metadata_dict = {
+            'SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                            'barcode': 'GTCCGCAAGTTA',
+                            'platform': 'Illumina',
+                            'instrument_model': 'Illumina MiSeq'},
+            'SKD8.640184': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                            'barcode': 'GTCCGCAAGTTA',
+                            'platform': 'Illumina',
+                            'instrument_model': 'Illumina MiSeq'}}
+
+        data = {'prep_info': dumps(metadata_dict),
+                'study': '1',
+                'data_type': 'Metagenomics'}
+
+        reply = qclient.post('/apitest/prep_template/', data=data)
+        prep_id = reply['prep']
+        touched_studies_prep_info['1'] = [prep_id]
 
     status_line.update_current_message("Step 6 of 6: Copying results to "
                                        "archive")
