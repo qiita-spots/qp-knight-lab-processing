@@ -15,6 +15,7 @@ from metapool.prep import remove_qiita_id
 from random import choices
 import pandas as pd
 from qp_klp.klp_util import map_sample_names_to_tube_ids, FailedSamplesRecord
+import itertools
 
 
 def process_metagenomics(sample_sheet_path, lane_number, qclient,
@@ -246,16 +247,12 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
 
-    results = map_sample_names_to_tube_ids(sn_tid_map_by_project,
-                                           join(pipeline.output_path,
-                                                'GenPrepFileJob',
-                                                'PrepFiles'))
+    prep_file_paths = gpf_job._get_prep_file_paths
 
-    for project in results:
-        for prep_file in results[project]:
-            df = results[project][prep_file]
-            # write modified results back out to file
-            df.to_csv(prep_file, index=False, sep="\t")
+    # concatenate the lists of paths across all study_ids into a single list.
+    pfp_list = list(itertools.chain.from_iterable(prep_file_paths.values()))
+
+    map_sample_names_to_tube_ids(pfp_list, sn_tid_map_by_project)
 
     status_line.update_current_message("Step 6 of 6: Copying results to "
                                        "archive")

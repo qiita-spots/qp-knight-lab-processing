@@ -11,6 +11,8 @@ from shutil import rmtree
 from json import dumps
 from tempfile import mkdtemp
 from os.path import exists, isdir, join, realpath, dirname, split
+
+import pandas as pd
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
@@ -617,29 +619,30 @@ class KLPTests(PluginTestCase):
         copy(join(output_dir, 'good-prep-file.txt'),
              join(output_dir, 'Sample_Project.tsv'))
 
-        results = map_sample_names_to_tube_ids(sn_tid_map_by_proj, output_dir)
+        files_list = ['qp_klp/tests/good-prep-file.txt',
+                      'qp_klp/tests/Sample_Project.tsv']
 
-        for project in results:
-            for prep_file in results[project]:
-                df = results[project][prep_file]
+        map_sample_names_to_tube_ids(files_list, sn_tid_map_by_proj)
 
-                # confirm .tsv file loaded everything as strings
-                types = dict(df.dtypes)
-                unique_types = set([types[k] for k in types])
-                bad_types_present = False
-                for type in unique_types:
-                    if type != object:
-                        bad_types_present = True
-                        break
+        for prep_file in files_list:
+            df = pd.read_csv(prep_file, delimiter='\t')
+            # confirm .tsv file loaded everything as strings
+            types = dict(df.dtypes)
+            unique_types = set([types[k] for k in types])
+            bad_types_present = False
+            for type in unique_types:
+                if type != object:
+                    bad_types_present = True
+                    break
 
-                self.assertFalse(bad_types_present)
-                res = df['sample_name'].tolist()
-                res = [x for x in res if not x.startswith('tube_id')]
+            self.assertFalse(bad_types_present)
+            res = df['sample_name'].tolist()
+            res = [x for x in res if not x.startswith('tube_id')]
 
-                self.assertEquals(len(res), 0)
+            self.assertEquals(len(res), 0)
 
-                # write modified results back out to file
-                df.to_csv(prep_file, index=False, sep="\t")
+            # write modified results back out to file
+            df.to_csv(prep_file, index=False, sep="\t")
 
 
 class KLPAmpliconTests(PluginTestCase):

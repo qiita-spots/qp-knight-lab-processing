@@ -13,6 +13,7 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from subprocess import Popen, PIPE
 import pandas as pd
 import shutil
+import itertools
 
 
 def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
@@ -265,7 +266,11 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         gpf_job.run(callback=status_line.update_job_step)
 
     prep_file_paths = gpf_job._get_prep_file_paths
-    map_sample_names_to_tube_ids(prep_file_paths, sn_tid_map_by_project)
+
+    # concatenate the lists of paths across all study_ids into a single list.
+    pfp_list = list(itertools.chain.from_iterable(prep_file_paths.values()))
+
+    map_sample_names_to_tube_ids(pfp_list, sn_tid_map_by_project)
 
     status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")
