@@ -13,7 +13,7 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from subprocess import Popen, PIPE
 import pandas as pd
 import shutil
-import itertools
+from itertools import chain
 
 
 def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
@@ -264,11 +264,20 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
-
-    prep_file_paths = gpf_job._get_prep_file_paths
-
-    # concatenate the lists of paths across all study_ids into a single list.
-    pfp_list = list(itertools.chain.from_iterable(prep_file_paths.values()))
+        # if seq_pro is run, prep_file_paths will be populated by run().
+        prep_file_paths = gpf_job.prep_file_paths
+        # concatenate the lists of paths across all study_ids into a single
+        # list.
+        pfp_list = list(chain.from_iterable(prep_file_paths.values()))
+    else:
+        # under testing conditions, gpf_job.prep_file_paths will not be
+        # populated. Generate pfp_list from walking the expected location.
+        pfp_list = []
+        for root, dirs, files in walk(join(pipeline.output_path,
+                                           'GenPrepFileJob', 'PrepFiles')):
+            for prep_file in files:
+                if prep_file.endswith('.tsv'):
+                    pfp_list.append(join(root, prep_file))
 
     map_sample_names_to_tube_ids(pfp_list, sn_tid_map_by_project)
 
