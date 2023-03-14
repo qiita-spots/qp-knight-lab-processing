@@ -318,11 +318,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 'data_type': '16S'}
 
         reply = qclient.post('/apitest/prep_template/', data=data)
-        print(dir(reply))
-        print(str(reply))
-        # in case that it doesn't contain objects.
-        print(dumps(reply, indent=2))
-        prep_id = loads(reply.body)['prep']
+        print(type(reply))
+        prep_id = reply['prep']
         touched_studies_prep_info['1'] = [prep_id]
 
     status_line.update_current_message("Step 5 of 5: Copying results to "
