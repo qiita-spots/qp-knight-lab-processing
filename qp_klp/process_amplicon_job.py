@@ -13,7 +13,7 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 from subprocess import Popen, PIPE
 import pandas as pd
 import shutil
-from itertools import chain
+from json import dumps, loads
 
 
 def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
@@ -262,24 +262,69 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         job_id,
         is_amplicon=True)
 
+    touched_studies_prep_info = {}
+
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
         # if seq_pro is run, prep_file_paths will be populated by run().
-        prep_file_paths = gpf_job.prep_file_paths
-        # concatenate the lists of paths across all study_ids into a single
-        # list.
-        pfp_list = list(chain.from_iterable(prep_file_paths.values()))
+        for study_id in gpf_job.prep_file_paths:
+            for prep_file_path in gpf_job.prep_file_paths[study_id]:
+                metadata_dict = pd.read_csv(prep_file_path,
+                                            delimiter='\t').to_dict('index')
+
+                # determine data_type based on target_gene column.
+                for key in {'16S': '16S', '18S': '18S', 'ITS': 'ITS'}:
+                    if key in metadata_dict[0]['target_gene']:
+                        data_type = key
+                        break
+
+                data = {'prep_info': dumps(metadata_dict),
+                        'study': study_id,
+                        'data_type': data_type}
+
+                reply = qclient.post('/apitest/prep_template/', data=data)
+                prep_id = loads(reply.body)['prep']
+
+                if study_id not in touched_studies_prep_info:
+                    touched_studies_prep_info[study_id] = []
+                touched_studies_prep_info[study_id].append(prep_id)
     else:
         # under testing conditions, gpf_job.prep_file_paths will not be
-        # populated. Generate pfp_list from walking the expected location.
-        pfp_list = []
+        # populated. Generate file_paths from walking the expected location.
+        file_paths = []
         for root, dirs, files in walk(join(pipeline.output_path,
                                            'GenPrepFileJob', 'PrepFiles')):
             for prep_file in files:
                 if prep_file.endswith('.tsv'):
-                    pfp_list.append(join(root, prep_file))
+                    file_paths.append(join(root, prep_file))
 
-    map_sample_names_to_tube_ids(pfp_list, sn_tid_map_by_project)
+        print(file_paths)
+
+        '''
+        for study_id in gpf_job.prep_file_paths:
+            for prep_file_path in gpf_job.prep_file_paths[study_id]:
+                metadata_dict = {
+                    'SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                                    'barcode': 'GTCCGCAAGTTA',
+                                    'platform': 'Illumina',
+                                    'instrument_model': 'Illumina MiSeq'},
+                    'SKD8.640184': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                                    'barcode': 'GTCCGCAAGTTA',
+                                    'platform': 'Illumina',
+                                    'instrument_model': 'Illumina MiSeq'}}
+                data = {'prep_info': dumps(metadata_dict),
+                        'study': 1,
+                        'data_type': '16S'}
+
+                reply = qclient.post('/apitest/prep_template/', data=data)
+                prep_id = loads(reply.body)['prep']
+
+                if study_id not in touched_studies_prep_info:
+                    touched_studies_prep_info[study_id] = []
+                touched_studies_prep_info[study_id].append(prep_id)
+        '''
+
+    map_sample_names_to_tube_ids(file_paths, sn_tid_map_by_project)
 
     status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")
@@ -352,9 +397,14 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
     data = []
     for qiita_id, project in touched_studies:
-        url = f'{qclient._server_url}/study/description/{qiita_id}'
-        data.append({'Project': project, 'Qiita Study ID': qiita_id,
-                     'Qiita URL': url})
+        for prep_id in touched_studies_prep_info[qiita_id]:
+            study_url = f'{qclient._server_url}/study/description/{qiita_id}'
+            prep_url = (f'{qclient._server_url}/study/description/'
+                        f'{qiita_id}?prep_id={prep_id}')
+            data.append({'Project': project, 'Qiita Study ID': qiita_id,
+                         'Qiita Prep ID': prep_id, 'Qiita URL': study_url,
+                         'Prep URL': prep_url})
+
     df = pd.DataFrame(data)
 
     with open(join(out_dir, 'touched_studies.html'), 'w') as f:
