@@ -17,6 +17,7 @@ import pandas as pd
 from qp_klp.klp_util import map_sample_names_to_tube_ids, FailedSamplesRecord
 from json import dumps
 from itertools import chain
+from collections import defaultdict
 
 
 def process_metagenomics(sample_sheet_path, lane_number, qclient,
@@ -247,7 +248,7 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         config['modules_to_load'],
         job_id)
 
-    touched_studies_prep_info = {}
+    touched_studies_prep_info = defaultdict(list)
 
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
@@ -271,8 +272,6 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                 reply = qclient.post('/apitest/prep_template/', data=data)
                 prep_id = reply['prep']
 
-                if study_id not in touched_studies_prep_info:
-                    touched_studies_prep_info[study_id] = []
                 touched_studies_prep_info[study_id].append(prep_id)
     else:
         # replace sample-names w/tube-ids in all relevant prep-files.

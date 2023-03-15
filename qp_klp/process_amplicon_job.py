@@ -15,6 +15,7 @@ import pandas as pd
 import shutil
 from json import dumps
 from itertools import chain
+from collections import defaultdict
 
 
 def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
@@ -263,7 +264,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         job_id,
         is_amplicon=True)
 
-    touched_studies_prep_info = {}
+    touched_studies_prep_info = defaultdict(list)
 
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
@@ -280,7 +281,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                                             delimiter='\t').to_dict('index')
 
                 # determine data_type based on target_gene column.
-                for key in {'16S': '16S', '18S': '18S', 'ITS': 'ITS'}:
+                for key in {'16S', '18S', 'ITS'}:
                     if key in metadata_dict[0]['target_gene']:
                         data_type = key
                         break
@@ -292,8 +293,6 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 reply = qclient.post('/apitest/prep_template/', data=data)
                 prep_id = reply['prep']
 
-                if study_id not in touched_studies_prep_info:
-                    touched_studies_prep_info[study_id] = []
                 touched_studies_prep_info[study_id].append(prep_id)
     else:
         # replace sample-names w/tube-ids in all relevant prep-files.
