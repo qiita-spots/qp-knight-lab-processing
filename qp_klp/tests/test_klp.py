@@ -952,7 +952,11 @@ class KLPAmpliconTests(PluginTestCase):
 
         self.assertEqual(obs, exp)
 
-        reply = self.qclient.get('/apitest/prep_template?prep_id=3')
+        reply = self.qclient.get('/study/description/1?prep_id=2')
+        print("")
+        print(reply)
+
+        reply = self.qclient.get('/study/description/1?prep_id=3')
         print("")
         print(reply)
 
