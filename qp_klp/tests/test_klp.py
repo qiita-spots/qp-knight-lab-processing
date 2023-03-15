@@ -5,6 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
+import json
 from unittest import main
 from os import remove, makedirs, environ
 from shutil import rmtree
@@ -469,21 +470,48 @@ class KLPTests(PluginTestCase):
             cmds = [re.sub(r'^cd .*?;', r'cd OUT_DIR;', x) for x in cmds]
             self.assertEqual(exp, cmds)
 
-        # Note that because we are using self.sample_csv_data instead of
-        # good-sample-sheet.csv as our sample-sheet, touched_studies.html
-        # will include only the one project Feist_1, instead of all
-        # three studies found in good-sample-sheet.csv.
-        with open(ts_fp, 'r') as f:
+        # confirm touched_studies.html was generated.
+        fp = join(self.out_dir, 'final_results', 'touched_studies.html')
+        self.assertTrue(exists(fp))
+
+        with open(fp) as f:
             obs = f.readlines()
             obs = [x.strip() for x in obs]
-            obs = ''.join(obs)
-            exp = ('<table border="2" class="dataframe"><thead><tr style="text'
-                   '-align: left;"><th>Project</th><th>Qiita Study ID</th><th>'
-                   'Qiita URL</th></tr></thead><tbody><tr><td>Feist_1</td>'
-                   '<td>1</td><td><a href="https://localhost:21174/study/'
-                   'description/1" target="_blank">https://localhost:21174'
-                   '/study/description/1</a></td></tr></tbody></table>')
-            self.assertEqual(obs, exp)
+
+        # confirm touched_studies.html looks as expected, including prep-info
+        # links.
+        exp = ['<table border="2" class="dataframe">', '<thead>',
+               '<tr style="text-align: left;">', '<th>Project</th>',
+               '<th>Qiita Study ID</th>', '<th>Qiita Prep ID</th>',
+               '<th>Qiita URL</th>', '<th>Prep URL</th>', '</tr>',
+               '</thead>', '<tbody>', '<tr>', '<td>Feist_1</td>',
+               '<td>1</td>', '<td>3</td>',
+               (
+                   '<td><a href="https://localhost:21174/study/description/1" '
+                   'target="_blank">https://localhost:21174/study/description/'
+                   '1</a></td>'),
+               ('<td><a href="https://localhost:21174/study/description/1?'
+                'prep_id=3" target="_blank">https://localhost:21174/study/'
+                'description/1?prep_id=3</a></td>'), '</tr>', '</tbody>',
+               '</table>']
+
+        self.assertEqual(obs, exp)
+
+        # confirm prep info was inserted into Qiita and looks as intended.
+        reply = self.qclient.get("/qiita_db/prep_template/%s/data/" % 3)
+        obs = json.loads(reply)
+        exp = {'data': {'1.SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                                          'barcode': 'GTCCGCAAGTTA',
+                                          'platform': 'Illumina',
+                                          'instrument_model': 'Illumina MiSeq',
+                                          'qiita_prep_id': '3'},
+                        '1.SKD8.640184': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                                          'barcode': 'GTCCGCAAGTTA',
+                                          'platform': 'Illumina',
+                                          'instrument_model': 'Illumina MiSeq',
+                                          'qiita_prep_id': '3'}}}
+
+        self.assertEqual(obs, exp)
 
     def test_failed_samples_recorder(self):
         # since unittests can't run third-party code like bcl2fastq and
@@ -936,6 +964,8 @@ class KLPAmpliconTests(PluginTestCase):
             obs = f.readlines()
             obs = [x.strip() for x in obs]
 
+        # confirm touched_studies.html looks as expected, including prep-info
+        # links.
         exp = ['<table border="2" class="dataframe">', '<thead>',
                '<tr style="text-align: left;">', '<th>Project</th>',
                '<th>Qiita Study ID</th>', '<th>Qiita Prep ID</th>',
@@ -952,16 +982,21 @@ class KLPAmpliconTests(PluginTestCase):
 
         self.assertEqual(obs, exp)
 
-        'metadata = '
-        reply = self.qclient.get("/qiita_db/prep_template/%s/data/" % 2)
-        print("")
-        print(reply)
-
+        # confirm prep info was inserted into Qiita and looks as intended.
         reply = self.qclient.get("/qiita_db/prep_template/%s/data/" % 3)
-        print("")
-        print(reply)
+        obs = json.loads(reply)
+        exp = {'data': {'1.SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                                          'barcode': 'GTCCGCAAGTTA',
+                                          'platform': 'Illumina',
+                                          'instrument_model': 'Illumina MiSeq',
+                                          'qiita_prep_id': '3'},
+                        '1.SKD8.640184': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                                          'barcode': 'GTCCGCAAGTTA',
+                                          'platform': 'Illumina',
+                                          'instrument_model': 'Illumina MiSeq',
+                                          'qiita_prep_id': '3'}}}
 
-        self.assertTrue(False)
+        self.assertEqual(obs, exp)
 
     def test_spp_no_qiita_id_error(self):
         test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
