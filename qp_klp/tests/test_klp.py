@@ -960,6 +960,8 @@ class KLPAmpliconTests(PluginTestCase):
         print("")
         print(reply)
 
+        self.assertTrue(False)
+
     def test_spp_no_qiita_id_error(self):
         test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
         makedirs(test_dir)
