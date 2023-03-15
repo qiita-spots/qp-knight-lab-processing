@@ -366,9 +366,14 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
 
     data = []
     for qiita_id, project in touched_studies:
-        url = f'{qclient._server_url}/study/description/{qiita_id}'
-        data.append({'Project': project, 'Qiita Study ID': qiita_id,
-                     'Qiita URL': url})
+        for prep_id in touched_studies_prep_info[qiita_id]:
+            study_url = f'{qclient._server_url}/study/description/{qiita_id}'
+            prep_url = (f'{qclient._server_url}/study/description/'
+                        f'{qiita_id}?prep_id={prep_id}')
+            data.append({'Project': project, 'Qiita Study ID': qiita_id,
+                         'Qiita Prep ID': prep_id, 'Qiita URL': study_url,
+                         'Prep URL': prep_url})
+
     df = pd.DataFrame(data)
 
     with open(join(out_dir, 'touched_studies.html'), 'w') as f:

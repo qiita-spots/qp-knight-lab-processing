@@ -483,17 +483,16 @@ class KLPTests(PluginTestCase):
         exp = ['<table border="2" class="dataframe">', '<thead>',
                '<tr style="text-align: left;">', '<th>Project</th>',
                '<th>Qiita Study ID</th>', '<th>Qiita Prep ID</th>',
-               '<th>Qiita URL</th>', '<th>Prep URL</th>', '</tr>',
-               '</thead>', '<tbody>', '<tr>', '<td>Feist_1</td>',
-               '<td>1</td>', '<td>3</td>',
-               (
-                   '<td><a href="https://localhost:21174/study/description/1" '
-                   'target="_blank">https://localhost:21174/study/description/'
-                   '1</a></td>'),
+               '<th>Qiita URL</th>', '<th>Prep URL</th>', '</tr>', '</thead>',
+               '<tbody>', '<tr>', '<td>Feist_1</td>', '<td>1</td>',
+               '<td>3</td>',
+               ('<td><a href="https://localhost:21174/study/description/1" '
+                'target="_blank">https://localhost:21174/study/description/1'
+                '</a></td>'),
                ('<td><a href="https://localhost:21174/study/description/1?'
                 'prep_id=3" target="_blank">https://localhost:21174/study/'
-                'description/1?prep_id=3</a></td>'), '</tr>', '</tbody>',
-               '</table>']
+                'description/1?prep_id=3</a></td>'),
+               '</tr>', '</tbody>', '</table>']
 
         self.assertEqual(obs, exp)
 
@@ -852,6 +851,7 @@ class KLPAmpliconTests(PluginTestCase):
                     'uploads', '1')
 
     def test_sequence_processing_pipeline(self):
+        self.maxDiff = None
         test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
         makedirs(test_dir)
 
@@ -983,8 +983,8 @@ class KLPAmpliconTests(PluginTestCase):
         self.assertEqual(obs, exp)
 
         # confirm prep info was inserted into Qiita and looks as intended.
-        reply = self.qclient.get("/qiita_db/prep_template/%s/data/" % 3)
-        obs = json.loads(reply)
+        obs = self.qclient.get("/qiita_db/prep_template/%s/data/" % 3)
+
         exp = {'data': {'1.SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
                                           'barcode': 'GTCCGCAAGTTA',
                                           'platform': 'Illumina',
@@ -996,7 +996,7 @@ class KLPAmpliconTests(PluginTestCase):
                                           'instrument_model': 'Illumina MiSeq',
                                           'qiita_prep_id': '3'}}}
 
-        self.assertEqual(obs, exp)
+        self.assertDictEqual(obs, exp)
 
     def test_spp_no_qiita_id_error(self):
         test_dir = join(self.search_dir, "230224_M05314_0347_000000000-KVMH3")
