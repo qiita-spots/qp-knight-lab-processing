@@ -952,11 +952,12 @@ class KLPAmpliconTests(PluginTestCase):
 
         self.assertEqual(obs, exp)
 
-        reply = self.qclient.get('/study/description/1?prep_id=2')
+        'metadata = '
+        reply = self.qclient.get("/qiita_db/prep_template/%s/data/" % 2)
         print("")
         print(reply)
 
-        reply = self.qclient.get('/study/description/1?prep_id=3')
+        reply = self.qclient.get("/qiita_db/prep_template/%s/data/" % 3)
         print("")
         print(reply)
 
