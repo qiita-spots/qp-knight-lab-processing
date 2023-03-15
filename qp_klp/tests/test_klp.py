@@ -497,8 +497,8 @@ class KLPTests(PluginTestCase):
         self.assertEqual(obs, exp)
 
         # confirm prep info was inserted into Qiita and looks as intended.
-        reply = self.qclient.get("/qiita_db/prep_template/%s/data/" % 3)
-        obs = json.loads(reply)
+        obs = self.qclient.get("/qiita_db/prep_template/%s/data/" % 3)
+
         exp = {'data': {'1.SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
                                           'barcode': 'GTCCGCAAGTTA',
                                           'platform': 'Illumina',
