@@ -283,8 +283,9 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                     'index')
 
                 # determine data_type based on target_gene column.
+                target_gene = metadata[list(metadata.keys())[0]]['target_gene']
                 for key in {'16S', '18S', 'ITS'}:
-                    if key in metadata[0]['target_gene']:
+                    if key in target_gene:
                         data_type = key
                         break
 
