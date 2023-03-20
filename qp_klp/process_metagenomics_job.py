@@ -260,16 +260,17 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
 
         for study_id in gpf_job.prep_file_paths:
             for prep_file_path in gpf_job.prep_file_paths[study_id]:
-                metadata_dict = pd.read_csv(prep_file_path,
-                                            delimiter='\t').to_dict('index')
+                metadata = pd.read_csv(prep_file_path, delimiter='\t',
+                                       index_col='sample_name').to_dict(
+                    'index')
 
                 # determine data_type based on sample-sheet
                 # value will be from the Assay field
-                data = {'prep_info': dumps(metadata_dict),
+                data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         'data_type': assay_type}
 
-                reply = qclient.post('/apitest/prep_template/', data=data)
+                reply = qclient.post('/qiita_db/prep_template/', data=data)
                 prep_id = reply['prep']
 
                 touched_studies_prep_info[study_id].append(prep_id)
@@ -281,7 +282,7 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                                      sn_tid_map_by_project)
 
         # assume testing conditions and assign preps to study 1.
-        metadata_dict = {
+        metadata = {
             'SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
                             'barcode': 'GTCCGCAAGTTA',
                             'platform': 'Illumina',
@@ -291,11 +292,11 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                             'platform': 'Illumina',
                             'instrument_model': 'Illumina MiSeq'}}
 
-        data = {'prep_info': dumps(metadata_dict),
+        data = {'prep_info': dumps(metadata),
                 'study': '1',
                 'data_type': 'Metagenomic'}
 
-        reply = qclient.post('/apitest/prep_template/', data=data)
+        reply = qclient.post('/qiita_db/prep_template/', data=data)
         prep_id = reply['prep']
         touched_studies_prep_info['1'] = [prep_id]
 

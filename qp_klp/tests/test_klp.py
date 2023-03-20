@@ -289,12 +289,12 @@ class KLPTests(PluginTestCase):
         fastq_dir = join(self.out_dir, 'ConvertJob', 'Feist_1')
         makedirs(fastq_dir)
 
-        file_list = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
-                     "CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz",
-                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz",
-                     "CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz"]
+        files = ["CDPH-SAL_Salmonella_Typhi_MDL-143_R1_.fastq.gz",
+                 "CDPH-SAL_Salmonella_Typhi_MDL-143_R2_.fastq.gz",
+                 "CDPH-SAL_Salmonella_Typhi_MDL-144_R1_.fastq.gz",
+                 "CDPH-SAL_Salmonella_Typhi_MDL-144_R2_.fastq.gz"]
 
-        for fastq_file in file_list:
+        for fastq_file in files:
             fp = join(fastq_dir, fastq_file)
             self.logger.debug("FASTQ FILE PATH: %s" % fp)
             with open(fp, 'w') as f:
