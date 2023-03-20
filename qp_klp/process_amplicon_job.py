@@ -321,7 +321,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 'study': '1',
                 'data_type': '16S'}
 
-        reply = qclient.post('/apitest/prep_template/', data=data)
+        reply = qclient.post('/qiita_db/prep_template/', data=data)
         prep_id = reply['prep']
         touched_studies_prep_info['1'] = [prep_id]
 
