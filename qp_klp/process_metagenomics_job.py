@@ -12,7 +12,7 @@ from subprocess import Popen, PIPE
 from metapool import KLSampleSheet
 from metapool.sample_sheet import sample_sheet_to_dataframe
 from metapool.prep import remove_qiita_id
-from random import choices
+from random import sample as rsampl
 import pandas as pd
 from qp_klp.klp_util import map_sample_names_to_tube_ids, FailedSamplesRecord
 from json import dumps
@@ -43,9 +43,9 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
 
         sheet_samples = {
             s for s in _df['sample_name'] if not s.startswith('BLANK')}
-        qsamples = {
+        qsam = {
             s.replace(f'{qiita_id}.', '') for s in qclient.get(qurl)}
-        sample_name_diff = sheet_samples - qsamples
+        sample_name_diff = sheet_samples - qsam
         sn_tid_map_by_project[project_name] = None
 
         # check that tube_id is defined in the Qiita study. If so,
@@ -65,7 +65,7 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                 sheet_samples = {x.lstrip('0') for x in sheet_samples}
                 # once any leading zeros have been removed, recalculate
                 # sample_name_diff before continuing processing.
-                sample_name_diff = sheet_samples - qsamples
+                sample_name_diff = sheet_samples - qsam
 
                 tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
                 # generate a map of sample_names to tube_ids for
@@ -78,20 +78,22 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                 if not tube_id_diff:
                     continue
                 len_tube_id_overlap = len(tube_id_diff)
-                tids_example = ', '.join(choices(list(tids), k=5))
+                tidsx = ', '.join(tids if len(tids) < 6 else rsampl(tids, k=5))
+
                 error_tube_id = (
                     f'tube_id in Qiita but {len_tube_id_overlap} missing '
-                    f'samples. Some samples from tube_id: {tids_example}.')
+                    f'samples. Some samples from tube_id: {tidsx}.')
 
             len_overlap = len(sample_name_diff)
             # selecting at random k=5 samples to minimize space in display
-            samples_example = ', '.join(choices(list(qsamples), k=5))
+            samx = ', '.join(qsam if len(qsam) < 6 else rsampl(qsam, k=5))
+
             # selecting the up to 4 first samples to minimize space in
             # display
             missing = ', '.join(sorted(sample_name_diff)[:4])
             errors.append(
                 f'{project} has {len_overlap} missing samples (i.e. '
-                f'{missing}). Some samples from Qiita: {samples_example}. '
+                f'{missing}). Some samples from Qiita: {samx}. '
                 f'{error_tube_id}')
 
     if errors:

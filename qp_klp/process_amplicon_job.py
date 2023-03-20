@@ -4,7 +4,7 @@ from os import walk
 from os.path import exists, join, isfile, basename
 from qiita_client import ArtifactInfo
 from qp_klp.klp_util import map_sample_names_to_tube_ids
-from random import choices
+from random import sample as rsampl
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
@@ -69,15 +69,15 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
         # collect needed info from Qiita here.
         url = f'/api/v1/study/{qiita_id}/samples'
-        qsamples = qclient.get(url)
-        qsamples = {x.replace(f'{qiita_id}.', '') for x in qsamples}
+        qsam = qclient.get(url)
+        qsam = {x.replace(f'{qiita_id}.', '') for x in qsam}
         tube_id_present = 'tube_id' in qclient.get(f'{url}/info')['categories']
         if tube_id_present:
             tids = qclient.get(f'{url}/categories=tube_id')['samples']
 
         # compare the list of samples from the mapping file against the
         # list of samples from Qiita.
-        sample_name_diff = mf_samples - qsamples
+        sample_name_diff = mf_samples - qsam
         sn_tid_map_by_project[project_name] = None
 
         if sample_name_diff:
@@ -91,7 +91,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 mf_samples = {x.lstrip('0') for x in mf_samples}
                 # once any leading zeros have been removed, recalculate
                 # sample_name_diff before continuing processing.
-                sample_name_diff = mf_samples - qsamples
+                sample_name_diff = mf_samples - qsam
 
                 # before we report as an error, check tube_id.
 
@@ -105,22 +105,23 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 if not tube_id_diff:
                     continue
                 len_tube_id_overlap = len(tube_id_diff)
-                tids_example = ', '.join(choices(list(tids), k=5))
+                tidsx = ', '.join(tids if len(tids) < 6 else rsampl(tids, k=5))
+
                 error_tube_id = (
                     f'tube_id in Qiita but {len_tube_id_overlap} missing '
-                    f'samples. Some samples from tube_id: {tids_example}.')
+                    f'samples. Some samples from tube_id: {tidsx}.')
             else:
                 error_tube_id = 'No tube_id column in Qiita.'
 
             len_overlap = len(sample_name_diff)
             # selecting at random k=5 samples to minimize space in display
-            samples_example = ', '.join(choices(list(qsamples), k=5))
+            samx = ', '.join(qsam if len(qsam) < 6 else rsampl(qsam, k=5))
             # selecting the up to 4 first samples to minimize space in
             # display
             missing = ', '.join(sorted(sample_name_diff)[:4])
             errors.append(
                 f'{project_name} has {len_overlap} missing samples (i.e. '
-                f'{missing}). Some samples from Qiita: {samples_example}. '
+                f'{missing}). Some samples from Qiita: {samx}. '
                 f'{error_tube_id}')
 
     if errors:
