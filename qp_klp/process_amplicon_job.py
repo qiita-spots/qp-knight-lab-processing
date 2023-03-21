@@ -127,8 +127,6 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
     if errors:
         raise PipelineError('\n'.join(errors))
 
-    sifs = pipeline.generate_sample_information_files()
-
     # find the uploads directory all trimmed files will need to be
     # moved to.
     results = qclient.get("/qiita_db/artifacts/types/")
@@ -276,6 +274,9 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         map_sample_names_to_tube_ids(preps, sn_tid_map_by_project)
 
         # if seq_pro is run, prep_file_paths will be populated by run().
+
+        add_sif_info = []
+
         for study_id in gpf_job.prep_file_paths:
             for prep_file_path in gpf_job.prep_file_paths[study_id]:
                 metadata = pd.read_csv(prep_file_path,
@@ -290,6 +291,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                         data_type = key
                         break
 
+                add_sif_info.append(metadata['sample_name', 'project_name'])
+
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         'data_type': data_type}
@@ -298,6 +301,12 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 prep_id = reply['prep']
 
                 touched_studies_prep_info[study_id].append(prep_id)
+
+        # convert additional_sif_info from a list of dataframes into a single
+        # merged frame before passing to generate_sample_information_files().
+        add_sif_info = pd.concat(add_sif_info).drop_duplicates()
+
+        sifs = pipeline.generate_sample_information_files(add_sif_info)
     else:
         # replace sample-names w/tube-ids in all relevant prep-files.
         map_sample_names_to_tube_ids(join(pipeline.output_path,
@@ -324,6 +333,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         reply = qclient.post('/qiita_db/prep_template/', data=data)
         prep_id = reply['prep']
         touched_studies_prep_info['1'] = [prep_id]
+
+        sifs = pipeline.generate_sample_information_files()
 
     status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")
