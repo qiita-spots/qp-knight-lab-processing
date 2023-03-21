@@ -12,10 +12,12 @@ from subprocess import Popen, PIPE
 from metapool import KLSampleSheet
 from metapool.sample_sheet import sample_sheet_to_dataframe
 from metapool.prep import remove_qiita_id
-from random import choices
+from random import sample as rsampl
 import pandas as pd
 from qp_klp.klp_util import map_sample_names_to_tube_ids, FailedSamplesRecord
+from json import dumps
 from itertools import chain
+from collections import defaultdict
 
 
 def process_metagenomics(sample_sheet_path, lane_number, qclient,
@@ -29,6 +31,8 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
     for sample in sheet:
         sample['Lane'] = f'{lane_number}'
 
+    assay_type = sheet.Header.Assay
+
     sheet_df = sample_sheet_to_dataframe(sheet)
     errors = []
     sn_tid_map_by_project = {}
@@ -39,9 +43,9 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
 
         sheet_samples = {
             s for s in _df['sample_name'] if not s.startswith('BLANK')}
-        qsamples = {
+        qsam = {
             s.replace(f'{qiita_id}.', '') for s in qclient.get(qurl)}
-        sample_name_diff = sheet_samples - qsamples
+        sample_name_diff = sheet_samples - qsam
         sn_tid_map_by_project[project_name] = None
 
         # check that tube_id is defined in the Qiita study. If so,
@@ -61,7 +65,7 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                 sheet_samples = {x.lstrip('0') for x in sheet_samples}
                 # once any leading zeros have been removed, recalculate
                 # sample_name_diff before continuing processing.
-                sample_name_diff = sheet_samples - qsamples
+                sample_name_diff = sheet_samples - qsam
 
                 tids = qclient.get(f'{qurl}/categories=tube_id')['samples']
                 # generate a map of sample_names to tube_ids for
@@ -74,20 +78,22 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
                 if not tube_id_diff:
                     continue
                 len_tube_id_overlap = len(tube_id_diff)
-                tids_example = ', '.join(choices(list(tids), k=5))
+                tidsx = ', '.join(tids if len(tids) < 6 else rsampl(tids, k=5))
+
                 error_tube_id = (
                     f'tube_id in Qiita but {len_tube_id_overlap} missing '
-                    f'samples. Some samples from tube_id: {tids_example}.')
+                    f'samples. Some samples from tube_id: {tidsx}.')
 
             len_overlap = len(sample_name_diff)
             # selecting at random k=5 samples to minimize space in display
-            samples_example = ', '.join(choices(list(qsamples), k=5))
+            samx = ', '.join(qsam if len(qsam) < 6 else rsampl(qsam, k=5))
+
             # selecting the up to 4 first samples to minimize space in
             # display
             missing = ', '.join(sorted(sample_name_diff)[:4])
             errors.append(
                 f'{project} has {len_overlap} missing samples (i.e. '
-                f'{missing}). Some samples from Qiita: {samples_example}. '
+                f'{missing}). Some samples from Qiita: {samx}. '
                 f'{error_tube_id}')
 
     if errors:
@@ -244,24 +250,57 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         config['modules_to_load'],
         job_id)
 
+    touched_studies_prep_info = defaultdict(list)
+
     if not skip_exec:
         gpf_job.run(callback=status_line.update_job_step)
-        # if seq_pro is run, prep_file_paths will be populated by run().
-        prep_file_paths = gpf_job.prep_file_paths
-        # concatenate the lists of paths across all study_ids into a single
-        # list.
-        pfp_list = list(chain.from_iterable(prep_file_paths.values()))
-    else:
-        # under testing conditions, gpf_job.prep_file_paths will not be
-        # populated. Generate pfp_list from walking the expected location.
-        pfp_list = []
-        for root, dirs, files in walk(join(pipeline.output_path,
-                                           'GenPrepFileJob', 'PrepFiles')):
-            for prep_file in files:
-                if prep_file.endswith('.tsv'):
-                    pfp_list.append(join(root, prep_file))
 
-    map_sample_names_to_tube_ids(pfp_list, sn_tid_map_by_project)
+        # concatenate the lists of paths across all study_ids into a single
+        # list. Replace sample-names w/tube-ids in all relevant prep-files.
+        preps = list(chain.from_iterable(gpf_job.prep_file_paths.values()))
+        map_sample_names_to_tube_ids(preps, sn_tid_map_by_project)
+
+        for study_id in gpf_job.prep_file_paths:
+            for prep_file_path in gpf_job.prep_file_paths[study_id]:
+                metadata = pd.read_csv(prep_file_path, delimiter='\t',
+                                       index_col='sample_name').to_dict(
+                    'index')
+
+                # determine data_type based on sample-sheet
+                # value will be from the Assay field
+                data = {'prep_info': dumps(metadata),
+                        'study': study_id,
+                        'data_type': assay_type}
+
+                reply = qclient.post('/qiita_db/prep_template/', data=data)
+                prep_id = reply['prep']
+
+                touched_studies_prep_info[study_id].append(prep_id)
+    else:
+        # replace sample-names w/tube-ids in all relevant prep-files.
+        map_sample_names_to_tube_ids(join(pipeline.output_path,
+                                          'GenPrepFileJob', 'PrepFiles',
+                                          ('good-prep-file.txt')),
+                                     sn_tid_map_by_project)
+
+        # assume testing conditions and assign preps to study 1.
+        metadata = {
+            'SKB8.640193': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                            'barcode': 'GTCCGCAAGTTA',
+                            'platform': 'Illumina',
+                            'instrument_model': 'Illumina MiSeq'},
+            'SKD8.640184': {'primer': 'GTGCCAGCMGCCGCGGTAA',
+                            'barcode': 'GTCCGCAAGTTA',
+                            'platform': 'Illumina',
+                            'instrument_model': 'Illumina MiSeq'}}
+
+        data = {'prep_info': dumps(metadata),
+                'study': '1',
+                'data_type': 'Metagenomic'}
+
+        reply = qclient.post('/qiita_db/prep_template/', data=data)
+        prep_id = reply['prep']
+        touched_studies_prep_info['1'] = [prep_id]
 
     status_line.update_current_message("Step 6 of 6: Copying results to "
                                        "archive")
@@ -329,9 +368,14 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
 
     data = []
     for qiita_id, project in touched_studies:
-        url = f'{qclient._server_url}/study/description/{qiita_id}'
-        data.append({'Project': project, 'Qiita Study ID': qiita_id,
-                     'Qiita URL': url})
+        for prep_id in touched_studies_prep_info[qiita_id]:
+            study_url = f'{qclient._server_url}/study/description/{qiita_id}'
+            prep_url = (f'{qclient._server_url}/study/description/'
+                        f'{qiita_id}?prep_id={prep_id}')
+            data.append({'Project': project, 'Qiita Study ID': qiita_id,
+                         'Qiita Prep ID': prep_id, 'Qiita URL': study_url,
+                         'Prep URL': prep_url})
+
     df = pd.DataFrame(data)
 
     with open(join(out_dir, 'touched_studies.html'), 'w') as f:
