@@ -294,7 +294,6 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         # convert the list of dataframes into a single dataframe.
         add_sif_info = pd.concat([add_sif_info],
                                  ignore_index=True).drop_duplicates()
-        add_sif_info.reindex()
 
         # generate SIF files with add_sif_info as additional metadata input.
         # duplicate sample-names and non-blanks will be handled properly.
@@ -343,13 +342,23 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
             f'cd {out_dir}; tar zcvf prep-files.tgz '
             'GenPrepFileJob/PrepFiles']
 
-    # just use the filenames for tarballing the sifs.
-    # the sifs should all be stored in the {out_dir} by default.
     if sifs:
+        # just use the filenames for tarballing the sifs.
+        # the sifs should all be stored in the {out_dir} by default.
         tmp = [basename(x) for x in sifs]
         # convert sifs into a list of filenames.
         tmp = ' '.join(tmp)
         cmds.append(f'cd {out_dir}; tar zcvf sample-files.tgz {tmp}')
+
+        # after tarballing sifs for archive, ensure all BLANKs are
+        # registered automatically into Qiita. Overwrites are okay.
+        for sif_path in sifs:
+            data = pd.read_csv(sif_path,
+                               delimiter='\t',
+                               index_col='sample_name').to_dict('index')
+            qclient.patch('/api/v1/study/1/samples', data=data)
+            # TODO: should confirm success by analyzing reply.
+            # reply = qclient.patch('/api/v1/study/1/samples', data=data)
 
     csv_fps = []
     for root, dirs, files in walk(join(gpf_job.output_path, 'PrepFiles')):

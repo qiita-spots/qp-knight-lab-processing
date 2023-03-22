@@ -291,8 +291,6 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                         data_type = key
                         break
 
-                # add_sif_info.append(metadata['sample_name', 'project_name'])
-
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         'data_type': data_type}
@@ -301,12 +299,6 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 prep_id = reply['prep']
 
                 touched_studies_prep_info[study_id].append(prep_id)
-
-        # convert additional_sif_info from a list of dataframes into a single
-        # merged frame before passing to generate_sample_information_files().
-        # add_sif_info = pd.concat([add_sif_info],
-        #                         ignore_index=True).drop_duplicates()
-        # add_sif_info.reindex()
 
         qid_pn_map = {x['qiita_id']: x['project_name'] for
                       x in pipeline.get_project_info()}
@@ -326,7 +318,6 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         # convert the list of dataframes into a single dataframe.
         add_sif_info = pd.concat([add_sif_info],
                                  ignore_index=True).drop_duplicates()
-        add_sif_info.reindex()
 
         # generate SIF files with add_sif_info as additional metadata input.
         # duplicate sample-names and non-blanks will be handled properly.
@@ -376,13 +367,23 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
             'GenPrepFileJob/PrepFiles'
             ]
 
-    # just use the filenames for tarballing the sifs.
-    # the sifs should all be stored in the {out_dir} by default.
     if sifs:
+        # just use the filenames for tarballing the sifs.
+        # the sifs should all be stored in the {out_dir} by default.
         tmp = [basename(x) for x in sifs]
         # convert sifs into a list of filenames.
         tmp = ' '.join(tmp)
         cmds.append(f'cd {out_dir}; tar zcvf sample-files.tgz {tmp}')
+
+        # after tarballing sifs for archive, ensure all BLANKs are
+        # registered automatically into Qiita. Overwrites are okay.
+        for sif_path in sifs:
+            data = pd.read_csv(sif_path,
+                               delimiter='\t',
+                               index_col='sample_name').to_dict('index')
+            qclient.patch('/api/v1/study/1/samples', data=data)
+            # TODO: should confirm success by analyzing reply.
+            # reply = qclient.patch('/api/v1/study/1/samples', data=data)
 
     csv_fps = []
     for root, dirs, files in walk(join(gpf_job.output_path, 'PrepFiles')):
