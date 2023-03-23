@@ -3,7 +3,8 @@ from os import listdir, makedirs
 from os import walk
 from os.path import exists, join, isfile, basename
 from qiita_client import ArtifactInfo
-from qp_klp.klp_util import map_sample_names_to_tube_ids
+from qp_klp.klp_util import (map_sample_names_to_tube_ids,
+                             update_blanks_in_qiita)
 from random import sample as rsampl
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
@@ -126,8 +127,6 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
     if errors:
         raise PipelineError('\n'.join(errors))
-
-    sifs = pipeline.generate_sample_information_files()
 
     # find the uploads directory all trimmed files will need to be
     # moved to.
@@ -276,6 +275,9 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         map_sample_names_to_tube_ids(preps, sn_tid_map_by_project)
 
         # if seq_pro is run, prep_file_paths will be populated by run().
+
+        add_sif_info = []
+
         for study_id in gpf_job.prep_file_paths:
             for prep_file_path in gpf_job.prep_file_paths[study_id]:
                 metadata = pd.read_csv(prep_file_path,
@@ -298,6 +300,29 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
                 prep_id = reply['prep']
 
                 touched_studies_prep_info[study_id].append(prep_id)
+
+        qid_pn_map = {x['qiita_id']: x['project_name'] for
+                      x in pipeline.get_project_info()}
+
+        # in case we really do need to query for samples again:
+        # assume set of valid study_ids can be determined from prep_file_paths.
+        for study_id in gpf_job.prep_file_paths:
+            url = f'/api/v1/study/{study_id}/samples'
+            samples = list(qclient.get(url))
+            # generate a list of (sample-name, project-name) pairs.
+            project_name = qid_pn_map[{study_id}]
+            samples = [(x, project_name) for x in samples]
+            add_sif_info.append(pd.DataFrame(data=samples,
+                                             columns=['sample_name',
+                                                      'project_name']))
+
+        # convert the list of dataframes into a single dataframe.
+        add_sif_info = pd.concat([add_sif_info],
+                                 ignore_index=True).drop_duplicates()
+
+        # generate SIF files with add_sif_info as additional metadata input.
+        # duplicate sample-names and non-blanks will be handled properly.
+        sifs = pipeline.generate_sample_info_files(add_sif_info)
     else:
         # replace sample-names w/tube-ids in all relevant prep-files.
         map_sample_names_to_tube_ids(join(pipeline.output_path,
@@ -325,6 +350,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         prep_id = reply['prep']
         touched_studies_prep_info['1'] = [prep_id]
 
+        sifs = pipeline.generate_sample_info_files()
+
     status_line.update_current_message("Step 5 of 5: Copying results to "
                                        "archive")
 
@@ -341,13 +368,18 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
             'GenPrepFileJob/PrepFiles'
             ]
 
-    # just use the filenames for tarballing the sifs.
-    # the sifs should all be stored in the {out_dir} by default.
     if sifs:
+        # just use the filenames for tarballing the sifs.
+        # the sifs should all be stored in the {out_dir} by default.
         tmp = [basename(x) for x in sifs]
         # convert sifs into a list of filenames.
         tmp = ' '.join(tmp)
         cmds.append(f'cd {out_dir}; tar zcvf sample-files.tgz {tmp}')
+
+        # after tarballing sifs for archive, ensure all BLANKs are
+        # registered automatically into Qiita. Overwrites are okay.
+
+        update_blanks_in_qiita(sifs, qclient)
 
     csv_fps = []
     for root, dirs, files in walk(join(gpf_job.output_path, 'PrepFiles')):

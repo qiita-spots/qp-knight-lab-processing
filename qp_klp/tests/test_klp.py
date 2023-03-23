@@ -5,6 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
+import math
 from unittest import main
 from os import remove, makedirs, environ
 from shutil import rmtree
@@ -16,7 +17,8 @@ import pandas as pd
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
-from qp_klp.klp_util import FailedSamplesRecord, map_sample_names_to_tube_ids
+from qp_klp.klp_util import (FailedSamplesRecord, map_sample_names_to_tube_ids,
+                             update_blanks_in_qiita)
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 import logging
@@ -587,6 +589,40 @@ class KLPTests(PluginTestCase):
                     'b</td></tr><tr><td>NYU_BMS_Melanoma_13059</td><td>EP07316'
                     '0B01</td><td>ConvertJob</td></tr></tbody></table>')
             self.assertEqual(obs3, exp3)
+
+    def test_update_blanks_in_qiita(self):
+        sifs = ['qp_klp/tests/sample_info_file_1_blanks.tsv']
+
+        # there should be no blanks stored in Qiita for study 1.
+        # the sample sif file contains the following:
+        exp = ['1.BLANK.None.20C.BLANK.1', '1.BLANK.None.20C.BLANK.2',
+               '1.BLANK.AssayAssure.20C.BLANK.1', '1.BLANK5.12C',
+               '1.BLANK.AssayAssure.20C.BLANK.2', '1.BLANK5.12E',
+               '1.BLANK5.12F', '1.BLANK5.12D', '1.BLANK5.12G',
+               '1.BLANK.EtOH.20C.BLANK.1', '1.BLANK.EtOH.20C.BLANK.2',
+               '1.BLANK5.12H']
+
+        update_blanks_in_qiita(sifs, self.qclient)
+
+        obs = self.qclient.get('/api/v1/study/1/samples')
+        obs = [x for x in obs if x.startswith('1.BLANK')]
+
+        # confirm all new blanks are in Qiita as expected.
+        self.assertEqual(set(obs), set(exp))
+
+        # pull metadata for two fields, one pre-existing (host_taxid) and one
+        # from the SIF (empo_3).
+        result = self.qclient.get('/api/v1/study/1/samples/categories='
+                                  'host_taxid,empo_3')
+        obs = result['samples']
+
+        # Confirm that a new BLANK contains the value from empo_3 and the
+        # dummy-value '1' for the host_tax_id while a pre-existing sample-name
+        # contains 'nan' for the new field (empo_3) and an existing, non-
+        # dummy value for host_tax_id.
+        self.assertEqual(obs['1.BLANK5.12H'], ['1', 'Sterile water blank'])
+        self.assertEqual(obs['1.SKM7.640188'][0], '3483')
+        self.assertTrue(math.isnan(obs['1.SKM7.640188'][1]))
 
     def test_map_sample_names_to_tube_ids(self):
         # create a mapping of sample-names to tube-ids.

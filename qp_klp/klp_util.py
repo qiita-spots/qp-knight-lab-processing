@@ -1,5 +1,49 @@
 from os.path import join
 import pandas as pd
+from json import dumps
+
+
+def update_blanks_in_qiita(sifs, qclient):
+    for sif_path in sifs:
+        # get study_id from sif_file_name ...something_14385_blanks.tsv
+        study_id = sif_path.split('_')[-2]
+
+        df = pd.read_csv(sif_path, delimiter='\t')
+
+        # Prepend study_id to make them compatible w/list from Qiita.
+        df['sample_name'] = f'{study_id}.' + df['sample_name'].astype(str)
+
+        # SIFs only contain BLANKs. Get the list of potentially new BLANKs.
+        blanks = df['sample_name']
+
+        # Get list of BLANKs already registered in Qiita.
+        from_qiita = qclient.get(f'/api/v1/study/{study_id}/samples')
+        from_qiita = [x for x in from_qiita if
+                      x.startswith(f'{study_id}.BLANK')]
+
+        # Generate list of BLANKs that need to be ADDED to Qiita.
+        new_blanks = (set(blanks) | set(from_qiita)) - set(from_qiita)
+
+        if len(new_blanks):
+            # Generate dummy entries for each new BLANK, if any.
+            categories = qclient.get(f'/api/v1/study/{study_id}/samples/'
+                                     'info')['categories']
+
+            # initialize payload w/required dummy categories
+            data = {i: {c: 1 for c in categories} for i in new_blanks}
+
+            # populate payload w/additional columns and/or overwrite existing
+            # columns w/metadata from SIF file.
+            sif_data = df.set_index('sample_name').T.to_dict()
+            for new_blank in new_blanks:
+                for column in sif_data[new_blank]:
+                    data[new_blank][column] = sif_data[new_blank][column]
+
+            # http_patch will raise Error if insert failed.
+            qclient.http_patch(f'/api/v1/study/{study_id}/samples',
+                               data=dumps(data))
+
+            return data
 
 
 def map_sample_names_to_tube_ids(prep_info_file_paths, sn_tid_map_by_proj):
