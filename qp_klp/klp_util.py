@@ -4,13 +4,9 @@ from json import dumps
 
 
 def update_blanks_in_qiita(sifs, qclient):
-    results = {}
     for sif_path in sifs:
-        results[sif_path] = {'sif_path': sif_path}
-
         # get study_id from sif_file_name ...something_14385_blanks.tsv
         study_id = sif_path.split('_')[-2]
-        results[sif_path]['study_id'] = study_id
 
         # SIFs only contain BLANKs. Get the list of potentially new BLANKs.
         blanks = pd.read_csv(sif_path, delimiter='\t')['sample_name']
@@ -18,31 +14,22 @@ def update_blanks_in_qiita(sifs, qclient):
         # Prepend study_id to make them compatible w/list from Qiita.
         blanks = [f'{study_id}.{x}' for x in blanks]
 
-        results[sif_path]['blanks'] = blanks
-
         # Get list of BLANKs already registered in Qiita.
         from_qiita = qclient.get(f'/api/v1/study/{study_id}/samples')
         from_qiita = [x for x in from_qiita if
                       x.startswith(f'{study_id}.BLANK')]
 
-        results[sif_path]['from_qiita'] = from_qiita
-
         # Generate list of BLANKs that need to be ADDED to Qiita.
         new_blanks = (set(blanks) | set(from_qiita)) - set(from_qiita)
-
-        results[sif_path]['new_blanks'] = new_blanks
 
         if len(new_blanks):
             # Generate dummy entries for each new BLANK, if any.
             categories = qclient.get(f'/api/v1/study/{study_id}/samples/'
                                      'info')['categories']
-            results[sif_path]['categories'] = categories
             data = {i: {c: 1 for c in categories} for i in new_blanks}
-            results[sif_path]['data'] = data
             # http_patch will raise Error if insert failed.
             qclient.http_patch(f'/api/v1/study/{study_id}/samples',
                                data=dumps(data))
-    return results
 
 
 def map_sample_names_to_tube_ids(prep_info_file_paths, sn_tid_map_by_proj):

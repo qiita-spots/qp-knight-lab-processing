@@ -601,15 +601,12 @@ class KLPTests(PluginTestCase):
                '1.BLANK.EtOH.20C.BLANK.1', '1.BLANK.EtOH.20C.BLANK.2',
                '1.BLANK5.12H']
 
-        results = update_blanks_in_qiita(sifs, self.qclient)
-        print(results)
-        print("")
+        update_blanks_in_qiita(sifs, self.qclient)
+
         obs = self.qclient.get('/api/v1/study/1/samples')
         obs = [x for x in obs if x.startswith('1.BLANK')]
-        print(obs)
 
         self.assertEqual(set(obs), set(exp))
-        self.assertTrue(False)
 
     def test_map_sample_names_to_tube_ids(self):
         # create a mapping of sample-names to tube-ids.
