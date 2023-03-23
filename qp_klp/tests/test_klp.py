@@ -601,15 +601,42 @@ class KLPTests(PluginTestCase):
                '1.BLANK.EtOH.20C.BLANK.1', '1.BLANK.EtOH.20C.BLANK.2',
                '1.BLANK5.12H']
 
-        payload = update_blanks_in_qiita(sifs, self.qclient)
-        print(payload)
-
-        self.assertTrue(False)
+        update_blanks_in_qiita(sifs, self.qclient)
 
         obs = self.qclient.get('/api/v1/study/1/samples')
         obs = [x for x in obs if x.startswith('1.BLANK')]
 
+        # confirm all new blanks are in Qiita as expected.
         self.assertEqual(set(obs), set(exp))
+
+        # pull metadata for a new entry '1.BLANK5.12D' and confirm the
+        # results are expected: dummy fields + fields
+        '''
+        exp = {'altitude': 1, 'anonymized_name': 1, 'assigned_from_geo': 1,
+               'collection_timestamp': '2022-1-19', 'common_name': 1,
+               'country': 1, 'depth': 1, 'description': 'BLANK5.12D',
+               'description_duplicate': 1,
+               'dna_extracted': True, 'elevation': 193,
+               'env_biome': 'urban biome',
+               'env_feature': 'research facility',
+               'env_package': 'misc environment',
+               'host_subject_id': 'BLANK5.12D', 'host_taxid': 1,
+               'latitude': 32.5, 'longitude': -117.25, 'ph': 1,
+               'physical_specimen_location': 'UCSD',
+               'physical_specimen_remaining': False, 'samp_salinity': 1,
+               'sample_type': 'control blank', 'scientific_name': 'metagenome',
+               'season_environment': 1, 'taxon_id': 256318, 'temp': 1,
+               'texture': 1, 'tot_nitro': 1, 'tot_org_carb': 1,
+               'water_content_soil': 1, 'empo_1': 'Control',
+               'empo_2': 'Negative', 'empo_3': 'Sterile water blank',
+               'env_material': 'sterile water',
+               'geo_loc_name': 'USA:CA:San Diego',
+               'title': 'PLUS_Urobiome_Validation_Vaginal'}
+        '''
+
+        obs = self.get('/api/v1/study/1/samples/categories=host_taxid,empo_3')
+        print(obs)
+        self.assertTrue(False)
 
     def test_map_sample_names_to_tube_ids(self):
         # create a mapping of sample-names to tube-ids.
