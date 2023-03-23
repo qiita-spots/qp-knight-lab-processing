@@ -5,6 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
+import math
 from unittest import main
 from os import remove, makedirs, environ
 from shutil import rmtree
@@ -24,7 +25,6 @@ import logging
 import re
 from metapool import KLSampleSheet
 from shutil import copy
-from math import nan
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -621,7 +621,8 @@ class KLPTests(PluginTestCase):
         # contains 'nan' for the new field (empo_3) and an existing, non-
         # dummy value for host_tax_id.
         self.assertEqual(obs['1.BLANK5.12H'], ['1', 'Sterile water blank'])
-        self.assertEqual(obs['1.SKM7.640188'], ['3483', nan])
+        self.assertEqual(obs['1.SKM7.640188'][0], '3483')
+        self.assertTrue(math.isnan(obs['1.SKM7.640188'][1]))
 
     def test_map_sample_names_to_tube_ids(self):
         # create a mapping of sample-names to tube-ids.
