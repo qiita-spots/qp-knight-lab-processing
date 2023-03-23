@@ -24,6 +24,7 @@ import logging
 import re
 from metapool import KLSampleSheet
 from shutil import copy
+from math import nan
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -609,35 +610,18 @@ class KLPTests(PluginTestCase):
         # confirm all new blanks are in Qiita as expected.
         self.assertEqual(set(obs), set(exp))
 
-        # pull metadata for a new entry '1.BLANK5.12D' and confirm the
-        # results are expected: dummy fields + fields
-        '''
-        exp = {'altitude': 1, 'anonymized_name': 1, 'assigned_from_geo': 1,
-               'collection_timestamp': '2022-1-19', 'common_name': 1,
-               'country': 1, 'depth': 1, 'description': 'BLANK5.12D',
-               'description_duplicate': 1,
-               'dna_extracted': True, 'elevation': 193,
-               'env_biome': 'urban biome',
-               'env_feature': 'research facility',
-               'env_package': 'misc environment',
-               'host_subject_id': 'BLANK5.12D', 'host_taxid': 1,
-               'latitude': 32.5, 'longitude': -117.25, 'ph': 1,
-               'physical_specimen_location': 'UCSD',
-               'physical_specimen_remaining': False, 'samp_salinity': 1,
-               'sample_type': 'control blank', 'scientific_name': 'metagenome',
-               'season_environment': 1, 'taxon_id': 256318, 'temp': 1,
-               'texture': 1, 'tot_nitro': 1, 'tot_org_carb': 1,
-               'water_content_soil': 1, 'empo_1': 'Control',
-               'empo_2': 'Negative', 'empo_3': 'Sterile water blank',
-               'env_material': 'sterile water',
-               'geo_loc_name': 'USA:CA:San Diego',
-               'title': 'PLUS_Urobiome_Validation_Vaginal'}
-        '''
+        # pull metadata for two fields, one pre-existing (host_taxid) and one
+        # from the SIF (empo_3).
+        result = self.qclient.get('/api/v1/study/1/samples/categories='
+                                  'host_taxid,empo_3')
+        obs = result['samples']
 
-        obs = self.qclient.get('/api/v1/study/1/samples/categories='
-                               'host_taxid,empo_3')
-        print(obs)
-        self.assertTrue(False)
+        # Confirm that a new BLANK contains the value from empo_3 and the
+        # dummy-value '1' for the host_tax_id while a pre-existing sample-name
+        # contains 'nan' for the new field (empo_3) and an existing, non-
+        # dummy value for host_tax_id.
+        self.assertEqual(obs['1.BLANK5.12H'], ['1', 'Sterile water blank'])
+        self.assertEqual(obs['1.SKM7.640188'], ['3483', nan])
 
     def test_map_sample_names_to_tube_ids(self):
         # create a mapping of sample-names to tube-ids.
