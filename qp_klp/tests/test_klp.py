@@ -634,7 +634,8 @@ class KLPTests(PluginTestCase):
                'title': 'PLUS_Urobiome_Validation_Vaginal'}
         '''
 
-        obs = self.get('/api/v1/study/1/samples/categories=host_taxid,empo_3')
+        obs = self.qclient.get('/api/v1/study/1/samples/categories='
+                               'host_taxid,empo_3')
         print(obs)
         self.assertTrue(False)
 
