@@ -3,7 +3,8 @@ from os import listdir, makedirs
 from os import walk
 from os.path import exists, join, isfile, basename
 from qiita_client import ArtifactInfo
-from qp_klp.klp_util import map_sample_names_to_tube_ids
+from qp_klp.klp_util import (map_sample_names_to_tube_ids,
+                             update_blanks_in_qiita)
 from random import sample as rsampl
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
@@ -377,32 +378,8 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
         # after tarballing sifs for archive, ensure all BLANKs are
         # registered automatically into Qiita. Overwrites are okay.
-        for sif_path in sifs:
-            # get study_id from sif_file_name ...something_14385_blanks.tsv
-            study_id = sif_path.split('_')[-2]
 
-            # SIFs only contain BLANKs. Get the list of potentially new BLANKs.
-            blanks = pd.read_csv(sif_path, delimiter='\t')['sample_name']
-
-            # Prepend study_id to make them compatible w/list from Qiita.
-            blanks = [f'{study_id}.{x}' for x in blanks]
-
-            # Get list of BLANKs already registered in Qiita.
-            from_qiita = qclient.get(f'/api/v1/study/{study_id}/samples')
-            from_qiita = [x for x in from_qiita if
-                          x.startswith(f'{study_id}.BLANK')]
-
-            # Generate list of BLANKs that need to be ADDED to Qiita.
-            new_blanks = (set(blanks) | set(from_qiita)) - set(from_qiita)
-
-            if len(new_blanks):
-                # Generate dummy entries for each new BLANK, if any.
-                categories = qclient.get(f'/api/v1/study/{study_id}/samples/'
-                                         'info')['categories']
-                data = {i: {c: 1 for c in categories} for i in new_blanks}
-                # http_patch will raise Error if insert failed.
-                qclient.http_patch(f'/api/v1/study/{study_id}/samples',
-                                   data=dumps(data))
+        update_blanks_in_qiita(sifs, qclient)
 
     csv_fps = []
     for root, dirs, files in walk(join(gpf_job.output_path, 'PrepFiles')):

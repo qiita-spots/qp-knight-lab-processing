@@ -16,7 +16,8 @@ import pandas as pd
 from qiita_client.testing import PluginTestCase
 from qiita_client import ArtifactInfo
 from qp_klp import __version__, plugin
-from qp_klp.klp_util import FailedSamplesRecord, map_sample_names_to_tube_ids
+from qp_klp.klp_util import (FailedSamplesRecord, map_sample_names_to_tube_ids,
+                             update_blanks_in_qiita)
 from qp_klp.klp import sequence_processing_pipeline
 from time import sleep
 import logging
@@ -587,6 +588,13 @@ class KLPTests(PluginTestCase):
                     'b</td></tr><tr><td>NYU_BMS_Melanoma_13059</td><td>EP07316'
                     '0B01</td><td>ConvertJob</td></tr></tbody></table>')
             self.assertEqual(obs3, exp3)
+
+    def test_update_blanks_in_qiita(self):
+        sifs = ['qp_klp/tests/sample_info_file_1_blanks.tsv']
+
+        results = update_blanks_in_qiita(sifs, self.qclient)
+        print(results)
+        self.assertTrue(False)
 
     def test_map_sample_names_to_tube_ids(self):
         # create a mapping of sample-names to tube-ids.
