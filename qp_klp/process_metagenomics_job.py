@@ -353,12 +353,31 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         # after tarballing sifs for archive, ensure all BLANKs are
         # registered automatically into Qiita. Overwrites are okay.
         for sif_path in sifs:
-            data = pd.read_csv(sif_path,
-                               delimiter='\t',
-                               index_col='sample_name').to_dict('index')
-            qclient.patch('/api/v1/study/1/samples', data=data)
-            # TODO: should confirm success by analyzing reply.
-            # reply = qclient.patch('/api/v1/study/1/samples', data=data)
+            # get study_id from sif_file_name ...something_14385_blanks.tsv
+            study_id = sif_path.split('_')[-2]
+
+            # SIFs only contain BLANKs. Get the list of potentially new BLANKs.
+            blanks = pd.read_csv(sif_path, delimiter='\t')['sample_name']
+
+            # Prepend study_id to make them compatible w/list from Qiita.
+            blanks = [f'{study_id}.{x}' for x in blanks]
+
+            # Get list of BLANKs already registered in Qiita.
+            from_qiita = qclient.get(f'/api/v1/study/{study_id}/samples')
+            from_qiita = [x for x in from_qiita if
+                          x.startswith(f'{study_id}.BLANK')]
+
+            # Generate list of BLANKs that need to be ADDED to Qiita.
+            new_blanks = (set(blanks) | set(from_qiita)) - set(from_qiita)
+
+            if len(new_blanks):
+                # Generate dummy entries for each new BLANK, if any.
+                categories = qclient.get(f'/api/v1/study/{study_id}/samples/'
+                                         'info')['categories']
+                data = {i: {c: 1 for c in categories} for i in new_blanks}
+                # http_patch will raise Error if insert failed.
+                qclient.http_patch(f'/api/v1/study/{study_id}/samples',
+                                   data=dumps(data))
 
     csv_fps = []
     for root, dirs, files in walk(join(gpf_job.output_path, 'PrepFiles')):
