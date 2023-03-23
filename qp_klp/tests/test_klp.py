@@ -601,7 +601,10 @@ class KLPTests(PluginTestCase):
                '1.BLANK.EtOH.20C.BLANK.1', '1.BLANK.EtOH.20C.BLANK.2',
                '1.BLANK5.12H']
 
-        update_blanks_in_qiita(sifs, self.qclient)
+        payload = update_blanks_in_qiita(sifs, self.qclient)
+        print(payload)
+
+        self.assertTrue(False)
 
         obs = self.qclient.get('/api/v1/study/1/samples')
         obs = [x for x in obs if x.startswith('1.BLANK')]
