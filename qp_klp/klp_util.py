@@ -34,8 +34,7 @@ def update_blanks_in_qiita(sifs, qclient):
 
             # populate payload w/additional columns and/or overwrite existing
             # columns w/metadata from SIF file.
-            df.set_index('sample_name')
-            sif_data = df.to_dict(orient='index')
+            sif_data = df.set_index('sample_name').T.to_dict()
             for new_blank in new_blanks:
                 for column in sif_data[new_blank]:
                     data[new_blank][column] = sif_data[new_blank][column]
