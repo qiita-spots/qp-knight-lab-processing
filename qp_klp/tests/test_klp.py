@@ -592,8 +592,23 @@ class KLPTests(PluginTestCase):
     def test_update_blanks_in_qiita(self):
         sifs = ['qp_klp/tests/sample_info_file_1_blanks.tsv']
 
+        # there should be no blanks stored in Qiita for study 1.
+        # the sample sif file contains the following:
+        exp = ['1.BLANK.None.20C.BLANK.1', '1.BLANK.None.20C.BLANK.2',
+               '1.BLANK.AssayAssure.20C.BLANK.1', '1.BLANK5.12C',
+               '1.BLANK.AssayAssure.20C.BLANK.2', '1.BLANK5.12E',
+               '1.BLANK5.12F', '1.BLANK5.12D', '1.BLANK5.12G',
+               '1.BLANK.EtOH.20C.BLANK.1', '1.BLANK.EtOH.20C.BLANK.2',
+               '1.BLANK5.12H']
+
         results = update_blanks_in_qiita(sifs, self.qclient)
         print(results)
+        print("")
+        obs = self.qclient.get('/api/v1/study/1/samples')
+        obs = [x for x in obs if x.startswith('1.BLANK')]
+        print(obs)
+
+        self.assertEqual(set(obs), set(exp))
         self.assertTrue(False)
 
     def test_map_sample_names_to_tube_ids(self):
