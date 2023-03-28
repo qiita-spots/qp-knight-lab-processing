@@ -261,6 +261,29 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
 
         add_sif_info = []
 
+        qid_pn_map = {x['qiita_id']: x['project_name'] for
+                      x in pipeline.get_project_info()}
+
+        for study_id in gpf_job.prep_file_paths:
+            url = f'/api/v1/study/{study_id}/samples'
+            samples = list(qclient.get(url))
+            # generate a list of (sample-name, project-name) pairs.
+            project_name = qid_pn_map[study_id]
+            samples = [(x, project_name) for x in samples]
+            add_sif_info.append(pd.DataFrame(data=samples,
+                                             columns=['sample_name',
+                                                      'project_name']))
+
+        # convert the list of dataframes into a single dataframe.
+        add_sif_info = pd.concat(add_sif_info,
+                                 ignore_index=True).drop_duplicates()
+
+        # generate SIF files with add_sif_info as additional metadata input.
+        # duplicate sample-names and non-blanks will be handled properly.
+        sifs = pipeline.generate_sample_info_files(add_sif_info)
+
+        update_blanks_in_qiita(sifs, qclient)
+
         for study_id in gpf_job.prep_file_paths:
             for prep_file_path in gpf_job.prep_file_paths[study_id]:
                 metadata = pd.read_csv(prep_file_path,
@@ -279,26 +302,6 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
 
                 touched_studies_prep_info[study_id].append(prep_id)
 
-        qid_pn_map = {x['qiita_id']: x['project_name'] for
-                      x in pipeline.get_project_info()}
-
-        for study_id in gpf_job.prep_file_paths:
-            url = f'/api/v1/study/{study_id}/samples'
-            samples = list(qclient.get(url))
-            # generate a list of (sample-name, project-name) pairs.
-            project_name = qid_pn_map[{study_id}]
-            samples = [(x, project_name) for x in samples]
-            add_sif_info.append(pd.DataFrame(data=samples,
-                                             columns=['sample_name',
-                                                      'project_name']))
-
-        # convert the list of dataframes into a single dataframe.
-        add_sif_info = pd.concat([add_sif_info],
-                                 ignore_index=True).drop_duplicates()
-
-        # generate SIF files with add_sif_info as additional metadata input.
-        # duplicate sample-names and non-blanks will be handled properly.
-        sifs = pipeline.generate_sample_info_files(add_sif_info)
     else:
         # replace sample-names w/tube-ids in all relevant prep-files.
         map_sample_names_to_tube_ids(join(pipeline.output_path,
@@ -350,8 +353,6 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         # convert sifs into a list of filenames.
         tmp = ' '.join(tmp)
         cmds.append(f'cd {out_dir}; tar zcvf sample-files.tgz {tmp}')
-
-        update_blanks_in_qiita(sifs, qclient)
 
     csv_fps = []
     for root, dirs, files in walk(join(gpf_job.output_path, 'PrepFiles')):
