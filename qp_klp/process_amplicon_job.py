@@ -306,9 +306,15 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
         for study_id in gpf_job.prep_file_paths:
             for prep_file_path in gpf_job.prep_file_paths[study_id]:
                 metadata = pd.read_csv(prep_file_path,
+                                       dtype=str,
                                        delimiter='\t',
-                                       index_col='sample_name').to_dict(
-                    'index')
+                                       index_col='sample_name')
+
+                # force sample_names (index) to be of type string.
+                metadata.index = metadata.index.map(str)
+
+                # convert to standard dictionary.
+                metadata = metadata.to_dict('index')
 
                 # determine data_type based on target_gene column.
                 target_gene = metadata[list(metadata.keys())[0]]['target_gene']

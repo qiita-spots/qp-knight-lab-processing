@@ -287,13 +287,16 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
         for study_id in gpf_job.prep_file_paths:
             for prep_file_path in gpf_job.prep_file_paths[study_id]:
                 metadata = pd.read_csv(prep_file_path,
+                                       dtype=str,
                                        delimiter='\t',
-                                       index_col='sample_name').to_dict(
-                    'index')
+                                       index_col='sample_name')
+
+                # force sample_names (index) to be of type string.
+                metadata.index = metadata.index.map(str)
 
                 # determine data_type based on sample-sheet
                 # value will be from the Assay field
-                data = {'prep_info': dumps(metadata),
+                data = {'prep_info': dumps(metadata.to_dict('index')),
                         'study': study_id,
                         'data_type': assay_type}
 
