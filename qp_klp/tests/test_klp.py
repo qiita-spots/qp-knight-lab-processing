@@ -596,8 +596,6 @@ class KLPTests(PluginTestCase):
         for bar in foo:
             print(bar)
 
-        self.assertTrue(False)
-
         sifs = ['qp_klp/tests/sample_info_file_1_blanks.tsv']
 
         # there should be no blanks stored in Qiita for study 1.
