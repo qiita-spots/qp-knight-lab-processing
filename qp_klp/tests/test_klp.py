@@ -591,11 +591,6 @@ class KLPTests(PluginTestCase):
             self.assertEqual(obs3, exp3)
 
     def test_update_blanks_in_qiita(self):
-        foo = self.qclient.get('/api/v1/study/1/samples')
-        foo = [x for x in foo if 'BLANK' in x]
-        for bar in foo:
-            print(bar)
-
         sifs = ['qp_klp/tests/sample_info_file_1_blanks.tsv']
 
         # there should be no blanks stored in Qiita for study 1.
