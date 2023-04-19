@@ -4,7 +4,7 @@ from os import walk
 from os.path import exists, join, isfile, basename
 from qiita_client import ArtifactInfo
 from qp_klp.klp_util import (map_sample_names_to_tube_ids,
-                             update_blanks_in_qiita)
+                             update_blanks_in_qiita, parse_prep_file)
 from random import sample as rsampl
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
@@ -305,16 +305,7 @@ def process_amplicon(mapping_file_path, qclient, run_identifier, out_dir,
 
         for study_id in gpf_job.prep_file_paths:
             for prep_file_path in gpf_job.prep_file_paths[study_id]:
-                metadata = pd.read_csv(prep_file_path,
-                                       dtype=str,
-                                       delimiter='\t',
-                                       index_col='sample_name')
-
-                # force sample_names (index) to be of type string.
-                metadata.index = metadata.index.map(str)
-
-                # convert to standard dictionary.
-                metadata = metadata.to_dict('index')
+                metadata = parse_prep_file(prep_file_path)
 
                 # determine data_type based on target_gene column.
                 target_gene = metadata[list(metadata.keys())[0]]['target_gene']
