@@ -15,7 +15,7 @@ from metapool.prep import remove_qiita_id
 from random import sample as rsampl
 import pandas as pd
 from qp_klp.klp_util import (map_sample_names_to_tube_ids, FailedSamplesRecord,
-                             update_blanks_in_qiita)
+                             update_blanks_in_qiita, parse_prep_file)
 from json import dumps
 from itertools import chain
 from collections import defaultdict
@@ -286,11 +286,7 @@ def process_metagenomics(sample_sheet_path, lane_number, qclient,
 
         for study_id in gpf_job.prep_file_paths:
             for prep_file_path in gpf_job.prep_file_paths[study_id]:
-                metadata = pd.read_csv(prep_file_path,
-                                       delimiter='\t',
-                                       index_col='sample_name').to_dict(
-                    'index')
-
+                metadata = parse_prep_file(prep_file_path)
                 # determine data_type based on sample-sheet
                 # value will be from the Assay field
                 data = {'prep_info': dumps(metadata),

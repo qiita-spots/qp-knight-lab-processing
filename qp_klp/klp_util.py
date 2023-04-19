@@ -128,3 +128,20 @@ class FailedSamplesRecord:
         with open(self.output_path, 'w') as f:
             f.write(df.to_html(border=2, index=False, justify="left",
                                render_links=True, escape=False))
+
+
+def parse_prep_file(prep_file_path):
+    metadata = pd.read_csv(prep_file_path,
+                           dtype=str,
+                           delimiter='\t',
+                           # forces Pandas to not make the first column the
+                           # index even when the values appear numeric.
+                           index_col=False)
+
+    if metadata is None:
+        raise ValueError(f"{prep_file_path} does not exist.")
+
+    metadata.set_index('sample_name', inplace=True)
+
+    # convert to standard dictionary.
+    return metadata.to_dict('index')

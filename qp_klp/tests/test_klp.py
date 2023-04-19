@@ -129,7 +129,7 @@ class KLPTests(PluginTestCase):
             "Date,2/26/20,,,,,,,,,\n",
             "Workflow,GenerateFASTQ,,,,,,,,,\n",
             "Application,FASTQ Only,,,,,,,,,\n",
-            "Assay,Metagenomics,,,,,,,,,\n",
+            "Assay,Metagenomic,,,,,,,,,\n",
             "Description,,,,,,,,,,\n",
             "Chemistry,Default,,,,,,,,,\n",
             ",,,,,,,,,,\n",
