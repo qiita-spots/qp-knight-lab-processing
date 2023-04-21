@@ -15,7 +15,7 @@ def update_blanks_in_qiita(sifs, qclient):
 
         # SIFs only contain BLANKs. Get the list of potentially new BLANKs.
         blank_ids = [i for i in df['sample_name'] if 'blank' in i.lower()]
-        blanks = df[df['sample_name'].isin(blank_ids)]
+        blanks = df[df['sample_name'].isin(blank_ids)]['sample_name']
         if len(blanks) == 0:
             # we have nothing to do so let's return early
             return
