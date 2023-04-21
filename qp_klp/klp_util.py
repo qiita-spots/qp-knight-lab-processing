@@ -8,13 +8,17 @@ def update_blanks_in_qiita(sifs, qclient):
         # get study_id from sif_file_name ...something_14385_blanks.tsv
         study_id = sif_path.split('_')[-2]
 
-        df = pd.read_csv(sif_path, delimiter='\t')
+        df = pd.read_csv(sif_path, delimiter='\t', dtype=str)
 
         # Prepend study_id to make them compatible w/list from Qiita.
         df['sample_name'] = f'{study_id}.' + df['sample_name'].astype(str)
 
         # SIFs only contain BLANKs. Get the list of potentially new BLANKs.
-        blanks = df['sample_name']
+        blank_ids = [i for i in df['sample_name'] if 'blank' in i.lower()]
+        blanks = df[df['sample_name'].isin(blank_ids)]['sample_name']
+        if len(blanks) == 0:
+            # we have nothing to do so let's return early
+            return
 
         # Get list of BLANKs already registered in Qiita.
         from_qiita = qclient.get(f'/api/v1/study/{study_id}/samples')

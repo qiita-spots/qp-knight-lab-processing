@@ -590,6 +590,23 @@ class KLPTests(PluginTestCase):
                     '0B01</td><td>ConvertJob</td></tr></tbody></table>')
             self.assertEqual(obs3, exp3)
 
+    def test_update_blanks_in_qiita_type_inference(self):
+        # Ensure we gracefully handle a situation in which there are no
+        # blanks, and the identifiers are numeric. This is an edge case
+        # that should not occur, but it is worth being defensive.
+        sifs = ['qp_klp/tests/sample_info_file_1_bad_blanks.tsv']
+
+        # we are not adding in any blanks so we should not observe change
+        exp = self.qclient.get('/api/v1/study/1/samples')
+        exp = [x for x in exp if x.startswith('1.BLANK')]
+
+        update_blanks_in_qiita(sifs, self.qclient)
+
+        obs = self.qclient.get('/api/v1/study/1/samples')
+        obs = [x for x in obs if x.startswith('1.BLANK')]
+
+        self.assertEqual(set(obs), set(exp))
+
     def test_update_blanks_in_qiita(self):
         sifs = ['qp_klp/tests/sample_info_file_1_blanks.tsv']
 

@@ -1,0 +1,5 @@
+sample_name	collection_timestamp	elevation	empo_1	empo_2	empo_3	env_biome	env_feature	env_material	env_package	geo_loc_name	host_subject_id	latitude	longitude	sample_type	scientific_name	taxon_id	description	title	dna_extracted	physical_specimen_location	physical_specimen_remaining
+1.0	2022-1-19	193	Control	Negative	Sterile water blank	urban biome	research facility	sterile water	misc environment	USA:CA:San Diego	BLANK.None.20C.BLANK.1	32.5	-117.25	control blank	metagenome	256318	BLANK.None.20C.BLANK.1	PLUS_Urobiome_Validation_Vaginal	TRUE	UCSD	FALSE
+2.00	2022-1-19	193	Control	Negative	Sterile water blank	urban biome	research facility	sterile water	misc environment	USA:CA:San Diego	BLANK.None.20C.BLANK.2	32.5	-117.25	control blank	metagenome	256318	BLANK.None.20C.BLANK.2	PLUS_Urobiome_Validation_Vaginal	TRUE	UCSD	FALSE
+3.000	2022-1-19	193	Control	Negative	Sterile water blank	urban biome	research facility	sterile water	misc environment	USA:CA:San Diego	BLANK.AssayAssure.20C.BLANK.1	32.5	-117.25	control blank	metagenome	256318	BLANK.AssayAssure.20C.BLANK.1	PLUS_Urobiome_Validation_Vaginal	TRUE	UCSD	FALSE
+
