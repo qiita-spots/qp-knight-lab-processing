@@ -1,6 +1,11 @@
-from os.path import join
 import pandas as pd
 from json import dumps
+from metapool import KLSampleSheet
+from os import makedirs
+from os.path import join
+from sequence_processing_pipeline.Pipeline import Pipeline
+from sequence_processing_pipeline.PipelineError import PipelineError
+from collections import defaultdict
 
 
 def update_blanks_in_qiita(sifs, qclient):
@@ -74,23 +79,30 @@ def map_sample_names_to_tube_ids(prep_info_file_paths, sn_tid_map_by_proj):
 
 
 class StatusUpdate():
-    def __init__(self, qclient, job_id):
+    def __init__(self, qclient, job_id, step_count):
         self.qclient = qclient
         self.job_id = job_id
         self.msg = ''
+        self.current_step = 0
+        self.step_count = step_count
 
-    def update_job_step(self, status, id):
+    def update_job_status(self, status, id):
         # internal function implements a callback function for Pipeline.run().
         # :param id: PBS/Torque/or some other informative and current job id.
         # :param status: status message
         self.qclient.update_job_step(self.job_id,
-                                     self.msg + f" ({id}: {status})")
+                                       self.msg + f" ({id}: {status})")
 
-    def update_current_message(self, msg):
+    def update_current_message(self, msg, include_step=True):
         # internal function that sets current_message to the new value before
         # updating the job step in the UI.
-        self.msg = msg
-        self.qclient.update_job_step(self.job_id, msg)
+        if include_step:
+            self.current_step += 1
+            self.msg = f"Step {self.current_step} of {self.step_count}: {msg}"
+        else:
+            self.msg = msg
+
+        self.qclient.update_job_step(self.job_id, self.msg)
 
 
 class FailedSamplesRecord:
@@ -149,3 +161,103 @@ def parse_prep_file(prep_file_path):
 
     # convert to standard dictionary.
     return metadata.to_dict('index')
+
+
+def update_sample_sheet(sample_sheet_path, lane_number):
+    # use KLSampleSheet functionality to add/overwrite lane number.
+    sheet = KLSampleSheet(sample_sheet_path)
+    for sample in sheet:
+        sample['Lane'] = f'{lane_number}'
+
+    with open(sample_sheet_path, 'w') as f:
+        sheet.write(f)
+
+def generate_special_map(results, projects):
+    # this function should be able to be tested by passing in simulated =
+    # results from qclient.
+
+    # trimmed files are stored by qiita_id. Find the qiita_id
+    # associated with each project and ensure a subdirectory exists
+    # for when it comes time to move the trimmed files.
+    special_map = []
+    for project in projects:
+        upload_path = join(results['uploads'], project['qiita_id'])
+        makedirs(upload_path, exist_ok=True)
+        special_map.append((project['project_name'], upload_path,
+                            project['qiita_id']))
+
+    return special_map
+
+def generate_pipeline(pipeline_type, input_file_path, lane_number,config_fp,
+                      run_identifier, out_dir, job_id):
+    if pipeline_type in ['metagenomic', 'metatranscriptomic']:
+        update_sample_sheet(input_file_path, lane_number)
+        return Pipeline(config_fp, run_identifier, input_file_path, None,
+                        out_dir, job_id, pipeline_type)
+    elif pipeline_type == 'amplicon':
+        return Pipeline(config_fp, run_identifier, None, input_file_path,
+                        out_dir, job_id, pipeline_type)
+    else:
+        raise PipelineError(f"'{pipeline_type}' is not a valid Pipeline type.")
+
+def get_data_type(pipeline_type, target_gene=None):
+    if pipeline_type in ['metagenomic', 'metatranscriptomic']:
+        return pipeline_type
+    elif pipeline_type == 'amplicon':
+        if target_gene:
+            for key in {'16S', '18S', 'ITS'}:
+                if key in target_gene:
+                    return key
+        else:
+            raise ValueError("target_gene must be specified for amplicon type")
+    else:
+        raise ValueError(f"'{pipeline_type}' is not a valid pipeline type")
+
+
+def update_prep_templates(qclient, prep_file_paths):
+    '''
+    Update prep-template info in Qiita. Get breakdown of prep-ids by study-id.
+    :param qclient:
+    :param prep_file_paths:
+    :return: A dict of lists of prep-ids, keyed by study-id.
+    '''
+    results = defaultdict(list)
+
+    for study_id in prep_file_paths:
+        for prep_file_path in prep_file_paths[study_id]:
+            metadata = parse_prep_file(prep_file_path)
+            target_gene = metadata[list(metadata.keys())[0]]['target_gene']
+
+            data = {'prep_info': dumps(metadata),
+                    'study': study_id,
+                    'data_type': get_data_type(target_gene)}
+
+            reply = qclient.post('/qiita_db/prep_template/', data=data)
+            prep_id = reply['prep']
+            results[study_id].append(prep_id)
+
+    return results
+
+def get_registered_samples_in_qiita(qclient, qiita_id):
+    '''
+    Obtain lists for sample-names and tube-ids registered in Qiita.
+    :param qclient: QiitaClient object
+    :param qiita_id: Qiita ID for the project in question.
+    :return: a tuple of lists, one for sample-names and another for tube-ids.
+    '''
+    samples = qclient.get(f'/api/v1/study/{qiita_id}/samples')
+
+    # remove Qiita ID as a prefix from the sample-names.
+    samples = {x.replace(f'{qiita_id}.', '') for x in samples}
+
+    # find out if tube-ids are registered in the study.
+    categories = qclient.get(f'/api/v1/study/{qiita_id}'
+                             '/samples/info')['categories']
+
+    if 'tube_id' in categories:
+        tids = qclient.get(f'/api/v1/study/{qiita_id}/samples/'
+                           'categories=tube_id')['samples']
+    else:
+        tids = None
+
+    return (samples, tids)

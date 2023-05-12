@@ -5,9 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-
 from qiita_client import QiitaPlugin, QiitaCommand
-
 from .klp import sequence_processing_pipeline
 
 
