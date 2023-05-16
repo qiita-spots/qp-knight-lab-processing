@@ -29,7 +29,7 @@ class Step:
 
         if sn_tid_map_by_project is None:
             raise ValueError("sn_tid_map_by_project is needed to initialize"
-                              " Step")
+                             " Step")
 
         self.pipeline = pipeline
         self.master_qiita_job_id = master_qiita_job_id

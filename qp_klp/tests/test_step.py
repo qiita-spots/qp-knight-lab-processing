@@ -72,4 +72,3 @@ class BaseStepTests(TestCase):
 
     def test_get_prep_file_paths(self):
         pass
-
