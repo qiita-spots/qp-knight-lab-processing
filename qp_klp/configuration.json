@@ -1,0 +1,60 @@
+{
+  "configuration": {
+    "pipeline": {
+      "archive_path": "sequence_processing_pipeline/tests/data/sequencing/knight_lab_completed_runs",
+      "search_paths": [ "/tmp", "qp_klp/tests/data"],
+      "amplicon_search_paths": [ "/tmp", "qp_klp/tests/data"]
+    },
+    "bcl2fastq": {
+      "nodes": 1,
+      "nprocs": 16,
+      "queue": "qiita",
+      "wallclock_time_in_hours": 36,
+      "modules_to_load": ["bcl2fastq_2.20.0.422"],
+      "executable_path": "bcl2fastq",
+      "per_process_memory_limit": "10gb"
+    },
+    "bcl-convert": {
+      "nodes": 1,
+      "nprocs": 16,
+      "queue": "qiita",
+      "wallclock_time_in_hours": 36,
+      "modules_to_load": ["bclconvert_3.7.5"],
+      "executable_path": "bcl-convert",
+      "per_process_memory_limit": "10gb"
+    },
+    "qc": {
+      "nodes": 1,
+      "nprocs": 16,
+      "queue": "qiita",
+      "wallclock_time_in_hours": 1,
+      "minimap_databases": ["/databases/minimap2/human-phix-db.mmi"],
+      "kraken2_database": "/databases/minimap2/hp_kraken-db.mmi",
+      "modules_to_load": ["fastp_0.20.1", "samtools_1.12", " minimap2_2.18"],
+      "fastp_executable_path": "fastp",
+      "minimap2_executable_path": "minimap2",
+      "samtools_executable_path": "samtools",
+      "job_total_memory_limit": "20gb",
+      "job_pool_size": 30,
+      "job_max_array_length": 1000
+    },
+    "seqpro": {
+      "seqpro_path": "seqpro",
+      "modules_to_load": []
+    },
+    "fastqc": {
+      "nodes": 1,
+      "nprocs": 16,
+      "queue": "qiita",
+      "nthreads": 16,
+      "wallclock_time_in_hours": 1,
+      "modules_to_load": ["fastqc_0.11.5"],
+      "fastqc_executable_path": "fastqc",
+      "multiqc_executable_path": "multiqc",
+      "multiqc_config_file_path": "sequence_processing_pipeline/multiqc-bclconvert-config.yaml",
+      "job_total_memory_limit": "20gb",
+      "job_pool_size": 30,
+      "job_max_array_length": 1000
+    }
+  }
+}
