@@ -171,11 +171,9 @@ class Step:
 
         # generate SIF files with add_sif_info as additional metadata input.
         # duplicate sample-names and non-blanks will be handled properly.
-        sifs = self.pipeline.generate_sample_info_files(add_sif_info)
+        self.sifs = self.pipeline.generate_sample_info_files(add_sif_info)
 
-        self.sifs = sifs
-
-        return sifs
+        return self.sifs
 
     def get_prep_file_paths(self):
         return self.prep_file_paths

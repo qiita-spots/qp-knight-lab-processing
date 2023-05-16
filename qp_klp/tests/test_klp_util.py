@@ -11,6 +11,27 @@ from os.path import join
 
 
 class KLPUtilTests(TestCase):
+    def test_update_blanks_in_qiita(self):
+        pass
+
+    def test_map_sample_names_to_tube_ids(self):
+        pass
+
+    def test_update_sample_sheet(self):
+        pass
+
+    def test_generate_special_map(self):
+        pass
+
+    def test_generate_pipeline(self):
+        pass
+
+    def test_update_prep_templates(self):
+        pass
+
+    def test_get_registered_samples_in_qiita(self):
+        pass
+
     def test_parse_prep_file(self):
         good_prep_file = join('qp_klp', 'tests', 'good-prep-file-small.txt')
 

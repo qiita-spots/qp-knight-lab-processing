@@ -145,7 +145,7 @@ class MetagenomicStep(Step):
         self.cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
 
         if exists(join(out_dir, 'touched_studies.html')):
-            f'cd {out_dir}; mv touched_studies.html final_results'
+            tmp = f'cd {out_dir}; mv touched_studies.html final_results'
             self.cmds.append(tmp)
 
         if exists(join(out_dir, 'failed_samples.html')):
