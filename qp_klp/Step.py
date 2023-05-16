@@ -33,7 +33,12 @@ class Step:
 
         self.pipeline = pipeline
         self.master_qiita_job_id = master_qiita_job_id
-        self.status_update_callback = status_update_callback
+
+        if status_update_callback is not None:
+            self.update_callback = status_update_callback.update_job_status
+        else:
+            self.update_callback = None
+
         # for now, hardcode this at the legacy value, since we've never
         # changed it.
         self.job_pool_size = 30
@@ -57,7 +62,7 @@ class Step:
                                  config['modules_to_load'],
                                  self.master_qiita_job_id)
 
-        convert_job.run(callback=self.status_update_callback.update_job_status)
+        convert_job.run(callback=self.update_callback)
 
         return convert_job
 
@@ -80,7 +85,7 @@ class Step:
                        self.job_pool_size,
                        config['job_max_array_length'])
 
-        qc_job.run(callback=self.status_update_callback.update_job_status)
+        qc_job.run(callback=self.update_callback)
 
         return qc_job
 
@@ -103,7 +108,7 @@ class Step:
                                config['job_max_array_length'],
                                self.pipeline.type == 'amplicon')
 
-        fastqc_job.run(callback=self.status_update_callback.update_job_status)
+        fastqc_job.run(callback=self.update_callback)
 
         return fastqc_job
 
@@ -123,7 +128,7 @@ class Step:
             self.master_qiita_job_id,
             is_amplicon=is_amplicon)
 
-        gpf_job.run(callback=self.status_update_callback.update_job_status)
+        gpf_job.run(callback=self.update_callback)
 
         # concatenate the lists of paths across all study_ids into a single
         # list. Replace sample-names w/tube-ids in all relevant prep-files.

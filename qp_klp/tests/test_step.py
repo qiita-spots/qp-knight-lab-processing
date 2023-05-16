@@ -10,13 +10,12 @@ from qp_klp.Step import Step
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os.path import join, abspath
 from functools import partial
-from os import makedirs
+from os import makedirs, chmod
+import json
 
 
 class BaseStepTests(TestCase):
-    def test_creation(self):
-        # Test base-class creation method, even though base-class will never
-        # be instantiated by itself in normal usage.
+    def setUp(self):
         package_root = abspath('./qp_klp')
         self.path = partial(join, package_root, 'tests', 'data')
         self.good_config_file = join(package_root, 'configuration.json')
@@ -26,10 +25,17 @@ class BaseStepTests(TestCase):
         self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
         makedirs(self.output_file_path, exist_ok=True)
 
-        pipeline = Pipeline(self.good_config_file, self.good_run_id,
-                            self.good_sample_sheet_path, None,
-                            self.output_file_path, self.qiita_id,
-                            'metagenomic', None)
+        self.pipeline = Pipeline(self.good_config_file, self.good_run_id,
+                                 self.good_sample_sheet_path, None,
+                                 self.output_file_path, self.qiita_id,
+                                 'metagenomic', None)
+
+        tmp = json.load(open(self.good_config_file, 'r'))['configuration']
+        self.config = tmp
+
+    def test_creation(self):
+        # Test base-class creation method, even though base-class will never
+        # be instantiated by itself in normal usage.
 
         # TODO: Note we don't do much with this variable yet.
         sn_tid_map_by_project = {}
@@ -40,14 +46,46 @@ class BaseStepTests(TestCase):
 
         with self.assertRaisesRegex(ValueError, "A Qiita job-id is needed to "
                                                 "initialize Step"):
-            Step(pipeline, None, sn_tid_map_by_project, None)
+            Step(self.pipeline, None, sn_tid_map_by_project, None)
 
         with self.assertRaisesRegex(ValueError, "sn_tid_map_by_project is "
                                                 "needed to initialize Step"):
-            Step(pipeline, self.qiita_id, None, None)
+            Step(self.pipeline, self.qiita_id, None, None)
+
+        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
 
     def test_convert_bcl_to_fastq(self):
-        pass
+        sn_tid_map_by_project = {}
+        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+
+        fake_path = join(self.output_file_path, 'ConvertJob', 'logs', 'sbatch')
+
+        with open(fake_path, 'w') as f:
+            f.write("echo 'Submitted batch job 9999999\n'")
+
+        chmod(fake_path, 0o777)
+
+        fake_path = join(abspath('.'), 'sacct')
+
+        with open(fake_path, 'w') as f:
+            f.write("echo '9999999|99999999-9999-9999-9999-999999999999.txt|"
+                    "COMPLETED|09:53:41|0:0'")
+
+        chmod(fake_path, 0o777)
+
+        fake_path = join(abspath('.'), 'sbatch')
+
+        with open(fake_path, 'w') as f:
+            f.write("echo 'Submitted batch job 9999998\n'")
+
+        chmod(fake_path, 0o777)
+
+        job = step._convert_bcl_to_fastq(self.config['bcl-convert'],
+                                         self.good_sample_sheet_path)
+
+
+
+
 
     def test_quality_control(self):
         pass
