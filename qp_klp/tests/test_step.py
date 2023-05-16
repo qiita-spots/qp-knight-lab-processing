@@ -52,13 +52,17 @@ class BaseStepTests(TestCase):
                                                 "needed to initialize Step"):
             Step(self.pipeline, self.qiita_id, None, None)
 
-        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+        Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
 
     def test_convert_bcl_to_fastq(self):
         sn_tid_map_by_project = {}
         step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
 
         fake_path = join(self.output_file_path, 'ConvertJob', 'logs', 'sbatch')
+
+        fake_path = fake_path.replace(('qp-knight-lab-processing/'
+                                       'qp-knight-lab-processing'),
+                                      'qp-knight-lab-processing')
 
         with open(fake_path, 'w') as f:
             f.write("echo 'Submitted batch job 9999999\n'")
@@ -80,12 +84,8 @@ class BaseStepTests(TestCase):
 
         chmod(fake_path, 0o777)
 
-        job = step._convert_bcl_to_fastq(self.config['bcl-convert'],
-                                         self.good_sample_sheet_path)
-
-
-
-
+        step._convert_bcl_to_fastq(self.config['bcl-convert'],
+                                   self.good_sample_sheet_path)
 
     def test_quality_control(self):
         pass
