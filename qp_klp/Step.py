@@ -18,8 +18,19 @@ class Step:
     subclass and makes calls to this base class as needed. In this way the
     codebase is kept DRY.
     '''
-    def __init__(self, pipeline, master_qiita_job_id, status_update_callback,
-                 sn_tid_map_by_project):
+    def __init__(self, pipeline, master_qiita_job_id, sn_tid_map_by_project,
+                 status_update_callback=None):
+
+        if pipeline is None:
+            raise ValueError("A pipeline object is needed to initialize Step")
+
+        if master_qiita_job_id is None:
+            raise ValueError("A Qiita job-id is needed to initialize Step")
+
+        if sn_tid_map_by_project is None:
+            raise ValueError("sn_tid_map_by_project is needed to initialize"
+                              " Step")
+
         self.pipeline = pipeline
         self.master_qiita_job_id = master_qiita_job_id
         self.status_update_callback = status_update_callback
