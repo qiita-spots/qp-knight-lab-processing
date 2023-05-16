@@ -10,6 +10,7 @@ from qp_klp.Step import Step
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os.path import join, abspath
 from functools import partial
+from os import makedirs
 
 
 class BaseStepTests(TestCase):
@@ -23,6 +24,7 @@ class BaseStepTests(TestCase):
         self.good_sample_sheet_path = self.path('good-sample-sheet.csv')
         self.output_file_path = self.path('output_dir')
         self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
+        makedirs(self.output_file_path, exist_ok=True)
 
         pipeline = Pipeline(self.good_config_file, self.good_run_id,
                             self.good_sample_sheet_path, None,
