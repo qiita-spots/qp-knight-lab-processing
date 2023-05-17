@@ -61,9 +61,11 @@ class BaseStepTests(TestCase):
 
         fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
 
+        '''
         fake_path = fake_path.replace(('qp-knight-lab-processing/'
                                        'qp-knight-lab-processing'),
                                       'qp-knight-lab-processing')
+        '''
 
         makedirs(fake_path, exist_ok=True)
 
@@ -73,7 +75,6 @@ class BaseStepTests(TestCase):
         chmod(fake_path, 0o777)
 
         print(os.listdir(fake_path))
-        
 
         fake_path = join(abspath('.'), 'sacct')
 
