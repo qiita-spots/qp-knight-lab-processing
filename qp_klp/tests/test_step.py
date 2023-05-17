@@ -58,11 +58,15 @@ class BaseStepTests(TestCase):
         sn_tid_map_by_project = {}
         step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
 
-        fake_path = join(self.output_file_path, 'ConvertJob', 'logs', 'sbatch')
+        fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
 
         fake_path = fake_path.replace(('qp-knight-lab-processing/'
                                        'qp-knight-lab-processing'),
                                       'qp-knight-lab-processing')
+
+        makedirs(fake_path, exist_ok=True)
+
+        fake_path = join(fake_path, 'sbatch')
 
         with open(fake_path, 'w') as f:
             f.write("echo 'Submitted batch job 9999999\n'")
