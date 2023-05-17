@@ -78,7 +78,7 @@ class BaseStepTests(TestCase):
         makedirs(fake_path, exist_ok=True)
 
         with open(join(fake_path, 'sbatch'), 'w') as f:
-            f.write("echo 'Submitted batch job 9999999\n'")
+            f.write("#!/bin/sh\necho 'Submitted batch job 9999999'\n")
 
         chmod(fake_path, 0o777)
 
@@ -103,6 +103,10 @@ class BaseStepTests(TestCase):
                                    self.good_sample_sheet_path)
 
     def test_quality_control(self):
+        # sn_tid_map_by_project = {}
+        # step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project,
+        # None)
+        # step._quality_control(self.config['qc'], self.good_sample_sheet_path)
         pass
 
     def test_generate_reports(self):
