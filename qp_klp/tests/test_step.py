@@ -5,6 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
+import os
 from unittest import TestCase
 from qp_klp.Step import Step
 from sequence_processing_pipeline.Pipeline import Pipeline
@@ -66,12 +67,13 @@ class BaseStepTests(TestCase):
 
         makedirs(fake_path, exist_ok=True)
 
-        fake_path = join(fake_path, 'sbatch')
-
-        with open(fake_path, 'w') as f:
+        with open(join(fake_path, 'sbatch'), 'w') as f:
             f.write("echo 'Submitted batch job 9999999\n'")
 
         chmod(fake_path, 0o777)
+
+        print(os.listdir(fake_path))
+        
 
         fake_path = join(abspath('.'), 'sacct')
 
