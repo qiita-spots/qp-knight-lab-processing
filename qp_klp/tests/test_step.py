@@ -18,11 +18,18 @@ import json
 class BaseStepTests(TestCase):
     def setUp(self):
         package_root = abspath('./qp_klp')
+        print("ROOT: %s" % package_root)
+
         self.path = partial(join, package_root, 'tests', 'data')
+
+        print("SELF.PATH: %s" % self.path())
+
         self.good_config_file = join(package_root, 'configuration.json')
         self.good_run_id = '211021_A00000_0000_SAMPLE'
         self.good_sample_sheet_path = self.path('good-sample-sheet.csv')
         self.output_file_path = self.path('output_dir')
+
+        print("OUTPUT PATH: %s" % self.output_file_path)
         self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
         makedirs(self.output_file_path, exist_ok=True)
 
@@ -60,6 +67,7 @@ class BaseStepTests(TestCase):
         step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
 
         fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
+        print("OUTPUT PATH2: %s" % self.output_file_path)
 
         '''
         fake_path = fake_path.replace(('qp-knight-lab-processing/'
