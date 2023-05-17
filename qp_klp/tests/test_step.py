@@ -69,18 +69,12 @@ class BaseStepTests(TestCase):
         fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
         print("OUTPUT PATH2: %s" % self.output_file_path)
 
-        '''
-        fake_path = fake_path.replace(('qp-knight-lab-processing/'
-                                       'qp-knight-lab-processing'),
-                                      'qp-knight-lab-processing')
-        '''
-
         makedirs(fake_path, exist_ok=True)
 
         with open(join(fake_path, 'sbatch'), 'w') as f:
             f.write("#!/bin/sh\necho 'Submitted batch job 9999999'\n")
 
-        chmod(fake_path, 0o777)
+        chmod(join(fake_path, 'sbatch'), 0o777)
 
         print(os.listdir(fake_path))
 
