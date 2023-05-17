@@ -166,12 +166,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             pipeline.get_project_info())
 
         if pipeline.type == 'metagenomic':
-            step = MetagenomicStep(pipeline, job_id, status_line,
-                                   sn_tid_map_by_project)
+            step = MetagenomicStep(pipeline, job_id, sn_tid_map_by_project,
+                                   status_line)
         else:
             # pipeline.type == 'amplicon':
-            step = AmpliconStep(pipeline, job_id, status_line,
-                                sn_tid_map_by_project)
+            step = AmpliconStep(pipeline, job_id, sn_tid_map_by_project,
+                                status_line)
 
         step.convert_bcl_to_fastq()
 

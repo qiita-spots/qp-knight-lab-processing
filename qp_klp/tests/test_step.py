@@ -12,6 +12,7 @@ from os.path import join, abspath
 from functools import partial
 from os import makedirs, chmod
 import json
+from shutil import rmtree
 
 
 class BaseStepTests(TestCase):
@@ -33,9 +34,31 @@ class BaseStepTests(TestCase):
         tmp = json.load(open(self.good_config_file, 'r'))['configuration']
         self.config = tmp
 
+    def create_test_input(self):
+        fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
+        makedirs(fake_path, exist_ok=True)
+        with open(join(fake_path, 'sbatch'), 'w') as f:
+            f.write("#!/bin/sh\necho 'Submitted batch job 9999999'\n")
+        chmod(join(fake_path, 'sbatch'), 0o777)
+
+        fake_path = join(abspath('.'), 'sacct')
+        with open(fake_path, 'w') as f:
+            f.write("echo '9999999|99999999-9999-9999-9999-999999999999.txt|"
+                    "COMPLETED|09:53:41|0:0'")
+        chmod(fake_path, 0o777)
+
+        fake_path = join(abspath('.'), 'sbatch')
+        with open(fake_path, 'w') as f:
+            f.write("echo 'Submitted batch job 9999998\n'")
+        chmod(fake_path, 0o777)
+
+    def delete_test_output(self):
+        rmtree(self.output_file_path)
+
     def test_creation(self):
         # Test base-class creation method, even though base-class will never
         # be instantiated by itself in normal usage.
+        self.delete_test_output()
 
         # TODO: Note we don't do much with this variable yet.
         sn_tid_map_by_project = {}
@@ -52,9 +75,14 @@ class BaseStepTests(TestCase):
                                                 "needed to initialize Step"):
             Step(self.pipeline, self.qiita_id, None, None)
 
-        Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+
+        self.assertIsNotNone(step)
 
     def test_convert_bcl_to_fastq(self):
+        self.delete_test_output()
+        self.create_test_input()
+
         sn_tid_map_by_project = {}
         step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
 
@@ -79,6 +107,9 @@ class BaseStepTests(TestCase):
                                    self.good_sample_sheet_path)
 
     def test_quality_control(self):
+        self.delete_test_output()
+        self.create_test_input()
+
         fake_path = join(self.output_file_path, 'QCJob', 'logs')
         makedirs(fake_path, exist_ok=True)
         with open(join(fake_path, 'sbatch'), 'w') as f:

@@ -11,8 +11,8 @@ class MetagenomicStep(Step):
                  status_update_callback=None):
         super().__init__(pipeline,
                          master_qiita_job_id,
-                         status_update_callback,
-                         sn_tid_map_by_project)
+                         sn_tid_map_by_project,
+                         status_update_callback)
 
         # Note: FailedSamplesRecord is not used when processing amplicon as the
         # samples are processed as a single fastq file and hence that info
@@ -23,7 +23,8 @@ class MetagenomicStep(Step):
 
     def convert_bcl_to_fastq(self):
         config = self.pipeline.configuration['bcl-convert']
-        job = super()._convert_bcl_to_fastq(config, self.pipeline.sample_sheet)
+        job = super()._convert_bcl_to_fastq(config,
+                                            self.pipeline.sample_sheet.path)
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'ConvertJob')
 
     def quality_control(self):
