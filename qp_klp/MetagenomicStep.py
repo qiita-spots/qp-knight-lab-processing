@@ -14,6 +14,10 @@ class MetagenomicStep(Step):
                          sn_tid_map_by_project,
                          status_update_callback)
 
+        if pipeline.type != 'metagenomic':
+            raise ValueError("Cannot instantiate MetagenomicStep object from "
+                             f"pipeline of type '{pipeline.type}'")
+
         # Note: FailedSamplesRecord is not used when processing amplicon as the
         # samples are processed as a single fastq file and hence that info
         # is not available.

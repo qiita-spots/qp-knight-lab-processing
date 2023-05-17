@@ -12,6 +12,10 @@ class AmpliconStep(Step):
                          sn_tid_map_by_project,
                          status_update_callback)
 
+        if pipeline.type != 'amplicon':
+            raise ValueError("Cannot instantiate AmpliconStep object from "
+                             f"pipeline of type '{pipeline.type}'")
+
     def convert_bcl_to_fastq(self):
         config = self.pipeline.configuration['bcl2fastq']
         # note that pipeline.sample_sheet in this case
