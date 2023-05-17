@@ -10,9 +10,8 @@ from qp_klp.AmpliconStep import AmpliconStep
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os.path import join, abspath
 from functools import partial
-from os import makedirs, chmod
+from os import makedirs
 import json
-from shutil import rmtree
 
 
 class AmpliconStepTests(TestCase):
