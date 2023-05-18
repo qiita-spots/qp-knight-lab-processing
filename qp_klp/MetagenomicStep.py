@@ -14,9 +14,9 @@ class MetagenomicStep(Step):
                          sn_tid_map_by_project,
                          status_update_callback)
 
-        if pipeline.type != 'metagenomic':
+        if pipeline.pipeline_type != 'metagenomic':
             raise ValueError("Cannot instantiate MetagenomicStep object from "
-                             f"pipeline of type '{pipeline.type}'")
+                             f"pipeline of type '{pipeline.pipeline_type}'")
 
         # Note: FailedSamplesRecord is not used when processing amplicon as the
         # samples are processed as a single fastq file and hence that info
@@ -101,7 +101,7 @@ class MetagenomicStep(Step):
             # review upon completion.
             touched_studies.append((qiita_id, project))
 
-            if self.pipeline.type == 'metagenomic':
+            if self.pipeline.pipeline_type == 'metagenomic':
                 self.cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                                  f'QCJob/{project}/fastp_reports_dir')
 

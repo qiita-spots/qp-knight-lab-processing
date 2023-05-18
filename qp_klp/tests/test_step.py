@@ -13,6 +13,7 @@ from functools import partial
 from os import makedirs, chmod
 import json
 from shutil import rmtree
+from os import environ, remove
 
 
 class BaseStepTests(TestCase):
@@ -34,32 +35,59 @@ class BaseStepTests(TestCase):
         tmp = json.load(open(self.good_config_file, 'r'))['configuration']
         self.config = tmp
 
+        self.fake_bin_path = self._get_searchable_path()
+
+        self.delete_these = []
+
+    def _is_writable(self, a_path):
+        try:
+            tmp = join(a_path, 'qpklp_temp_file')
+            with open(tmp, 'w') as f:
+                f.write('this is a test\n')
+            remove(tmp)
+            return True
+        except IOError:
+            return False
+
+    def _get_searchable_path(self):
+        searchable_paths = []
+
+        if 'CONDA_PREFIX' in environ:
+            # create fake binaries in bin directory of Conda environment
+            searchable_paths.append(environ['CONDA_PREFIX'] + '/bin')
+        else:
+            # if CONDA_PREFIX doesn't exist, select a path from a list of
+            # searchable paths that contains 'env' and assume it's writable.
+            tmp = environ['PATH']
+            searchable_paths += tmp.split(':')
+
+        for a_path in searchable_paths:
+            if self._is_writable(a_path):
+                return a_path
+
+    def _create_fake_bin(self, name, content):
+        tmp = join(self.fake_bin_path, name)
+        with open(tmp, 'w') as f:
+            f.write(f"#!/bin/sh\n{content}\n")
+        chmod(tmp, 0o777)
+        self.delete_these.append(tmp)
+        return tmp
+
     def _create_test_input(self, stage):
         if stage >= 1:
             fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
             makedirs(fake_path, exist_ok=True)
-            with open(join(fake_path, 'sbatch'), 'w') as f:
-                f.write("#!/bin/sh\necho 'Submitted batch job 9999999'\n")
-            chmod(join(fake_path, 'sbatch'), 0o777)
 
-            fake_path = join(abspath('.'), 'sacct')
-            with open(fake_path, 'w') as f:
-                f.write(
-                    "echo '9999999|99999999-9999-9999-9999-999999999999.txt|"
-                    "COMPLETED|09:53:41|0:0'")
-            chmod(fake_path, 0o777)
+            self._create_fake_bin('sbatch', "echo 'Submitted "
+                                            "batch job 9999999'")
 
-            fake_path = join(abspath('.'), 'sbatch')
-            with open(fake_path, 'w') as f:
-                f.write("echo 'Submitted batch job 9999998\n'")
-            chmod(fake_path, 0o777)
+            self._create_fake_bin('sacct', "echo '9999999|99999999-9999-9999"
+                                           "-9999-999999999999.txt|COMPLETED"
+                                           "|09:53:41|0:0'")
 
         if stage >= 2:
             fake_path = join(self.output_file_path, 'QCJob', 'logs')
             makedirs(fake_path, exist_ok=True)
-            with open(join(fake_path, 'sbatch'), 'w') as f:
-                f.write("#!/bin/sh\necho 'Submitted batch job 9999999'\n")
-            chmod(join(fake_path, 'sbatch'), 0o777)
 
             exp = {'Feist_11661': ['CDPH-SAL_Salmonella_Typhi_MDL-143',
                                    'CDPH-SAL_Salmonella_Typhi_MDL-144',
@@ -84,6 +112,8 @@ class BaseStepTests(TestCase):
 
     def _delete_test_output(self):
         rmtree(self.output_file_path)
+        for fake_bin in self.delete_these:
+            remove(fake_bin)
 
     def test_creation(self):
         # Test base-class creation method, even though base-class will never
@@ -118,20 +148,6 @@ class BaseStepTests(TestCase):
 
         fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
         makedirs(fake_path, exist_ok=True)
-        with open(join(fake_path, 'sbatch'), 'w') as f:
-            f.write("#!/bin/sh\necho 'Submitted batch job 9999999'\n")
-        chmod(join(fake_path, 'sbatch'), 0o777)
-
-        fake_path = join(abspath('.'), 'sacct')
-        with open(fake_path, 'w') as f:
-            f.write("echo '9999999|99999999-9999-9999-9999-999999999999.txt|"
-                    "COMPLETED|09:53:41|0:0'")
-        chmod(fake_path, 0o777)
-
-        fake_path = join(abspath('.'), 'sbatch')
-        with open(fake_path, 'w') as f:
-            f.write("echo 'Submitted batch job 9999998\n'")
-        chmod(fake_path, 0o777)
 
         step._convert_bcl_to_fastq(self.config['bcl-convert'],
                                    self.good_sample_sheet_path)
@@ -142,9 +158,6 @@ class BaseStepTests(TestCase):
 
         fake_path = join(self.output_file_path, 'QCJob', 'logs')
         makedirs(fake_path, exist_ok=True)
-        with open(join(fake_path, 'sbatch'), 'w') as f:
-            f.write("#!/bin/sh\necho 'Submitted batch job 9999999'\n")
-        chmod(join(fake_path, 'sbatch'), 0o777)
 
         exp = {'Feist_11661': ['CDPH-SAL_Salmonella_Typhi_MDL-143',
                                'CDPH-SAL_Salmonella_Typhi_MDL-144',

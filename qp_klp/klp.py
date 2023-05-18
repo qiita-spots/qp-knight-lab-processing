@@ -165,11 +165,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             qclient.get("/qiita_db/artifacts/types/"),
             pipeline.get_project_info())
 
-        if pipeline.type == 'metagenomic':
+        if pipeline.pipeline_type == 'metagenomic':
             step = MetagenomicStep(pipeline, job_id, sn_tid_map_by_project,
                                    status_line)
         else:
-            # pipeline.type == 'amplicon':
+            # pipeline.pipeline_type == 'amplicon':
             step = AmpliconStep(pipeline, job_id, sn_tid_map_by_project,
                                 status_line)
 
@@ -203,7 +203,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         # THIS MIGHT NEED CONVERSION FROM AMPLICON TO 16S
-                        'data_type': step.pipeline.type}
+                        'data_type': step.pipeline.pipeline_type}
 
                 reply = qclient.post('/qiita_db/prep_template/', data=data)
                 prep_id = reply['prep']

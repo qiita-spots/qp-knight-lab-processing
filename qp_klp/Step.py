@@ -106,7 +106,7 @@ class Step:
                                self.job_pool_size,
                                config['multiqc_config_file_path'],
                                config['job_max_array_length'],
-                               self.pipeline.type == 'amplicon')
+                               self.pipeline.pipeline_type == 'amplicon')
 
         fastqc_job.run(callback=self.update_callback)
 
@@ -114,7 +114,7 @@ class Step:
 
     def _generate_prep_file(self, config, input_file_path, seqpro_path,
                             project_names):
-        is_amplicon = self.pipeline.type == 'amplicon'
+        is_amplicon = self.pipeline.pipeline_type == 'amplicon'
 
         gpf_job = GenPrepFileJob(
             self.pipeline.run_dir,
