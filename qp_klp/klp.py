@@ -9,8 +9,8 @@ from functools import partial
 from os import environ
 from qiita_client import ArtifactInfo
 from random import sample as rsampl
-from qp_klp.AmpliconStep import AmpliconStep
-from qp_klp.MetagenomicStep import MetagenomicStep
+from qp_klp.Amplicon import Amplicon
+from qp_klp.Metagenomic import Metagenomic
 from qp_klp.klp_util import (generate_pipeline, generate_special_map,
                              get_registered_samples_in_qiita, parse_prep_file,
                              update_blanks_in_qiita, update_prep_templates,
@@ -166,12 +166,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             pipeline.get_project_info())
 
         if pipeline.pipeline_type == 'metagenomic':
-            step = MetagenomicStep(pipeline, job_id, sn_tid_map_by_project,
-                                   status_line)
+            step = Metagenomic(pipeline, job_id, sn_tid_map_by_project,
+                               status_line)
         else:
             # pipeline.pipeline_type == 'amplicon':
-            step = AmpliconStep(pipeline, job_id, sn_tid_map_by_project,
-                                status_line)
+            step = Amplicon(pipeline, job_id, sn_tid_map_by_project,
+                            status_line)
 
         step.convert_bcl_to_fastq()
 

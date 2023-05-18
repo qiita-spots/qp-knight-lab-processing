@@ -4,7 +4,7 @@ from shutil import copyfile
 from qp_klp.Step import Step
 
 
-class AmpliconStep(Step):
+class Amplicon(Step):
     def __init__(self, pipeline, master_qiita_job_id, sn_tid_map_by_project,
                  status_update_callback=None):
         super().__init__(pipeline,
@@ -13,13 +13,18 @@ class AmpliconStep(Step):
                          status_update_callback)
 
         if pipeline.pipeline_type != 'amplicon':
-            raise ValueError("Cannot instantiate AmpliconStep object from "
+            raise ValueError("Cannot instantiate Amplicon object from "
                              f"pipeline of type '{pipeline.pipeline_type}'")
 
     def convert_bcl_to_fastq(self):
+        # The 'bcl2fastq' key is a convention hard-coded into mg-scripts and
+        # qp-klp projects. By design and history, amplicon jobs use EMP primers
+        # and are demuxed downstream of qp-klp by Qiita. This necessitates the
+        # use of bcl2fastq and a 'dummy' sample-sheet to avoid the
+        # demultiplexing that otherwise occurs at this stage. The name and
+        # path of the executable, the resource requirements to instantiate a
+        # SLURM job with, etc. are stored in configuration['bcl2fastq'].
         config = self.pipeline.configuration['bcl2fastq']
-        # note that pipeline.sample_sheet in this case
-        # is the dummy sample-sheet created by Pipeline.
         super()._convert_bcl_to_fastq(config, self.pipeline.sample_sheet)
 
     def quality_control(self):

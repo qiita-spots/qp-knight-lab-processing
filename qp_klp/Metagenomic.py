@@ -6,7 +6,7 @@ import pandas as pd
 from qp_klp.Step import Step
 
 
-class MetagenomicStep(Step):
+class Metagenomic(Step):
     def __init__(self, pipeline, master_qiita_job_id, sn_tid_map_by_project,
                  status_update_callback=None):
         super().__init__(pipeline,
@@ -15,7 +15,7 @@ class MetagenomicStep(Step):
                          status_update_callback)
 
         if pipeline.pipeline_type != 'metagenomic':
-            raise ValueError("Cannot instantiate MetagenomicStep object from "
+            raise ValueError("Cannot instantiate Metagenomic object from "
                              f"pipeline of type '{pipeline.pipeline_type}'")
 
         # Note: FailedSamplesRecord is not used when processing amplicon as the
@@ -26,6 +26,11 @@ class MetagenomicStep(Step):
         self.project_names = None
 
     def convert_bcl_to_fastq(self):
+        # The 'bcl-convert' key is a convention hard-coded into mg-scripts and
+        # qp-klp projects. Currently metagenomic jobs use bcl-convert for its
+        # improved performance over bcl2fastq. The name and path of the
+        # executable, the resource requirements to instantiate a SLURM job
+        # with, etc. are stored in configuration['bcl-convert''].
         config = self.pipeline.configuration['bcl-convert']
         job = super()._convert_bcl_to_fastq(config,
                                             self.pipeline.sample_sheet.path)

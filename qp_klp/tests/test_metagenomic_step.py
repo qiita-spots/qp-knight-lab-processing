@@ -6,10 +6,10 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from qp_klp.tests.test_step import BaseStepTests
-from qp_klp.MetagenomicStep import MetagenomicStep
+from qp_klp.Metagenomic import Metagenomic
 
 
-class MetagenomicStepTests(BaseStepTests):
+class MetagenomicTests(BaseStepTests):
     def setUp(self):
         super().setUp()
 
@@ -23,18 +23,18 @@ class MetagenomicStepTests(BaseStepTests):
 
         with self.assertRaisesRegex(ValueError, "A pipeline object is needed"
                                                 " to initialize Step"):
-            MetagenomicStep(None, self.qiita_id, sn_tid_map_by_project, None)
+            Metagenomic(None, self.qiita_id, sn_tid_map_by_project, None)
 
         with self.assertRaisesRegex(ValueError, "A Qiita job-id is needed to "
                                                 "initialize Step"):
-            MetagenomicStep(self.pipeline, None, sn_tid_map_by_project, None)
+            Metagenomic(self.pipeline, None, sn_tid_map_by_project, None)
 
         with self.assertRaisesRegex(ValueError, "sn_tid_map_by_project is "
                                                 "needed to initialize Step"):
-            MetagenomicStep(self.pipeline, self.qiita_id, None, None)
+            Metagenomic(self.pipeline, self.qiita_id, None, None)
 
-        step = MetagenomicStep(self.pipeline, self.qiita_id,
-                               sn_tid_map_by_project, None)
+        step = Metagenomic(self.pipeline, self.qiita_id,
+                           sn_tid_map_by_project, None)
 
         self.assertIsNotNone(step)
 
@@ -43,8 +43,8 @@ class MetagenomicStepTests(BaseStepTests):
         self._create_test_input(1)
 
         sn_tid_map_by_project = {}
-        step = MetagenomicStep(self.pipeline, self.qiita_id,
-                               sn_tid_map_by_project, None)
+        step = Metagenomic(self.pipeline, self.qiita_id,
+                           sn_tid_map_by_project, None)
 
         step.convert_bcl_to_fastq()
 
@@ -54,6 +54,6 @@ class MetagenomicStepTests(BaseStepTests):
 
         sn_tid_map_by_project = {}
 
-        step = MetagenomicStep(self.pipeline, self.qiita_id,
-                               sn_tid_map_by_project, None)
+        step = Metagenomic(self.pipeline, self.qiita_id,
+                           sn_tid_map_by_project, None)
         step.quality_control()
