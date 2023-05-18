@@ -5,15 +5,8 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-#from unittest import TestCase
 from qp_klp.tests.test_step import BaseStepTests
 from qp_klp.MetagenomicStep import MetagenomicStep
-from sequence_processing_pipeline.Pipeline import Pipeline
-from os.path import join, abspath
-from functools import partial
-from os import makedirs, chmod
-import json
-from shutil import rmtree
 
 
 class MetagenomicStepTests(BaseStepTests):
