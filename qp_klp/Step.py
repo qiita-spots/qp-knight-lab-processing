@@ -89,7 +89,8 @@ class Step:
 
         return qc_job
 
-    def _generate_reports(self, config, input_file_path):
+    def _generate_reports(self, input_file_path):
+        config = self.pipeline.configuration['fastqc']
         fastqc_job = FastQCJob(self.pipeline.run_dir,
                                self.pipeline.output_path,
                                join(self.pipeline.output_path, 'ConvertJob'),

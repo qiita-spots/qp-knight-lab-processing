@@ -5,29 +5,17 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-from unittest import TestCase
 from qp_klp.Amplicon import Amplicon
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os.path import join, abspath
-from functools import partial
-from os import makedirs
-import json
+from qp_klp.tests.test_step import BaseStepTests
 
 
-class AmpliconTests(TestCase):
+class AmpliconTests(BaseStepTests):
     def setUp(self):
-        package_root = abspath('./qp_klp')
-        self.path = partial(join, package_root, 'tests', 'data')
-        self.good_config_file = join(package_root, 'configuration.json')
-        self.good_run_id = '211021_A00000_0000_SAMPLE'
-        self.good_sample_sheet_path = self.path('good-sample-sheet.csv')
-        self.good_mapping_file = self.path('good-mapping-file.txt')
-        self.output_file_path = self.path('output_dir')
-        self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
-        makedirs(self.output_file_path, exist_ok=True)
-
-        tmp = json.load(open(self.good_config_file, 'r'))['configuration']
-        self.config = tmp
+        super().setUp()
+        self.good_mapping_file = join(abspath('./qp_klp'), 'tests', 'data',
+                                      'good-mapping-file.txt')
 
     def test_creation(self):
         # Test base-class creation method, even though base-class will never
@@ -41,14 +29,14 @@ class AmpliconTests(TestCase):
             Amplicon(None, self.qiita_id, sn_tid_map_by_project, None)
 
         # create amplicon pipeline for failure tests.
-        amplicon_pipeline = Pipeline(self.good_config_file,
+        amplicon_pipeline = Pipeline(None,
                                      self.good_run_id,
                                      None,
                                      self.good_mapping_file,
                                      self.output_file_path,
                                      self.qiita_id,
                                      'amplicon',
-                                     None)
+                                     AmpliconTests.CONFIGURATION)
 
         with self.assertRaisesRegex(ValueError, "A Qiita job-id is needed to "
                                                 "initialize Step"):
@@ -60,17 +48,17 @@ class AmpliconTests(TestCase):
             Amplicon(amplicon_pipeline, self.qiita_id, None, None)
 
         # create metagenomic pipeline for final test.
-        metagenomic_pipeline = Pipeline(self.good_config_file,
+        metagenomic_pipeline = Pipeline(None,
                                         self.good_run_id,
                                         self.good_sample_sheet_path,
                                         None,
                                         self.output_file_path,
                                         self.qiita_id,
                                         'metagenomic',
-                                        None)
+                                        AmpliconTests.CONFIGURATION)
 
-        with self.assertRaisesRegex(ValueError, "Cannot instantiate Amplicon "
-                                                "object from pipeline of"
-                                                " type 'metagenomic'"):
+        with self.assertRaisesRegex(ValueError, "Cannot create an Amplicon run"
+                                                " using a metagenomic-"
+                                                "configured Pipeline."):
             Amplicon(metagenomic_pipeline, self.qiita_id,
                      sn_tid_map_by_project, None)

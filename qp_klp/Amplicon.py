@@ -13,8 +13,8 @@ class Amplicon(Step):
                          status_update_callback)
 
         if pipeline.pipeline_type != 'amplicon':
-            raise ValueError("Cannot instantiate Amplicon object from "
-                             f"pipeline of type '{pipeline.pipeline_type}'")
+            raise ValueError("Cannot create an Amplicon run using a "
+                             f"{pipeline.pipeline_type}-configured Pipeline.")
 
     def convert_bcl_to_fastq(self):
         # The 'bcl2fastq' key is a convention hard-coded into mg-scripts and
@@ -82,10 +82,8 @@ class Amplicon(Step):
                 new_path = join(faked_output_folder, basename(raw_fastq_file))
                 copyfile(raw_fastq_file, new_path)
 
-    def generate_reports(self, config, input_file_path):
-        config = self.pipeline.configuration['fastqc']
-        super()._generate_reports(config, self.pipeline.mapping_file)
-
+    def generate_reports(self, input_file_path):
+        super()._generate_reports(self.pipeline.mapping_file)
         return None  # amplicon doesn't need project names
 
     def generate_prep_file(self):

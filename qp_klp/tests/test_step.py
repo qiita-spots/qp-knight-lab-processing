@@ -11,29 +11,91 @@ from sequence_processing_pipeline.Pipeline import Pipeline
 from os.path import join, abspath
 from functools import partial
 from os import makedirs, chmod
-import json
 from shutil import rmtree
 from os import environ, remove
 
 
 class BaseStepTests(TestCase):
+    CONFIGURATION = {
+        "configuration": {
+            "pipeline": {
+                "archive_path": ("sequence_processing_pipeline/tests/data/"
+                                 "sequencing/knight_lab_completed_runs"),
+                "search_paths": ["/tmp", "qp_klp/tests/data"],
+                "amplicon_search_paths": ["/tmp", "qp_klp/tests/data"]
+            },
+            "bcl2fastq": {
+                "nodes": 1,
+                "nprocs": 16,
+                "queue": "qiita",
+                "wallclock_time_in_hours": 36,
+                "modules_to_load": ["bcl2fastq_2.20.0.422"],
+                "executable_path": "bcl2fastq",
+                "per_process_memory_limit": "10gb"
+            },
+            "bcl-convert": {
+                "nodes": 1,
+                "nprocs": 16,
+                "queue": "qiita",
+                "wallclock_time_in_hours": 36,
+                "modules_to_load": ["bclconvert_3.7.5"],
+                "executable_path": "bcl-convert",
+                "per_process_memory_limit": "10gb"
+            },
+            "qc": {
+                "nodes": 1,
+                "nprocs": 16,
+                "queue": "qiita",
+                "wallclock_time_in_hours": 1,
+                "minimap_databases": ["/databases/minimap2/human-phix-db.mmi"],
+                "kraken2_database": "/databases/minimap2/hp_kraken-db.mmi",
+                "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
+                                    " minimap2_2.18"],
+                "fastp_executable_path": "fastp",
+                "minimap2_executable_path": "minimap2",
+                "samtools_executable_path": "samtools",
+                "job_total_memory_limit": "20gb",
+                "job_pool_size": 30,
+                "job_max_array_length": 1000
+            },
+            "seqpro": {
+                "seqpro_path": "seqpro",
+                "modules_to_load": []
+            },
+            "fastqc": {
+                "nodes": 1,
+                "nprocs": 16,
+                "queue": "qiita",
+                "nthreads": 16,
+                "wallclock_time_in_hours": 1,
+                "modules_to_load": ["fastqc_0.11.5"],
+                "fastqc_executable_path": "fastqc",
+                "multiqc_executable_path": "multiqc",
+                "multiqc_config_file_path": ("sequence_processing_pipeline/"
+                                             "multiqc-bclconvert-config.yaml"),
+                "job_total_memory_limit": "20gb",
+                "job_pool_size": 30,
+                "job_max_array_length": 1000
+            }
+        }
+    }
+
     def setUp(self):
         package_root = abspath('./qp_klp')
-        self.path = partial(join, package_root, 'tests', 'data')
+        cc_path = partial(join, package_root, 'tests', 'data')
         self.good_config_file = join(package_root, 'configuration.json')
         self.good_run_id = '211021_A00000_0000_SAMPLE'
-        self.good_sample_sheet_path = self.path('good-sample-sheet.csv')
-        self.output_file_path = self.path('output_dir')
+        self.good_sample_sheet_path = cc_path('good-sample-sheet.csv')
+        self.output_file_path = cc_path('output_dir')
         self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
         makedirs(self.output_file_path, exist_ok=True)
 
-        self.pipeline = Pipeline(self.good_config_file, self.good_run_id,
+        self.pipeline = Pipeline(None, self.good_run_id,
                                  self.good_sample_sheet_path, None,
                                  self.output_file_path, self.qiita_id,
-                                 'metagenomic', None)
+                                 'metagenomic', BaseStepTests.CONFIGURATION)
 
-        tmp = json.load(open(self.good_config_file, 'r'))['configuration']
-        self.config = tmp
+        self.config = BaseStepTests.CONFIGURATION['configuration']
 
         self.fake_bin_path = self._get_searchable_path()
 

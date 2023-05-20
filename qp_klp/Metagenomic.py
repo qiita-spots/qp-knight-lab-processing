@@ -42,9 +42,7 @@ class Metagenomic(Step):
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'QCJob')
 
     def generate_reports(self):
-        config = self.pipeline.configuration['fastqc']
-        job = super()._generate_reports(config,
-                                        self.pipeline.sample_sheet.path)
+        job = super()._generate_reports(self.pipeline.sample_sheet.path)
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'FastQCJob')
 
         self.project_names = job.project_names
