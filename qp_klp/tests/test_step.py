@@ -88,6 +88,8 @@ class BaseStepTests(TestCase):
         self.good_run_id = '211021_A00000_0000_SAMPLE'
         self.good_sample_sheet_path = cc_path('good-sample-sheet.csv')
         self.good_mapping_file_path = cc_path('good-mapping-file.txt')
+        self.good_transcript_sheet_path = cc_path('good-sample-sheet-'
+                                                  'transcriptomics.csv')
         self.output_file_path = cc_path('output_dir')
         self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
         makedirs(self.output_file_path, exist_ok=True)
@@ -95,7 +97,8 @@ class BaseStepTests(TestCase):
         self.pipeline = Pipeline(None, self.good_run_id,
                                  self.good_sample_sheet_path, None,
                                  self.output_file_path, self.qiita_id,
-                                 'metagenomic', BaseStepTests.CONFIGURATION)
+                                 Step.METAGENOMIC_TYPE,
+                                 BaseStepTests.CONFIGURATION)
 
         self.config = BaseStepTests.CONFIGURATION['configuration']
 
@@ -253,7 +256,7 @@ class BaseStepTests(TestCase):
         with open(tmp, 'w') as f:
             f.write(dumps(BaseStepTests.CONFIGURATION, indent=2))
 
-        pipeline = Step.generate_pipeline('metagenomic',
+        pipeline = Step.generate_pipeline(Step.METAGENOMIC_TYPE,
                                           self.good_sample_sheet_path,
                                           1,
                                           tmp,
@@ -263,8 +266,18 @@ class BaseStepTests(TestCase):
 
         self.assertIsNotNone(pipeline)
 
-        pipeline = Step.generate_pipeline('amplicon',
+        pipeline = Step.generate_pipeline(Step.AMPLICON_TYPE,
                                           self.good_mapping_file_path,
+                                          1,
+                                          tmp,
+                                          self.good_run_id,
+                                          self.output_file_path,
+                                          self.qiita_id)
+
+        self.assertIsNotNone(pipeline)
+
+        pipeline = Step.generate_pipeline(Step.METATRANSCRIPTOMIC_TYPE,
+                                          self.good_transcript_sheet_path,
                                           1,
                                           tmp,
                                           self.good_run_id,

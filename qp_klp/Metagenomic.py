@@ -13,7 +13,7 @@ class Metagenomic(Step):
                          sn_tid_map_by_project,
                          status_update_callback)
 
-        if pipeline.pipeline_type != 'metagenomic':
+        if pipeline.pipeline_type not in Step.META_TYPES:
             raise ValueError("Cannot instantiate Metagenomic object from "
                              f"pipeline of type '{pipeline.pipeline_type}'")
 
@@ -26,7 +26,7 @@ class Metagenomic(Step):
 
     def convert_bcl_to_fastq(self):
         # The 'bcl-convert' key is a convention hard-coded into mg-scripts and
-        # qp-klp projects. Currently metagenomic jobs use bcl-convert for its
+        # qp-klp projects. Currently meta*omic jobs use bcl-convert for its
         # improved performance over bcl2fastq. The name and path of the
         # executable, the resource requirements to instantiate a SLURM job
         # with, etc. are stored in configuration['bcl-convert''].
@@ -103,7 +103,7 @@ class Metagenomic(Step):
             # review upon completion.
             touched_studies.append((qiita_id, project))
 
-            if self.pipeline.pipeline_type == 'metagenomic':
+            if self.pipeline.pipeline_type in Step.META_TYPES:
                 self.cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                                  f'QCJob/{project}/fastp_reports_dir')
 

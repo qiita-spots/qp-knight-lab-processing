@@ -63,9 +63,15 @@ class Step:
     subclass and makes calls to this base class as needed. In this way the
     codebase is kept DRY.
     '''
+
+    AMPLICON_TYPE = 'amplicon'
+    METAGENOMIC_TYPE = 'metagenomic'
+    METATRANSCRIPTOMIC_TYPE = 'metatranscriptomic'
+    META_TYPES = [METAGENOMIC_TYPE, METATRANSCRIPTOMIC_TYPE]
+    ALL_TYPES = META_TYPES + [AMPLICON_TYPE]
+
     def __init__(self, pipeline, master_qiita_job_id, sn_tid_map_by_project,
                  status_update_callback=None):
-
         if pipeline is None:
             raise ValueError("A pipeline object is needed to initialize Step")
 
@@ -98,11 +104,11 @@ class Step:
     def generate_pipeline(cls, pipeline_type, input_file_path, lane_number,
                           config_fp,
                           run_identifier, out_dir, job_id):
-        if pipeline_type in ['metagenomic', 'metatranscriptomic']:
+        if pipeline_type in Step.META_TYPES:
             cls.update_sample_sheet(input_file_path, lane_number)
             return Pipeline(config_fp, run_identifier, input_file_path, None,
                             out_dir, job_id, pipeline_type)
-        elif pipeline_type == 'amplicon':
+        elif pipeline_type == Step.AMPLICON_TYPE:
             return Pipeline(config_fp, run_identifier, None, input_file_path,
                             out_dir, job_id, pipeline_type)
         else:
@@ -169,9 +175,9 @@ class Step:
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         'data_type': None}
-                if pipeline_type in ['metagenomic', 'metatranscriptomic']:
+                if pipeline_type in Step.META_TYPES:
                     data['data_type'] = pipeline_type
-                elif pipeline_type == 'amplicon':
+                elif pipeline_type == Step.AMPLICON_TYPE:
                     if 'target_gene' in metadata[list(metadata.keys())[0]]:
                         tg = metadata[list(metadata.keys())[0]]['target_gene']
                         for key in {'16S', '18S', 'ITS'}:
@@ -257,6 +263,7 @@ class Step:
 
     def _generate_reports(self, input_file_path):
         config = self.pipeline.configuration['fastqc']
+        is_amplicon = self.pipeline.pipeline_type == Step.AMPLICON_TYPE
         fastqc_job = FastQCJob(self.pipeline.run_dir,
                                self.pipeline.output_path,
                                join(self.pipeline.output_path, 'ConvertJob'),
@@ -273,7 +280,7 @@ class Step:
                                self.job_pool_size,
                                config['multiqc_config_file_path'],
                                config['job_max_array_length'],
-                               self.pipeline.pipeline_type == 'amplicon')
+                               is_amplicon)
 
         fastqc_job.run(callback=self.update_callback)
 
@@ -281,7 +288,7 @@ class Step:
 
     def _generate_prep_file(self, config, input_file_path, seqpro_path,
                             project_names):
-        is_amplicon = self.pipeline.pipeline_type == 'amplicon'
+        is_amplicon = self.pipeline.pipeline_type == Step.AMPLICON_TYPE
 
         gpf_job = GenPrepFileJob(
             self.pipeline.run_dir,

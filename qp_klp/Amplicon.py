@@ -12,7 +12,7 @@ class Amplicon(Step):
                          sn_tid_map_by_project,
                          status_update_callback)
 
-        if pipeline.pipeline_type != 'amplicon':
+        if pipeline.pipeline_type != Step.AMPLICON_TYPE:
             raise ValueError("Cannot create an Amplicon run using a "
                              f"{pipeline.pipeline_type}-configured Pipeline.")
 
@@ -38,12 +38,12 @@ class Amplicon(Step):
         for project_name in projects:
             # copy the files from ConvertJob output to faked QCJob output
             # folder: $WKDIR/$RUN_ID/QCJob/$PROJ_NAME/amplicon
-            faked_output_folder = join(self.pipeline.output_path,
-                                       'QCJob',
-                                       project_name,
-                                       'amplicon')
+            output_folder = join(self.pipeline.output_path,
+                                 'QCJob',
+                                 project_name,
+                                 Step.AMPLICON_TYPE)
 
-            makedirs(faked_output_folder)
+            makedirs(output_folder)
 
             raw_fastq_files_path = join(self.pipeline.output_path,
                                         'ConvertJob')
@@ -60,7 +60,7 @@ class Amplicon(Step):
 
             # copy the file
             for fastq_file in job_output:
-                new_path = join(faked_output_folder, basename(fastq_file))
+                new_path = join(output_folder, basename(fastq_file))
                 copyfile(fastq_file, new_path)
 
             # FastQC expects the ConvertJob output to also be organized by
@@ -69,8 +69,8 @@ class Amplicon(Step):
             # the dummy sample-sheet, we instead perform ConvertJob once
             # and copy the output from ConvertJob's output folder into
             # ConvertJob's output folder/project1, project2 ... projectN.
-            faked_output_folder = join(raw_fastq_files_path, project_name)
-            makedirs(faked_output_folder)
+            output_folder = join(raw_fastq_files_path, project_name)
+            makedirs(output_folder)
             job_output = [join(raw_fastq_files_path, x) for x in
                           listdir(raw_fastq_files_path)]
             job_output = [x for x in job_output if isfile(x)]
@@ -79,7 +79,7 @@ class Amplicon(Step):
                           not basename(x).startswith('Undetermined')]
 
             for raw_fastq_file in job_output:
-                new_path = join(faked_output_folder, basename(raw_fastq_file))
+                new_path = join(output_folder, basename(raw_fastq_file))
                 copyfile(raw_fastq_file, new_path)
 
     def generate_reports(self, input_file_path):

@@ -7,6 +7,8 @@
 # -----------------------------------------------------------------------------
 from qp_klp.tests.test_step import BaseStepTests
 from qp_klp.Metagenomic import Metagenomic
+from sequence_processing_pipeline.Pipeline import Pipeline
+from os import makedirs
 
 
 class MetagenomicTests(BaseStepTests):
@@ -34,6 +36,22 @@ class MetagenomicTests(BaseStepTests):
             Metagenomic(self.pipeline, self.qiita_id, None, None)
 
         step = Metagenomic(self.pipeline, self.qiita_id,
+                           sn_tid_map_by_project, None)
+
+        self.assertIsNotNone(step)
+
+        makedirs(self.output_file_path, exist_ok=True)
+
+        trans_pipeline = Pipeline(None,
+                                  self.good_run_id,
+                                  self.good_transcript_sheet_path,
+                                  None,
+                                  self.output_file_path,
+                                  self.qiita_id,
+                                  Metagenomic.METATRANSCRIPTOMIC_TYPE,
+                                  BaseStepTests.CONFIGURATION)
+
+        step = Metagenomic(trans_pipeline, self.qiita_id,
                            sn_tid_map_by_project, None)
 
         self.assertIsNotNone(step)

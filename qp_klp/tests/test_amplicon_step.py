@@ -35,7 +35,7 @@ class AmpliconTests(BaseStepTests):
                                      self.good_mapping_file,
                                      self.output_file_path,
                                      self.qiita_id,
-                                     'amplicon',
+                                     Amplicon.AMPLICON_TYPE,
                                      AmpliconTests.CONFIGURATION)
 
         with self.assertRaisesRegex(ValueError, "A Qiita job-id is needed to "
@@ -47,14 +47,14 @@ class AmpliconTests(BaseStepTests):
                                                 "needed to initialize Step"):
             Amplicon(amplicon_pipeline, self.qiita_id, None, None)
 
-        # create metagenomic pipeline for final test.
+        # create meta*omic pipeline for final test.
         metagenomic_pipeline = Pipeline(None,
                                         self.good_run_id,
                                         self.good_sample_sheet_path,
                                         None,
                                         self.output_file_path,
                                         self.qiita_id,
-                                        'metagenomic',
+                                        Amplicon.METAGENOMIC_TYPE,
                                         AmpliconTests.CONFIGURATION)
 
         with self.assertRaisesRegex(ValueError, "Cannot create an Amplicon run"

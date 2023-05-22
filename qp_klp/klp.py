@@ -96,12 +96,30 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     if Pipeline.is_sample_sheet(uif_path):
         # if file follows basic sample-sheet format, then it is most likely
         # a sample-sheet, even if it's an invalid one.
-        pipeline_type = 'metagenomic'
+
+        # a valid sample-sheet is going to have one and only one occurance of
+        # 'Assay,Metagenomic' or 'Assay,Metatranscriptomic'. Anything else is
+        # an error.
+
+        tmp = [x for x in user_input_file['body'] if 'Assay' in x]
+
+        if len(tmp) != 1:
+            return False, None, ("Your uploaded file doesn't appear to be a"
+                                 "valid sample-sheet.")
+
+        pipeline_type = None
+        for p_type in Step.META_TYPES:
+            if p_type in tmp[0].lower():
+                pipeline_type = p_type
+
+        if pipeline_type is None:
+            return False, None, ("Your uploaded file doesn't appear to be a"
+                                 "valid sample-sheet.")
     elif Pipeline.is_mapping_file(uif_path):
         # if file is readable as a basic TSV and contains all the required
         # headers, then treat this as a mapping file, even if it's an invalid
         # one.
-        pipeline_type = 'amplicon'
+        pipeline_type = Step.AMPLICON_TYPE
         lane_number = -1
     else:
         # file doesn't look like a sample-sheet, or a valid mapping file.
@@ -182,11 +200,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             qclient.get("/qiita_db/artifacts/types/"),
             pipeline.get_project_info())
 
-        if pipeline.pipeline_type == 'metagenomic':
+        if pipeline.pipeline_type in Step.META_TYPES:
             step = Metagenomic(pipeline, job_id, sn_tid_map_by_project,
                                status_line)
         else:
-            # pipeline.pipeline_type == 'amplicon':
+            # pipeline.pipeline_type == Step.AMPLICON_TYPE:
             step = Amplicon(pipeline, job_id, sn_tid_map_by_project,
                             status_line)
 
