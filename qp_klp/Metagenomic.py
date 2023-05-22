@@ -1,9 +1,8 @@
 from os import walk
 from os.path import exists, join, basename
-from qp_klp.klp_util import FailedSamplesRecord
 from sequence_processing_pipeline.PipelineError import PipelineError
 import pandas as pd
-from qp_klp.Step import Step
+from qp_klp.Step import Step, FailedSamplesRecord
 
 
 class Metagenomic(Step):

@@ -11,10 +11,7 @@ from qiita_client import ArtifactInfo
 from random import sample as rsampl
 from qp_klp.Amplicon import Amplicon
 from qp_klp.Metagenomic import Metagenomic
-from qp_klp.klp_util import (generate_pipeline, generate_special_map,
-                             get_registered_samples_in_qiita, parse_prep_file,
-                             update_blanks_in_qiita, update_prep_templates,
-                             StatusUpdate)
+from qp_klp.Step import Step
 from json import dumps
 from os import makedirs
 from os.path import join
@@ -24,6 +21,33 @@ from collections import defaultdict
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
+
+
+class StatusUpdate():
+    def __init__(self, qclient, job_id, step_count):
+        self.qclient = qclient
+        self.job_id = job_id
+        self.msg = ''
+        self.current_step = 0
+        self.step_count = step_count
+
+    def update_job_status(self, status, id):
+        # internal function implements a callback function for Pipeline.run().
+        # :param id: PBS/Torque/or some other informative and current job id.
+        # :param status: status message
+        self.qclient.update_job_step(self.job_id,
+                                     self.msg + f" ({id}: {status})")
+
+    def update_current_message(self, msg, include_step=True):
+        # internal function that sets current_message to the new value before
+        # updating the job step in the UI.
+        if include_step:
+            self.current_step += 1
+            self.msg = f"Step {self.current_step} of {self.step_count}: {msg}"
+        else:
+            self.msg = msg
+
+        self.qclient.update_job_step(self.job_id, self.msg)
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -65,7 +89,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         pipeline_type = 'metagenomic'
         step_count = 6
     elif Pipeline.is_mapping_file(uif_path):
-        # if file is readable as a basic TSV and contains all of the required
+        # if file is readable as a basic TSV and contains all the required
         # headers, then treat this as a mapping file, even if it's an invalid
         # one.
         pipeline_type = 'amplicon'
@@ -84,24 +108,24 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         f.write(user_input_file['body'])
 
     try:
-        pipeline = generate_pipeline(pipeline_type,
-                                     uif_path,
-                                     lane_number,
-                                     CONFIG_FP,
-                                     run_identifier,
-                                     out_dir,
-                                     job_id)
+        pipeline = Step.generate_pipeline(pipeline_type,
+                                          uif_path,
+                                          lane_number,
+                                          CONFIG_FP,
+                                          run_identifier,
+                                          out_dir,
+                                          job_id)
 
         errors = []
         sn_tid_map_by_project = {}
 
-        # TODO: Update get_project_info() so that it can return a list of
-        #  samples in projects['samples']. Include blanks in projects['blanks']
+        # Update get_project_info() so that it can return a list of
+        # samples in projects['samples']. Include blanks in projects['blanks']
         projects = pipeline.get_project_info(short_names=True)
 
         for project in projects:
-            qsam, tids = get_registered_samples_in_qiita(qclient,
-                                                         project['qiita_id'])
+            qsam, tids = Step.get_samples_in_qiita(qclient,
+                                                   project['qiita_id'])
 
             # compare the list of samples from the user against the list of
             # registered samples from Qiita. If the project has tube-ids, then
@@ -161,7 +185,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         # find the uploads directory all trimmed files will need to be
         # moved to and generate a map.
-        special_map = generate_special_map(
+        special_map = Step.generate_special_map(
             qclient.get("/qiita_db/artifacts/types/"),
             pipeline.get_project_info())
 
@@ -189,17 +213,17 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         sifs = step.generate_sifs(from_qiita)
 
-        update_blanks_in_qiita(sifs, qclient)
+        Step.update_blanks_in_qiita(sifs, qclient)
 
         prep_file_paths = step.get_prep_file_paths()
 
-        update_prep_templates(qclient, prep_file_paths)
+        Step.update_prep_templates(qclient, prep_file_paths)
 
         touched_studies_prep_info = defaultdict(list)
 
         for study_id in step.prep_file_paths:
             for prep_file_path in step.prep_file_paths[study_id]:
-                metadata = parse_prep_file(prep_file_path)
+                metadata = Step.parse_prep_file(prep_file_path)
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         # THIS MIGHT NEED CONVERSION FROM AMPLICON TO 16S
