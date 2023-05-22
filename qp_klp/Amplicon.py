@@ -73,10 +73,8 @@ class Amplicon(Step):
             makedirs(output_folder)
             job_output = [join(raw_fastq_files_path, x) for x in
                           listdir(raw_fastq_files_path)]
-            job_output = [x for x in job_output if isfile(x)]
-            job_output = [x for x in job_output if x.endswith('fastq.gz')]
-            job_output = [x for x in job_output if
-                          not basename(x).startswith('Undetermined')]
+            job_output = [x for x in job_output if isfile(x) and x.endswith(
+                'fastq.gz') and not basename(x).startswith('Undetermined')]
 
             for raw_fastq_file in job_output:
                 new_path = join(output_folder, basename(raw_fastq_file))

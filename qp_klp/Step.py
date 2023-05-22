@@ -28,19 +28,20 @@ class FailedSamplesRecord:
         # filter out the sample-ids w/no status (meaning they were
         # successfully processed) before writing the failed entries out to
         # file.
-        self.failed = {x.Sample_ID: [x.Sample_Project, None] for x in samples}
+        self.sample_state = {x.Sample_ID: [x.Sample_Project, None] for x in
+                             samples}
 
     def write(self, failed_ids, job_name):
         for failed_id in failed_ids:
             # as a rule, if a failed_id were to appear in more than one
             # audit(), preserve the earliest failure, rather than the
             # latest one.
-            if self.failed[failed_id][1] is None:
-                self.failed[failed_id][1] = job_name
+            if self.sample_state[failed_id][1] is None:
+                self.sample_state[failed_id][1] = job_name
 
         # filter out the sample-ids w/out a failure status
-        filtered_fails = {x: self.failed[x] for x in self.failed if
-                          self.failed[x][1] is not None}
+        filtered_fails = {x: self.sample_state[x] for x in self.sample_state if
+                          self.sample_state[x][1] is not None}
 
         data = []
         for sample_id in filtered_fails:
