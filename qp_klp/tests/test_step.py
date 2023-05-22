@@ -13,6 +13,7 @@ from functools import partial
 from os import makedirs, chmod
 from shutil import rmtree
 from os import environ, remove
+from json import dumps
 
 
 class BaseStepTests(TestCase):
@@ -86,6 +87,7 @@ class BaseStepTests(TestCase):
         self.good_config_file = join(package_root, 'configuration.json')
         self.good_run_id = '211021_A00000_0000_SAMPLE'
         self.good_sample_sheet_path = cc_path('good-sample-sheet.csv')
+        self.good_mapping_file_path = cc_path('good-mapping-file.txt')
         self.output_file_path = cc_path('output_dir')
         self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
         makedirs(self.output_file_path, exist_ok=True)
@@ -246,26 +248,41 @@ class BaseStepTests(TestCase):
         step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
         step._quality_control(self.config['qc'], self.good_sample_sheet_path)
 
-    def test_generate_reports(self):
-        pass
+    def test_generate_pipeline(self):
+        tmp = join('.', 'tmp.config')
+        with open(tmp, 'w') as f:
+            f.write(dumps(BaseStepTests.CONFIGURATION, indent=2))
 
-    def test_generate_prep_file(self):
-        pass
+        pipeline = Step.generate_pipeline('metagenomic',
+                                          self.good_sample_sheet_path,
+                                          1,
+                                          tmp,
+                                          self.good_run_id,
+                                          self.output_file_path,
+                                          self.qiita_id)
 
-    def test_generate_commands(self):
-        pass
+        self.assertIsNotNone(pipeline)
 
-    def test_write_commands_to_output_path(self):
-        pass
+        pipeline = Step.generate_pipeline('amplicon',
+                                          self.good_mapping_file_path,
+                                          1,
+                                          tmp,
+                                          self.good_run_id,
+                                          self.output_file_path,
+                                          self.qiita_id)
 
-    def test_execute_commands(self):
-        pass
+        self.assertIsNotNone(pipeline)
 
-    def test_generate_sifs(self):
-        pass
+        remove(tmp)
 
-    def test_get_prep_file_paths(self):
-        pass
+    def test_get_project_info(self):
+        obs = self.pipeline.get_project_info()
+
+        exp = [{'project_name': 'NYU_BMS_Melanoma_13059', 'qiita_id': '13059'},
+               {'project_name': 'Feist_11661', 'qiita_id': '11661'},
+               {'project_name': 'Gerwick_6123', 'qiita_id': '6123'}]
+
+        self.assertEqual(obs, exp)
 
     def test_parse_prep_file(self):
         good_prep_file = join('qp_klp', 'tests', 'good-prep-file-small.txt')

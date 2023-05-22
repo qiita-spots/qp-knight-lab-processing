@@ -53,7 +53,7 @@ class Metagenomic(Step):
             raise ValueError("reports not yet generated")
 
         job = super()._generate_prep_file(config,
-                                          self.pipeline.sample_sheet,
+                                          self.pipeline.sample_sheet.path,
                                           config['seqpro_path'],
                                           self.project_names)
 

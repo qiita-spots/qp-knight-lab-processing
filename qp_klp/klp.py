@@ -24,12 +24,13 @@ CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
 
 
 class StatusUpdate():
-    def __init__(self, qclient, job_id, step_count):
+    def __init__(self, qclient, job_id, msgs):
         self.qclient = qclient
         self.job_id = job_id
         self.msg = ''
-        self.current_step = 0
-        self.step_count = step_count
+        self.current_step = 1
+        self.step_count = len(msgs)
+        self.msgs = msgs
 
     def update_job_status(self, status, id):
         # internal function implements a callback function for Pipeline.run().
@@ -38,14 +39,16 @@ class StatusUpdate():
         self.qclient.update_job_step(self.job_id,
                                      self.msg + f" ({id}: {status})")
 
-    def update_current_message(self, msg, include_step=True):
+    def update_current_message(self, include_step=True):
         # internal function that sets current_message to the new value before
         # updating the job step in the UI.
         if include_step:
-            self.current_step += 1
-            self.msg = f"Step {self.current_step} of {self.step_count}: {msg}"
+            self.msg = (f"Step {self.current_step} of {self.step_count}: "
+                        f"{self.msgs[self.step_count]}")
         else:
-            self.msg = msg
+            self.msg = (f"{self.msgs[self.step_count]}")
+
+        self.current_step += 1
 
         self.qclient.update_job_step(self.job_id, self.msg)
 
@@ -69,6 +72,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     bool, list, str
         The results of the job
     """
+
+    # available fields for parameters are:
+    #   run_identifier, sample_sheet, content_type, filename, lane_number
     run_identifier = parameters.pop('run_identifier')
     user_input_file = parameters.pop('sample_sheet')
     lane_number = parameters.pop('lane_number')
@@ -83,29 +89,34 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     # replace any whitespace in the filename with underscores
     uif_path = out_path(user_input_file['filename'].replace(' ', '_'))
 
+    # save raw data to file
+    with open(uif_path, 'w') as f:
+        f.write(user_input_file['body'])
+
     if Pipeline.is_sample_sheet(uif_path):
         # if file follows basic sample-sheet format, then it is most likely
         # a sample-sheet, even if it's an invalid one.
         pipeline_type = 'metagenomic'
-        step_count = 6
     elif Pipeline.is_mapping_file(uif_path):
         # if file is readable as a basic TSV and contains all the required
         # headers, then treat this as a mapping file, even if it's an invalid
         # one.
         pipeline_type = 'amplicon'
         lane_number = -1
-        step_count = 5
     else:
         # file doesn't look like a sample-sheet, or a valid mapping file.
         return False, None, ("Your uploaded file doesn't appear to be a sample"
                              "-sheet or a mapping-file.")
 
-    status_line = StatusUpdate(qclient, job_id, step_count)
-    status_line.update_current_message("Setting up pipeline")
+    msgs = ["Setting up pipeline", "Getting project information",
+            "Converting BCL to Fastq", "Performing Quality Control",
+            "Generating FastQC Reports", "Generating Prep Files",
+            "Generating Sample Information ", "Updating Blanks in Qiita",
+            "Adding Prep Templates to Qiita", "Packaging results",
+            "Finishing up"]
 
-    # save raw data to file
-    with open(uif_path, 'w') as f:
-        f.write(user_input_file['body'])
+    status_line = StatusUpdate(qclient, job_id, msgs)
+    status_line.update_current_message()
 
     try:
         pipeline = Step.generate_pipeline(pipeline_type,
@@ -115,9 +126,16 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                           run_identifier,
                                           out_dir,
                                           job_id)
+    except PipelineError as e:
+        # assume AttributeErrors are issues w/bad sample-sheets or
+        # mapping-files.
+        return False, None, str(e)
 
+    try:
         errors = []
         sn_tid_map_by_project = {}
+
+        status_line.update_current_message()
 
         # Update get_project_info() so that it can return a list of
         # samples in projects['samples']. Include blanks in projects['blanks']
@@ -126,59 +144,34 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         for project in projects:
             qsam, tids = Step.get_samples_in_qiita(qclient,
                                                    project['qiita_id'])
+            qsam = set(qsam)
+            tids = {tids[k][0] for k in tids} if tids else None
 
             # compare the list of samples from the user against the list of
             # registered samples from Qiita. If the project has tube-ids, then
             # compare against tids rather than qsam.
-            samples = project['samples']
+            samples = set(pipeline.get_sample_ids())
+
+            # strip any leading zeroes from the sample-ids. Note that
+            # if a sample-id has more than one leading zero, all of
+            # them will be removed.
+            # my_samples = {x.lstrip('0') for x in samples}
+
             sample_name_diff = samples - tids if tids else samples - qsam
 
             project_name = project['project_name']
-            qiita_id = project['qiita_id']
-            qurl = f'/api/v1/study/{qiita_id}/samples'
 
-            if tids:
-                # strip any leading zeroes from the sample-ids. Note that
-                # if a sample-id has more than one leading zero, all of
-                # them will be removed.
-                my_samples = {x.lstrip('0') for x in samples}
-                # once any leading zeros have been removed, recalculate
-                # sample_name_diff before continuing processing.
-                sample_name_diff = my_samples - qsam
+            if sample_name_diff:
+                len_overlap = len(sample_name_diff)
+                # selecting at random k=5 samples to minimize space in display
+                samx = ', '.join(qsam if len(qsam) < 6 else rsampl(qsam, k=5))
 
-                # before we report as an error, check tube_id.
-                if pipeline_type == 'metagenomic':
-                    tids = qclient.get(f'{qurl}/categories=tube_id')[
-                        'samples']
-
-                # generate a map of sample_names to tube_ids for
-                # GenPrepFileJob.
-                sn_tid_map_by_project[project_name] = {
-                    y[0]: x.replace(f'{qiita_id}.', '') for x, y in
-                    tids.items()}
-                tids = set(sn_tid_map_by_project[project_name].keys())
-                tube_id_diff = my_samples - tids
-                if not tube_id_diff:
-                    continue
-                len_tube_id_overlap = len(tube_id_diff)
-                tidsx = ', '.join(
-                    tids if len(tids) < 6 else rsampl(tids, k=5))
-
-                error_tube_id = (
-                    f'tube_id in Qiita but {len_tube_id_overlap} missing '
-                    f'samples. Some samples from tube_id: {tidsx}.')
-
-            len_overlap = len(sample_name_diff)
-            # selecting at random k=5 samples to minimize space in display
-            samx = ', '.join(qsam if len(qsam) < 6 else rsampl(qsam, k=5))
-
-            # selecting the up to 4 first samples to minimize space in
-            # display
-            missing = ', '.join(sorted(sample_name_diff)[:4])
-            errors.append(
-                f'{project_name} has {len_overlap} missing samples (i.e. '
-                f'{missing}). Some samples from Qiita: {samx}. '
-                f'{error_tube_id}')
+                # selecting the up to 4 first samples to minimize space in
+                # display
+                missing = ', '.join(sorted(sample_name_diff)[:4])
+                errors.append(
+                    f'{project_name} has {len_overlap} missing samples (i.e. '
+                    f'{missing}). Some samples from Qiita: {samx}. ')
 
         if errors:
             raise PipelineError('\n'.join(errors))
@@ -197,12 +190,16 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             step = Amplicon(pipeline, job_id, sn_tid_map_by_project,
                             status_line)
 
+        status_line.update_current_message()
         step.convert_bcl_to_fastq()
 
+        status_line.update_current_message()
         step.quality_control()
 
+        status_line.update_current_message()
         step.generate_reports()
 
+        status_line.update_current_message()
         step.generate_prep_file()
 
         from_qiita = {}
@@ -211,13 +208,17 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             samples = list(qclient.get(f'/api/v1/study/{study_id}/samples'))
             from_qiita[study_id] = samples
 
+        status_line.update_current_message()
         sifs = step.generate_sifs(from_qiita)
 
+        status_line.update_current_message()
         Step.update_blanks_in_qiita(sifs, qclient)
 
         prep_file_paths = step.get_prep_file_paths()
 
-        Step.update_prep_templates(qclient, prep_file_paths)
+        status_line.update_current_message()
+        ptype = step.pipeline.pipeline_type
+        Step.update_prep_templates(qclient, prep_file_paths, ptype)
 
         touched_studies_prep_info = defaultdict(list)
 
@@ -226,7 +227,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 metadata = Step.parse_prep_file(prep_file_path)
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
-                        # THIS MIGHT NEED CONVERSION FROM AMPLICON TO 16S
                         'data_type': step.pipeline.pipeline_type}
 
                 reply = qclient.post('/qiita_db/prep_template/', data=data)
@@ -235,8 +235,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 touched_studies_prep_info[study_id].append(prep_id)
 
         # generate commands to execute
+        status_line.update_current_message()
         step.generate_commands(special_map, touched_studies_prep_info)
 
+        status_line.update_current_message()
         step.execute_commands()
 
     except PipelineError as e:

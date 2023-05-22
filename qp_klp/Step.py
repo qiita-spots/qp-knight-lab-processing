@@ -154,22 +154,7 @@ class Step:
         return special_map
 
     @classmethod
-    def get_data_type(cls, pipeline_type, target_gene=None):
-        if pipeline_type in ['metagenomic', 'metatranscriptomic']:
-            return pipeline_type
-        elif pipeline_type == 'amplicon':
-            if target_gene:
-                for key in {'16S', '18S', 'ITS'}:
-                    if key in target_gene:
-                        return key
-            else:
-                raise ValueError(
-                    "target_gene must be specified for amplicon type")
-        else:
-            raise ValueError(f"'{pipeline_type}' is not a valid pipeline type")
-
-    @classmethod
-    def update_prep_templates(cls, qclient, prep_file_paths):
+    def update_prep_templates(cls, qclient, prep_file_paths, pipeline_type):
         '''
         Update prep-template info in Qiita. Get dict of prep-ids by study-id.
         :param qclient:
@@ -181,11 +166,23 @@ class Step:
         for study_id in prep_file_paths:
             for prep_file_path in prep_file_paths[study_id]:
                 metadata = Step.parse_prep_file(prep_file_path)
-                target_gene = metadata[list(metadata.keys())[0]]['target_gene']
-
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
-                        'data_type': Step.get_data_type(target_gene)}
+                        'data_type': None}
+                if pipeline_type in ['metagenomic', 'metatranscriptomic']:
+                    data['data_type'] = pipeline_type
+                elif pipeline_type == 'amplicon':
+                    if 'target_gene' in metadata[list(metadata.keys())[0]]:
+                        tg = metadata[list(metadata.keys())[0]]['target_gene']
+                        for key in {'16S', '18S', 'ITS'}:
+                            if key in tg:
+                                data['data_type'] = key
+                    else:
+                        raise ValueError("target_gene must be specified for "
+                                         "amplicon type")
+                else:
+                    raise ValueError(f"'{pipeline_type}' is not a valid "
+                                     "pipeline type")
 
                 reply = qclient.post('/qiita_db/prep_template/', data=data)
                 prep_id = reply['prep']
