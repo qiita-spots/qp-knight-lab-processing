@@ -5,9 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-
 from qiita_client import QiitaPlugin, QiitaCommand
-
 from .klp import sequence_processing_pipeline
 
 
@@ -15,7 +13,7 @@ class QiitaPluginAdmin(QiitaPlugin):
     _plugin_type = "private"
 
 
-__version__ = '2022.04'
+__version__ = '2023.05'
 
 plugin = QiitaPluginAdmin('qp-klp', __version__, 'Knight Lab Processing')
 
