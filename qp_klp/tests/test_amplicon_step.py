@@ -21,12 +21,9 @@ class AmpliconTests(BaseStepTests):
         # Test base-class creation method, even though base-class will never
         # be instantiated by itself in normal usage.
 
-        # dummy used for constructor testing.
-        sn_tid_map_by_project = {}
-
         with self.assertRaisesRegex(ValueError, "A pipeline object is needed"
                                                 " to initialize Step"):
-            Amplicon(None, self.qiita_id, sn_tid_map_by_project, None)
+            Amplicon(None, self.qiita_id, {}, None)
 
         # create amplicon pipeline for failure tests.
         amplicon_pipeline = Pipeline(None,
@@ -40,8 +37,7 @@ class AmpliconTests(BaseStepTests):
 
         with self.assertRaisesRegex(ValueError, "A Qiita job-id is needed to "
                                                 "initialize Step"):
-            Amplicon(amplicon_pipeline, None,
-                     sn_tid_map_by_project, None)
+            Amplicon(amplicon_pipeline, None, {}, None)
 
         with self.assertRaisesRegex(ValueError, "sn_tid_map_by_project is "
                                                 "needed to initialize Step"):
@@ -60,5 +56,4 @@ class AmpliconTests(BaseStepTests):
         with self.assertRaisesRegex(ValueError, "Cannot create an Amplicon run"
                                                 " using a metagenomic-"
                                                 "configured Pipeline."):
-            Amplicon(metagenomic_pipeline, self.qiita_id,
-                     sn_tid_map_by_project, None)
+            Amplicon(metagenomic_pipeline, self.qiita_id, {}, None)

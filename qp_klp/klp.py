@@ -103,9 +103,13 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         tmp = [x for x in user_input_file['body'] if 'Assay' in x]
 
-        if len(tmp) != 1:
-            return False, None, ("Your uploaded file doesn't appear to be a"
-                                 "valid sample-sheet.")
+        if len(tmp) == 0:
+            return False, None, ("Assay type is not defined in the "
+                                 "sample-sheet")
+
+        if len(tmp) > 1:
+            return False, None, ("Assay type is defined multiple times within"
+                                 "the sample-sheet")
 
         pipeline_type = None
         for p_type in Step.META_TYPES:
@@ -113,8 +117,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 pipeline_type = p_type
 
         if pipeline_type is None:
-            return False, None, ("Your uploaded file doesn't appear to be a"
-                                 "valid sample-sheet.")
+            msg = [f"'{x}'" for x in Step.META_TYPES]
+            return False, None, ("The following Assay types are valid within"
+                                 "a sample-sheet: %s" % ', '.join(msg))
     elif Pipeline.is_mapping_file(uif_path):
         # if file is readable as a basic TSV and contains all the required
         # headers, then treat this as a mapping file, even if it's an invalid

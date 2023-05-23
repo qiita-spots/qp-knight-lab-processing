@@ -33,7 +33,8 @@ class Metagenomic(Step):
         config = self.pipeline.configuration['bcl-convert']
         job = super()._convert_bcl_to_fastq(config,
                                             self.pipeline.sample_sheet.path)
-        self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'ConvertJob')
+
+        self._failed_samples_audit(job, 'ConvertJob')
 
     def quality_control(self):
         config = self.pipeline.configuration['qc']

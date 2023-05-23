@@ -71,6 +71,7 @@ class Amplicon(Step):
             # ConvertJob's output folder/project1, project2 ... projectN.
             output_folder = join(raw_fastq_files_path, project_name)
             makedirs(output_folder)
+
             job_output = [join(raw_fastq_files_path, x) for x in
                           listdir(raw_fastq_files_path)]
             job_output = [x for x in job_output if isfile(x) and x.endswith(

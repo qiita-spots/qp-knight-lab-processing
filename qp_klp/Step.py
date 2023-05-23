@@ -424,7 +424,8 @@ class Step:
                                          'info')['categories']
 
                 # initialize payload w/required dummy categories
-                data = {i: {c: 1 for c in categories} for i in new_blanks}
+                data = {i: {c: 'control sample' for c in categories} for i in
+                        new_blanks}
 
                 # populate payload w/additional columns and/or overwrite
                 # existing columns w/metadata from SIF file.
