@@ -383,9 +383,8 @@ class Step:
         # Update get_project_info() so that it can return a list of
         # samples in projects['samples']. Include blanks in projects['blanks']
         # just in case there are duplicate qiita_ids
-        qiita_ids = list(set([x['qiita_id'] for x in
-                              self.pipeline.get_project_info(
-                                  short_names=True)]))
+        qiita_ids = [x['qiita_id'] for x in
+                     self.pipeline.get_project_info(short_names=True)]
 
         tids_by_qiita_id = {}
         sample_names_by_qiita_id = {}
