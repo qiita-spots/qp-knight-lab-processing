@@ -23,7 +23,6 @@ class Metagenomic(Step):
         # is not available.
         self.fsr = FailedSamplesRecord(self.pipeline.output_path,
                                        pipeline.sample_sheet.samples)
-        self.project_names = None
 
     def convert_bcl_to_fastq(self):
         # The 'bcl-convert' key is a convention hard-coded into mg-scripts and

@@ -51,7 +51,6 @@ class MetagenomicTests(BaseStepTests):
         self._delete_test_output()
         self._create_test_input(1)
 
-        sn_tid_map_by_project = {}
         step = Metagenomic(self.pipeline, self.qiita_id, None)
 
         step.convert_bcl_to_fastq()
@@ -59,8 +58,6 @@ class MetagenomicTests(BaseStepTests):
     def test_quality_control(self):
         self._delete_test_output()
         self._create_test_input(2)
-
-        sn_tid_map_by_project = {}
 
         step = Metagenomic(self.pipeline, self.qiita_id, None)
         step.quality_control()
