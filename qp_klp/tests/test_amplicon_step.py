@@ -23,7 +23,7 @@ class AmpliconTests(BaseStepTests):
 
         with self.assertRaisesRegex(ValueError, "A pipeline object is needed"
                                                 " to initialize Step"):
-            Amplicon(None, self.qiita_id, {}, None)
+            Amplicon(None, self.qiita_id, None)
 
         # create amplicon pipeline for failure tests.
         amplicon_pipeline = Pipeline(None,
@@ -37,11 +37,7 @@ class AmpliconTests(BaseStepTests):
 
         with self.assertRaisesRegex(ValueError, "A Qiita job-id is needed to "
                                                 "initialize Step"):
-            Amplicon(amplicon_pipeline, None, {}, None)
-
-        with self.assertRaisesRegex(ValueError, "sn_tid_map_by_project is "
-                                                "needed to initialize Step"):
-            Amplicon(amplicon_pipeline, self.qiita_id, None, None)
+            Amplicon(amplicon_pipeline, None, None)
 
         # create meta*omic pipeline for final test.
         metagenomic_pipeline = Pipeline(None,
@@ -56,4 +52,4 @@ class AmpliconTests(BaseStepTests):
         with self.assertRaisesRegex(ValueError, "Cannot create an Amplicon run"
                                                 " using a Metagenomic-"
                                                 "configured Pipeline."):
-            Amplicon(metagenomic_pipeline, self.qiita_id, {}, None)
+            Amplicon(metagenomic_pipeline, self.qiita_id, None)

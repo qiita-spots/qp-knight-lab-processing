@@ -187,22 +187,15 @@ class BaseStepTests(TestCase):
         # be instantiated by itself in normal usage.
         self._delete_test_output()
 
-        # TODO: Note we don't do much with this variable yet.
-        sn_tid_map_by_project = {}
-
         with self.assertRaisesRegex(ValueError, "A pipeline object is needed"
                                                 " to initialize Step"):
-            Step(None, self.qiita_id, sn_tid_map_by_project, None)
+            Step(None, self.qiita_id, None)
 
         with self.assertRaisesRegex(ValueError, "A Qiita job-id is needed to "
                                                 "initialize Step"):
-            Step(self.pipeline, None, sn_tid_map_by_project, None)
+            Step(self.pipeline, None, None)
 
-        with self.assertRaisesRegex(ValueError, "sn_tid_map_by_project is "
-                                                "needed to initialize Step"):
-            Step(self.pipeline, self.qiita_id, None, None)
-
-        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+        step = Step(self.pipeline, self.qiita_id, None)
 
         self.assertIsNotNone(step)
 
@@ -210,8 +203,7 @@ class BaseStepTests(TestCase):
         self._delete_test_output()
         self._create_test_input(1)
 
-        sn_tid_map_by_project = {}
-        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+        step = Step(self.pipeline, self.qiita_id, None)
 
         fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
         makedirs(fake_path, exist_ok=True)
@@ -247,8 +239,7 @@ class BaseStepTests(TestCase):
                     with open(file_path, 'w') as f:
                         f.write("This is a file.")
 
-        sn_tid_map_by_project = {}
-        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+        step = Step(self.pipeline, self.qiita_id, None)
         step._quality_control(self.config['qc'], self.good_sample_sheet_path)
 
     def test_generate_pipeline(self):

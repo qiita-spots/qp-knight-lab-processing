@@ -8,11 +8,10 @@ from qp_klp.Step import Step
 
 
 class Metagenomic(Step):
-    def __init__(self, pipeline, master_qiita_job_id, sn_tid_map_by_project,
+    def __init__(self, pipeline, master_qiita_job_id,
                  status_update_callback=None):
         super().__init__(pipeline,
                          master_qiita_job_id,
-                         sn_tid_map_by_project,
                          status_update_callback)
 
         if pipeline.pipeline_type not in Step.META_TYPES:

@@ -72,17 +72,13 @@ class Step:
     ALL_TYPES = META_TYPES.union(AMPLICON_TYPE)
     AMPLICON_SUB_TYPES = {'16S', '18S', 'ITS'}
 
-    def __init__(self, pipeline, master_qiita_job_id, sn_tid_map_by_project,
+    def __init__(self, pipeline, master_qiita_job_id,
                  status_update_callback=None):
         if pipeline is None:
             raise ValueError("A pipeline object is needed to initialize Step")
 
         if master_qiita_job_id is None:
             raise ValueError("A Qiita job-id is needed to initialize Step")
-
-        if sn_tid_map_by_project is None:
-            raise ValueError("sn_tid_map_by_project is needed to initialize"
-                             " Step")
 
         self.pipeline = pipeline
         self.master_qiita_job_id = master_qiita_job_id
@@ -95,14 +91,21 @@ class Step:
         # for now, hardcode this at the legacy value, since we've never
         # changed it.
         self.job_pool_size = 30
+
+        # initialize other member variables so that they're always present,
+        # even when the step that populates them hasn't been run yet.
         self.project_names = None
         self.cmds = None
         self.cmds_log_path = None
-        self.sn_tid_map_by_project = sn_tid_map_by_project
         self.prep_file_paths = None
         self.sifs = None
         self.tube_id_map = None
         self.samples_in_qiita = None
+        self.output_path = None
+        self.prep_file_paths = None
+        self.sample_state = None
+        self.special_map = None
+        self.touched_studies_prep_info = None
 
     @classmethod
     def generate_pipeline(cls, pipeline_type, input_file_path, lane_number,
