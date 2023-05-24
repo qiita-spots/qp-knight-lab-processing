@@ -62,8 +62,15 @@ class Metagenomic(Step):
         self.prep_file_paths = job.prep_file_paths
 
     def generate_touched_studies(self, qclient):
-        data_type = 'metagenomic'
-        super()._generate_touched_studies(qclient, data_type)
+        results = {}
+        for study_id in self.prep_file_paths:
+            for prep_file_path in self.prep_file_paths[study_id]:
+                # record the data-type as either metagenomic or
+                # metatranscriptomic, according to what's stored in the
+                # pipeline.
+                results[prep_file_path] = self.pipeline.pipeline_type
+
+        super()._generate_touched_studies(qclient, results)
 
     def generate_commands(self, qclient):
         super()._generate_commands()
@@ -140,11 +147,11 @@ class Metagenomic(Step):
         data = []
         for qiita_id, project in touched_studies:
             for prep_id in self.touched_studies_prep_info[qiita_id]:
-                s_url = f'{qclient._server_url}/study/description/{qiita_id}'
+                surl = f'{qclient._server_url}/study/description/{qiita_id}'
                 prep_url = (f'{qclient._server_url}/study/description/'
                             f'{qiita_id}?prep_id={prep_id}')
                 data.append({'Project': project, 'Qiita Study ID': qiita_id,
-                             'Qiita Prep ID': prep_id, 'Qiita URL': s_url,
+                             'Qiita Prep ID': prep_id, 'Qiita URL': surl,
                              'Prep URL': prep_url})
 
         df = pd.DataFrame(data)

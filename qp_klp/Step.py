@@ -382,13 +382,13 @@ class Step:
     def get_tube_ids_from_qiita(self, qclient):
         # Update get_project_info() so that it can return a list of
         # samples in projects['samples']. Include blanks in projects['blanks']
-        projects = self.pipeline.get_project_info(short_names=True)
-
         # just in case there are duplicate qiita_ids
-        qiita_ids = list(set([x['qiita_id'] for x in projects]))
+        qiita_ids = list(set([x['qiita_id'] for x in
+                              self.pipeline.get_project_info(
+                                  short_names=True)]))
 
-        results = {}
-        results2 = {}
+        tids_by_qiita_id = {}
+        sample_names_by_qiita_id = {}
 
         for qiita_id in qiita_ids:
             # Qiita returns a set of sample-ids in qsam and a dictionary where
@@ -396,7 +396,7 @@ class Step:
             qsam, tids = self.get_samples_in_qiita(qclient, qiita_id)
 
             if tids is None:
-                results2[str(qiita_id)] = qsam
+                sample_names_by_qiita_id[str(qiita_id)] = qsam
             else:
                 # fix values in tids to be a string instead of a list of one.
                 # also, remove the qiita_id prepending each sample-name.
@@ -407,31 +407,27 @@ class Step:
                 # empty strings if there is no tube-id associated with a
                 # sample-name. For now assume it doesn't happen in production
                 # and if prep-files have empty sample-names we'll know.
-                results[str(qiita_id)] = tids
+                tids_by_qiita_id[str(qiita_id)] = tids
 
         # use empty dict {} as an indication that get_tube_ids_from_qiita was
         # called but no tube-ids were found for any project.
-        self.tube_id_map = results
-        self.samples_in_qiita = results2
+        self.tube_id_map = tids_by_qiita_id
+        self.samples_in_qiita = sample_names_by_qiita_id
 
         # not needed, but useful in displaying debugging info
-        return results
+        return tids_by_qiita_id
 
-    def donald_duck(self):
+    def compare_samples_against_qiita(self):
         projects = self.pipeline.get_project_info(short_names=True)
-        self.foo("PROJECTS: %s" % projects)
+
         results = []
         for project in projects:
             project_name = project['project_name']
             qiita_id = str(project['qiita_id'])
-            self.foo("PROJECT: %s\n" % project_name)
-            self.foo("QIITA ID: %s\n" % qiita_id)
 
             # get list of samples as presented by the sample-sheet or mapping
             # file and confirm that they are all registered in Qiita.
             samples = set(self.pipeline.get_sample_names())
-
-            self.foo("SAMPLES IN SHEET: %s\n" % samples)
 
             # strip any leading zeroes from the sample-ids. Note that
             # if a sample-id has more than one leading zero, all of
@@ -444,16 +440,12 @@ class Step:
                 # if map is not empty
                 tids = [self.tube_id_map[qiita_id][x] for x in
                         self.tube_id_map[qiita_id]]
-                self.foo("TIDS: %s\n" % tids)
                 not_in_qiita = samples - set(tids)
-                self.foo("NOT IN QIITA: %s\n" % not_in_qiita)
                 examples = tids[:5]
                 used_tids = True
             else:
                 # assume project is in samples_in_qiita
                 not_in_qiita = samples - set(self.samples_in_qiita)
-                self.foo("SAMPLES IN QIITA: %s\n" % set(self.samples_in_qiita))
-                self.foo("NOT IN QIITA: %s\n" % not_in_qiita)
                 examples = list(samples)[:5]
                 used_tids = False
 
@@ -567,7 +559,13 @@ class Step:
 
                 return data
 
-    def _generate_touched_studies(self, qclient, data_type):
+    def _generate_touched_studies(self, qclient, data_types):
+        '''
+        Generates touched-studies metadata
+        :param qclient: Qiita client library object
+        :param data_types: A dict w/a file-name as k and its data-type as v
+        :return: None
+        '''
         touched_studies_prep_info = defaultdict(list)
 
         for study_id in self.prep_file_paths:
@@ -575,7 +573,9 @@ class Step:
                 metadata = Step.parse_prep_file(prep_file_path)
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
-                        'data_type': data_type}
+                        # a data-type is assumed to be prep-file-wide, but
+                        # potentially different between any two prep-files.
+                        'data_type': data_types[prep_file_path]}
 
                 reply = qclient.post('/qiita_db/prep_template/', data=data)
                 prep_id = reply['prep']

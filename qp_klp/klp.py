@@ -165,17 +165,17 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         status_line.update_current_message()
 
-        # corroborate sample-ids/tube-ids in sample-sheet or mapping file
+        # compare sample-ids/tube-ids in sample-sheet/mapping file
         # against what's in Qiita.
-        blah = step.donald_duck()
+        results = step.compare_samples_against_qiita()
 
-        if blah is not None:
+        if results is not None:
             msgs = []
-            for analysis in blah:
-                not_in_qiita_count = len(analysis['samples_not_in_qiita'])
-                examples_in_qiita = ', '.join(analysis['examples_in_qiita'])
-                p_name = analysis['project_name']
-                uses_tids = analysis['tids']
+            for comparison in results:
+                not_in_qiita_count = len(comparison['samples_not_in_qiita'])
+                examples_in_qiita = ', '.join(comparison['examples_in_qiita'])
+                p_name = comparison['project_name']
+                uses_tids = comparison['tids']
 
                 msgs.append(f"Project '{p_name}' has {not_in_qiita_count} "
                             "samples not registered in Qiita.")

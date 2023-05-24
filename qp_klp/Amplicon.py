@@ -41,8 +41,11 @@ class Amplicon(Step):
             output_folder = join(self.pipeline.output_path,
                                  'QCJob',
                                  project_name,
-                                 # for legacy purposes, do not replace this
-                                 # with AMPLICON_TYPE
+                                 # for legacy purposes, output folders are
+                                 # either 'trimmed_sequences', 'amplicon', or
+                                 # 'filtered_sequences'. Hence, this folder
+                                 # is not defined using AMPLICON_TYPE as that
+                                 # value may or may not equal the needed value.
                                  'amplicon')
 
             makedirs(output_folder)
@@ -87,30 +90,46 @@ class Amplicon(Step):
         super()._generate_reports()
         return None  # amplicon doesn't need project names
 
+    def _get_data_type(self, prep_file_path):
+        metadata = Step.parse_prep_file(prep_file_path)
+        if 'target_gene' in metadata.columns:
+            tg = set(metadata['sample target_gene'])
+            if len(tg) != 1:
+                raise ValueError("More than one value for target_gene")
+            else:
+                tg = tg.pop()
+
+            data_type = None
+            for key in Step.AMPLICON_SUB_TYPES:
+                # the key sub_types are often substrings of tg,
+                # rather than equal to tg.
+                if key in tg:
+                    data_type = key
+
+            if data_type is None:
+                raise ValueError(f"Valid data-types "
+                                 f"{Step.AMPLICON_SUB_TYPES} could not"
+                                 " be found within target_gene value "
+                                 f"'{tg}'")
+
+            return data_type
+        else:
+            raise ValueError("'target_gene' column not present in "
+                             "generated prep-files")
+
     def generate_touched_studies(self, qclient):
+        results = {}
         for study_id in self.prep_file_paths:
             for prep_file_path in self.prep_file_paths[study_id]:
-                metadata = Step.parse_prep_file(prep_file_path)
-                if 'target_gene' in metadata[list(metadata.keys())[0]]:
-                    tg = metadata[list(metadata.keys())[0]]['target_gene']
-                    data_type = None
-                    for key in Step.AMPLICON_SUB_TYPES:
-                        if key in tg:
-                            data_type = key
+                results[prep_file_path] = self._get_data_type(prep_file_path)
 
-                    if data_type is None:
-                        raise ValueError("A valid data-type could not be "
-                                         "derived from target_gene column")
-
-            super()._generate_touched_studies(qclient, data_type)
+        super()._generate_touched_studies(qclient, results)
 
     def generate_prep_file(self):
         config = self.pipeline.configuration['seqpro']
-
         seqpro_path = config['seqpro_path'].replace('seqpro', 'seqpro_mf')
-
-        projects = self.pipeline.get_project_info()
-        project_names = [x['project_name'] for x in projects]
+        project_names = [x['project_name'] for x in
+                         self.pipeline.get_project_info()]
 
         job = super()._generate_prep_file(config,
                                           self.pipeline.mapping_file_path,
