@@ -65,11 +65,12 @@ class Step:
     codebase is kept DRY.
     '''
 
-    AMPLICON_TYPE = 'amplicon'
-    METAGENOMIC_TYPE = 'metagenomic'
-    METATRANSCRIPTOMIC_TYPE = 'metatranscriptomic'
-    META_TYPES = [METAGENOMIC_TYPE, METATRANSCRIPTOMIC_TYPE]
-    ALL_TYPES = META_TYPES + [AMPLICON_TYPE]
+    AMPLICON_TYPE = 'Amplicon'
+    METAGENOMIC_TYPE = 'Metagenomic'
+    METATRANSCRIPTOMIC_TYPE = 'Metatranscriptomic'
+    META_TYPES = {METAGENOMIC_TYPE, METATRANSCRIPTOMIC_TYPE}
+    ALL_TYPES = META_TYPES.union(AMPLICON_TYPE)
+    AMPLICON_SUB_TYPES = {'16S', '18S', 'ITS'}
 
     def __init__(self, pipeline, master_qiita_job_id, sn_tid_map_by_project,
                  status_update_callback=None):
@@ -100,6 +101,8 @@ class Step:
         self.sn_tid_map_by_project = sn_tid_map_by_project
         self.prep_file_paths = None
         self.sifs = None
+        self.tube_id_map = None
+        self.samples_in_qiita = None
 
     @classmethod
     def generate_pipeline(cls, pipeline_type, input_file_path, lane_number,
@@ -143,8 +146,7 @@ class Step:
         # convert to standard dictionary.
         return metadata.to_dict('index')
 
-    @classmethod
-    def generate_special_map(cls, results, projects):
+    def generate_special_map(self, qclient):
         # this function should be able to be tested by passing in simulated =
         # results from qclient.
 
@@ -152,13 +154,15 @@ class Step:
         # associated with each project and ensure a subdirectory exists
         # for when it comes time to move the trimmed files.
         special_map = []
+        results = qclient.get("/qiita_db/artifacts/types/")
+        projects = self.pipeline.get_project_info()
         for project in projects:
             upload_path = join(results['uploads'], project['qiita_id'])
             makedirs(upload_path, exist_ok=True)
             special_map.append((project['project_name'], upload_path,
                                 project['qiita_id']))
 
-        return special_map
+        self.special_map = special_map
 
     @classmethod
     def update_prep_templates(cls, qclient, prep_file_paths, pipeline_type):
@@ -181,7 +185,7 @@ class Step:
                 elif pipeline_type == Step.AMPLICON_TYPE:
                     if 'target_gene' in metadata[list(metadata.keys())[0]]:
                         tg = metadata[list(metadata.keys())[0]]['target_gene']
-                        for key in {'16S', '18S', 'ITS'}:
+                        for key in Step.AMPLICON_SUB_TYPES:
                             if key in tg:
                                 data['data_type'] = key
                     else:
@@ -262,7 +266,7 @@ class Step:
 
         return qc_job
 
-    def _generate_reports(self, input_file_path):
+    def _generate_reports(self):
         config = self.pipeline.configuration['fastqc']
         is_amplicon = self.pipeline.pipeline_type == Step.AMPLICON_TYPE
         fastqc_job = FastQCJob(self.pipeline.run_dir,
@@ -308,7 +312,7 @@ class Step:
         # concatenate the lists of paths across all study_ids into a single
         # list. Replace sample-names w/tube-ids in all relevant prep-files.
         preps = list(chain.from_iterable(gpf_job.prep_file_paths.values()))
-        Step.map_sample_names_to_tube_ids(preps, self.sn_tid_map_by_project)
+        self._overwrite_prep_files(preps)
 
         return gpf_job
 
@@ -339,7 +343,13 @@ class Step:
                 # to test other commands.
                 raise PipelineError(f"'{cmd}' returned {return_code}")
 
-    def generate_sifs(self, from_qiita):
+    def generate_sifs(self, qclient):
+        from_qiita = {}
+
+        for study_id in self.prep_file_paths:
+            samples = list(qclient.get(f'/api/v1/study/{study_id}/samples'))
+            from_qiita[study_id] = samples
+
         add_sif_info = []
 
         qid_pn_map = {x['qiita_id']: x['project_name'] for
@@ -369,32 +379,149 @@ class Step:
     def get_prep_file_paths(self):
         return self.prep_file_paths
 
-    def map_sample_names_to_tube_ids(self, prep_info_file_paths,
-                                     sn_tid_map_by_proj):
-        for proj in sn_tid_map_by_proj:
-            if sn_tid_map_by_proj[proj] is not None:
-                # this project has tube-ids registered in Qiita.
-                # find the prep-file associated with this project.
-                for prep_file in prep_info_file_paths:
-                    # not the best check but good enough for now.
-                    if proj in prep_file:
-                        df = pd.read_csv(prep_file, sep='\t',
-                                         dtype=str, index_col=False)
-                        # save copy of sample_name column as 'old_sample_name'
-                        df['old_sample_name'] = df['sample_name']
-                        for i in df.index:
-                            smpl_name = df.at[i, "sample_name"]
-                            if not smpl_name.startswith('BLANK'):
-                                # remove any leading zeroes if they exist
-                                smpl_name = smpl_name.lstrip('0')
-                                if smpl_name in sn_tid_map_by_proj[proj]:
-                                    tube_id = sn_tid_map_by_proj[proj][
-                                        smpl_name]
-                                    df.at[i, "sample_name"] = tube_id
-                        df.to_csv(prep_file, index=False, sep="\t")
+    def get_tube_ids_from_qiita(self, qclient):
+        # Update get_project_info() so that it can return a list of
+        # samples in projects['samples']. Include blanks in projects['blanks']
+        projects = self.pipeline.get_project_info(short_names=True)
 
-    def update_blanks_in_qiita(self, sifs, qclient):
-        for sif_path in sifs:
+        # just in case there are duplicate qiita_ids
+        qiita_ids = list(set([x['qiita_id'] for x in projects]))
+
+        results = {}
+        results2 = {}
+
+        for qiita_id in qiita_ids:
+            # Qiita returns a set of sample-ids in qsam and a dictionary where
+            # sample-names are used as keys and tube-ids are their values.
+            qsam, tids = self.get_samples_in_qiita(qclient, qiita_id)
+
+            if tids is None:
+                results2[str(qiita_id)] = qsam
+            else:
+                # fix values in tids to be a string instead of a list of one.
+                # also, remove the qiita_id prepending each sample-name.
+                tids = {k.replace(f'{qiita_id}.', ''): tids[k][0] for k in
+                        tids}
+
+                # the values Qiita returns for tids seems like it can include
+                # empty strings if there is no tube-id associated with a
+                # sample-name. For now assume it doesn't happen in production
+                # and if prep-files have empty sample-names we'll know.
+                results[str(qiita_id)] = tids
+
+        # use empty dict {} as an indication that get_tube_ids_from_qiita was
+        # called but no tube-ids were found for any project.
+        self.tube_id_map = results
+        self.samples_in_qiita = results2
+
+        # not needed, but useful in displaying debugging info
+        return results
+
+    def donald_duck(self):
+        projects = self.pipeline.get_project_info(short_names=True)
+        self.foo("PROJECTS: %s" % projects)
+        results = []
+        for project in projects:
+            project_name = project['project_name']
+            qiita_id = str(project['qiita_id'])
+            self.foo("PROJECT: %s\n" % project_name)
+            self.foo("QIITA ID: %s\n" % qiita_id)
+
+            # get list of samples as presented by the sample-sheet or mapping
+            # file and confirm that they are all registered in Qiita.
+            samples = set(self.pipeline.get_sample_names())
+
+            self.foo("SAMPLES IN SHEET: %s\n" % samples)
+
+            # strip any leading zeroes from the sample-ids. Note that
+            # if a sample-id has more than one leading zero, all of
+            # them will be removed.
+            samples = {x.lstrip('0') for x in samples}
+
+            # just get a list of the tube-ids themselves, not what they map
+            # to.
+            if qiita_id in self.tube_id_map:
+                # if map is not empty
+                tids = [self.tube_id_map[qiita_id][x] for x in
+                        self.tube_id_map[qiita_id]]
+                self.foo("TIDS: %s\n" % tids)
+                not_in_qiita = samples - set(tids)
+                self.foo("NOT IN QIITA: %s\n" % not_in_qiita)
+                examples = tids[:5]
+                used_tids = True
+            else:
+                # assume project is in samples_in_qiita
+                not_in_qiita = samples - set(self.samples_in_qiita)
+                self.foo("SAMPLES IN QIITA: %s\n" % set(self.samples_in_qiita))
+                self.foo("NOT IN QIITA: %s\n" % not_in_qiita)
+                examples = list(samples)[:5]
+                used_tids = False
+
+            # convert to strings before returning
+            examples = [str(x) for x in examples]
+
+            if not_in_qiita:
+                # if there are actual differences
+                results.append({'samples_not_in_qiita': not_in_qiita,
+                                'examples_in_qiita': examples,
+                                'project_name': project_name,
+                                'tids': used_tids})
+        return results
+
+    @classmethod
+    def _overwrite_prep_file(cls, prep_file_path, qiita_id, tube_id_map):
+        # passing tube_id_map as a parameter allows for easier testing.
+        df = pd.read_csv(prep_file_path, sep='\t', dtype=str, index_col=False)
+        # save copy of sample_name column as 'old_sample_name'
+        df['old_sample_name'] = df['sample_name']
+        for i in df.index:
+            sample_name = df.at[i, "sample_name"]
+            # blanks do not get their names swapped.
+            if sample_name.startswith('BLANK'):
+                continue
+
+            # remove leading zeroes if they exist to match Qiita results.
+            sample_name = sample_name.lstrip('0')
+            if sample_name in tube_id_map[qiita_id]:
+                df.at[i, "sample_name"] = tube_id_map[qiita_id][sample_name]
+
+        df.to_csv(prep_file_path, index=False, sep="\t")
+
+    def _overwrite_prep_files(self, prep_file_paths):
+        # replaces sample-names in prep-files with tube-ids according to
+        # a dict with project-names as keys and another dict as a value.
+        # this dict uses sample-names as keys and tube-ids as values.
+        if self.tube_id_map is None:
+            raise ValueError("get_tube_ids_from_qiita() was not called")
+
+        projects = self.pipeline.get_project_info(short_names=True)
+
+        for project in projects:
+            project_name = project['project_name']
+            qiita_id = str(project['qiita_id'])
+
+            if qiita_id not in self.tube_id_map:
+                continue
+
+            # prep files are named in the form:
+            # 20220423_FS10001773_12_BRB11603-0615.Matrix_Tube_LBM_14332.1.tsv
+            # search on project_name vs qiita_id since it's slightly more
+            # unique.
+            matching_files = [x for x in prep_file_paths if project_name in x]
+
+            if len(matching_files) == 0:
+                continue
+
+            if len(matching_files) > 1:
+                raise ValueError("More than one match found for project "
+                                 f"'{project_name}': {str(matching_files)}")
+
+            Step._overwrite_prep_file(matching_files[0],
+                                      qiita_id,
+                                      self.tube_id_map)
+
+    def update_blanks_in_qiita(self, qclient):
+        for sif_path in self.sifs:
             # get study_id from sif_file_name ...something_14385_blanks.tsv
             study_id = sif_path.split('_')[-2]
 
@@ -439,3 +566,20 @@ class Step:
                                    data=dumps(data))
 
                 return data
+
+    def _generate_touched_studies(self, qclient, data_type):
+        touched_studies_prep_info = defaultdict(list)
+
+        for study_id in self.prep_file_paths:
+            for prep_file_path in self.prep_file_paths[study_id]:
+                metadata = Step.parse_prep_file(prep_file_path)
+                data = {'prep_info': dumps(metadata),
+                        'study': study_id,
+                        'data_type': data_type}
+
+                reply = qclient.post('/qiita_db/prep_template/', data=data)
+                prep_id = reply['prep']
+
+                touched_studies_prep_info[study_id].append(prep_id)
+
+        self.touched_studies_prep_info = touched_studies_prep_info

@@ -54,6 +54,6 @@ class AmpliconTests(BaseStepTests):
                                         AmpliconTests.CONFIGURATION)
 
         with self.assertRaisesRegex(ValueError, "Cannot create an Amplicon run"
-                                                " using a metagenomic-"
+                                                " using a Metagenomic-"
                                                 "configured Pipeline."):
             Amplicon(metagenomic_pipeline, self.qiita_id, {}, None)
