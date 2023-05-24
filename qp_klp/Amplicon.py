@@ -95,8 +95,6 @@ class Amplicon(Step):
             tg = set(metadata['sample target_gene'])
             if len(tg) != 1:
                 raise ValueError("More than one value for target_gene")
-            else:
-                tg = tg.pop()
 
             data_type = None
             for key in Step.AMPLICON_SUB_TYPES:
@@ -109,7 +107,7 @@ class Amplicon(Step):
                 raise ValueError(f"Valid data-types "
                                  f"{Step.AMPLICON_SUB_TYPES} could not"
                                  " be found within target_gene value "
-                                 f"'{tg}'")
+                                 f"'{tg.pop()}'")
 
             return data_type
         else:
@@ -118,9 +116,9 @@ class Amplicon(Step):
 
     def generate_touched_studies(self, qclient):
         results = {}
-        for study_id in self.prep_file_paths:
-            for prep_file_path in self.prep_file_paths[study_id]:
-                results[prep_file_path] = self._get_data_type(prep_file_path)
+        for study_id, pf_paths in self.prep_file_paths.items():
+            for pf_path in pf_paths:
+                results[pf_path] = self._get_data_type(pf_path)
 
         super()._generate_touched_studies(qclient, results)
 
