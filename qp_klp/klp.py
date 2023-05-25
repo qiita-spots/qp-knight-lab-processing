@@ -190,43 +190,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             if msgs:
                 raise PipelineError('\n'.join(msgs))
 
-        # find the uploads directory all trimmed files will need to be
-        # moved to and generate a map.
-        step.generate_special_map(qclient)
-
-        status_line.update_current_message()
-        step.convert_bcl_to_fastq()
-
-        status_line.update_current_message()
-        step.quality_control()
-
-        status_line.update_current_message()
-        step.generate_reports()
-
-        status_line.update_current_message()
-        step.generate_prep_file()
-
-        status_line.update_current_message()
-        sifs = step.generate_sifs(qclient)
-
-        status_line.update_current_message()
-        Step.update_blanks_in_qiita(sifs, qclient)    # comment to test
-
-        prep_file_paths = step.get_prep_file_paths()
-
-        status_line.update_current_message()
-        ptype = step.pipeline.pipeline_type
-        # comment below to test
-        Step.update_prep_templates(qclient, prep_file_paths, ptype)
-
-        step.generate_touched_studies(qclient)
-
-        # generate commands to execute
-        status_line.update_current_message()
-        step.generate_commands(qclient)
-
-        status_line.update_current_message()
-        step.execute_commands()   # comment to test
+        # set update=False to prevent updating Qiita database and copying
+        # files into uploads directory. Useful for testing.
+        step.execute_pipeline(qclient,
+                              status_line.update_current_message(),
+                              update=True)
 
     except PipelineError as e:
         return False, None, str(e)

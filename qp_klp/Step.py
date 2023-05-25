@@ -583,3 +583,50 @@ class Step:
                 touched_studies_prep_info[study_id].append(prep_id)
 
         self.touched_studies_prep_info = touched_studies_prep_info
+
+    def execute_pipeline(self, qclient, increment_status, update=True):
+        '''
+        Executes steps of pipeline in proper sequence.
+        :param qclient: Qiita client library or equivalent.
+        :param increment_status: callback function to increment status.
+        :param update: Set False to prevent updates to Qiita.
+        :return: None
+        '''
+        self.generate_special_map(qclient)
+
+        increment_status()
+        self.convert_bcl_to_fastq()
+
+        increment_status()
+        self.quality_control()
+
+        increment_status()
+        self.generate_reports()
+
+        increment_status()
+        self.generate_prep_file()
+
+        increment_status()
+        sifs = self.generate_sifs(qclient)
+
+        increment_status()
+
+        if update:
+            Step.update_blanks_in_qiita(sifs, qclient)
+
+        prep_file_paths = self.get_prep_file_paths()
+
+        increment_status()
+        ptype = self.pipeline.pipeline_type
+
+        if update:
+            Step.update_prep_templates(qclient, prep_file_paths, ptype)
+
+        self.generate_touched_studies(qclient)
+
+        increment_status()
+        self.generate_commands(qclient)
+
+        increment_status()
+        if update:
+            self.execute_commands()
