@@ -102,6 +102,7 @@ class Amplicon(Step):
                 # rather than equal to tg.
                 if key in tg:
                     data_type = key
+                    break
 
             if data_type is None:
                 raise ValueError(f"Valid data-types "

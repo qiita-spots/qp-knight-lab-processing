@@ -10,7 +10,7 @@ from qp_klp.Step import Step
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os.path import join, abspath
 from functools import partial
-from os import makedirs, chmod
+from os import makedirs, chmod, access, W_OK
 from shutil import rmtree
 from os import environ, remove, getcwd
 from json import dumps
@@ -242,16 +242,6 @@ class BaseStepTests(TestCase):
 
         self.delete_these = []
 
-    def _is_writable(self, a_path):
-        try:
-            tmp_path = join(a_path, 'qpklp_temp_file')
-            with open(tmp_path, 'w') as f:
-                f.write('this is a test\n')
-            remove(tmp_path)
-            return True
-        except IOError:
-            return False
-
     def _get_searchable_path(self):
         searchable_paths = []
 
@@ -265,7 +255,7 @@ class BaseStepTests(TestCase):
             searchable_paths += tmp.split(':')
 
         for a_path in searchable_paths:
-            if self._is_writable(a_path):
+            if access(a_path, W_OK):
                 return a_path
 
     def _create_fake_bin(self, name, content):
@@ -554,7 +544,8 @@ class BasicStepTests(BaseStepTests):
     def test_generate_special_map(self):
         fake_client = FakeClient()
         step = Step(self.pipeline, self.qiita_id, None)
-        obs = step.generate_special_map(fake_client)
+        step.generate_special_map(fake_client)
+        obs = step.special_map
 
         exp = [('NYU_BMS_Melanoma_13059',
                 join(fake_client.base_path, 'uploads/13059'), '13059'),
@@ -592,7 +583,8 @@ class BasicStepTests(BaseStepTests):
     def test_get_tube_ids_from_qiita(self):
         fake_client = FakeClient()
         step = Step(self.pipeline, self.qiita_id, None)
-        obs = step.get_tube_ids_from_qiita(fake_client)
+        step.get_tube_ids_from_qiita(fake_client)
+        obs = step.tube_id_map
 
         exp = {'13059': {'SP331130A04': 'SP331130A-4',
                          'AP481403B02': 'AP481403B-2',

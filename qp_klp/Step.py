@@ -168,9 +168,6 @@ class Step:
 
         self.special_map = special_map
 
-        # for ease of debugging
-        return self.special_map
-
     @classmethod
     def update_prep_templates(cls, qclient, prep_file_paths, pipeline_type):
         '''
@@ -420,9 +417,6 @@ class Step:
         self.tube_id_map = tids_by_qiita_id
         self.samples_in_qiita = sample_names_by_qiita_id
 
-        # not needed, but useful in displaying debugging info
-        return tids_by_qiita_id
-
     def compare_samples_against_qiita(self):
         projects = self.pipeline.get_project_info(short_names=True)
 
@@ -467,7 +461,7 @@ class Step:
         return results
 
     @classmethod
-    def _overwrite_prep_file(cls, prep_file_path, qiita_id, tube_id_map):
+    def _replace_with_tube_ids(cls, prep_file_path, qiita_id, tube_id_map):
         # passing tube_id_map as a parameter allows for easier testing.
         df = pd.read_csv(prep_file_path, sep='\t', dtype=str, index_col=False)
         # save copy of sample_name column as 'old_sample_name'
@@ -514,9 +508,9 @@ class Step:
                 raise ValueError("More than one match found for project "
                                  f"'{project_name}': {str(matching_files)}")
 
-            Step._overwrite_prep_file(matching_files[0],
-                                      qiita_id,
-                                      self.tube_id_map)
+            Step._replace_with_tube_ids(matching_files[0],
+                                        qiita_id,
+                                        self.tube_id_map)
 
     def update_blanks_in_qiita(self, qclient):
         for sif_path in self.sifs:
