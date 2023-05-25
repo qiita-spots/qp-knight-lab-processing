@@ -156,6 +156,7 @@ class Step:
         # trimmed files are stored by qiita_id. Find the qiita_id
         # associated with each project and ensure a subdirectory exists
         # for when it comes time to move the trimmed files.
+
         special_map = []
         results = qclient.get("/qiita_db/artifacts/types/")
         projects = self.pipeline.get_project_info()
@@ -166,6 +167,9 @@ class Step:
                                 project['qiita_id']))
 
         self.special_map = special_map
+
+        # for ease of debugging
+        return self.special_map
 
     @classmethod
     def update_prep_templates(cls, qclient, prep_file_paths, pipeline_type):

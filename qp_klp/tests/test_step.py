@@ -12,8 +12,44 @@ from os.path import join, abspath
 from functools import partial
 from os import makedirs, chmod
 from shutil import rmtree
-from os import environ, remove
+from os import environ, remove, getcwd
 from json import dumps
+
+
+class FakeClient():
+    def __init__(self):
+        self.cwd = getcwd()
+        self.base_path = join(self.cwd, 'qp_klp/tests/data/QDir')
+        self.qdirs = {'Demultiplexed': 'Demultiplexed',
+                      'beta_div_plots': 'analysis/beta_div_plots',
+                      'rarefaction_curves': 'analysis/rarefaction_curves',
+                      'taxa_summary': 'analysis/taxa_summary',
+                      'q2_visualization': 'working_dir',
+                      'distance_matrix': 'working_dir',
+                      'ordination_results': 'working_dir',
+                      'alpha_vector': 'working_dir',
+                      'FASTQ': 'FASTQ',
+                      'BIOM': 'BIOM',
+                      'per_sample_FASTQ': 'per_sample_FASTQ',
+                      'SFF': 'SFF',
+                      'FASTA': 'FASTA',
+                      'FASTA_Sanger': 'FASTA_Sanger',
+                      'FeatureData': 'FeatureData',
+                      'job-output-folder': 'job-output-folder',
+                      'BAM': 'BAM',
+                      'VCF': 'VCF',
+                      'SampleData': 'SampleData',
+                      'uploads': 'uploads'}
+
+        for key in self.qdirs:
+            self.qdirs[key] = join(self.base_path, self.qdirs[key])
+
+        for qdir in self.qdirs:
+            makedirs(self.qdirs[qdir], exist_ok=True)
+
+    def get(self, url):
+        if url == '/qiita_db/artifacts/types/':
+            return self.qdirs
 
 
 class BaseStepTests(TestCase):
@@ -108,10 +144,10 @@ class BaseStepTests(TestCase):
 
     def _is_writable(self, a_path):
         try:
-            tmp = join(a_path, 'qpklp_temp_file')
-            with open(tmp, 'w') as f:
+            tmp_path = join(a_path, 'qpklp_temp_file')
+            with open(tmp_path, 'w') as f:
                 f.write('this is a test\n')
-            remove(tmp)
+            remove(tmp_path)
             return True
         except IOError:
             return False
@@ -242,15 +278,21 @@ class BaseStepTests(TestCase):
         step = Step(self.pipeline, self.qiita_id, None)
         step._quality_control(self.config['qc'], self.good_sample_sheet_path)
 
-    def test_generate_pipeline(self):
-        tmp = join('.', 'tmp.config')
-        with open(tmp, 'w') as f:
+    def create_config_file(self):
+        tmp_path = join('.', 'tmp.config')
+        with open(tmp_path, 'w') as f:
             f.write(dumps(BaseStepTests.CONFIGURATION, indent=2))
+
+        self.delete_these.append(tmp_path)
+        return tmp_path
+
+    def test_generate_pipeline(self):
+        config_file_path = self.create_config_file()
 
         pipeline = Step.generate_pipeline(Step.METAGENOMIC_TYPE,
                                           self.good_sample_sheet_path,
                                           1,
-                                          tmp,
+                                          config_file_path,
                                           self.good_run_id,
                                           self.output_file_path,
                                           self.qiita_id)
@@ -260,7 +302,7 @@ class BaseStepTests(TestCase):
         pipeline = Step.generate_pipeline(Step.AMPLICON_TYPE,
                                           self.good_mapping_file_path,
                                           1,
-                                          tmp,
+                                          config_file_path,
                                           self.good_run_id,
                                           self.output_file_path,
                                           self.qiita_id)
@@ -270,14 +312,12 @@ class BaseStepTests(TestCase):
         pipeline = Step.generate_pipeline(Step.METATRANSCRIPTOMIC_TYPE,
                                           self.good_transcript_sheet_path,
                                           1,
-                                          tmp,
+                                          config_file_path,
                                           self.good_run_id,
                                           self.output_file_path,
                                           self.qiita_id)
 
         self.assertIsNotNone(pipeline)
-
-        remove(tmp)
 
     def test_get_project_info(self):
         obs = self.pipeline.get_project_info()
@@ -405,3 +445,17 @@ class BaseStepTests(TestCase):
                            'non_host_reads': '14'}}
 
         self.assertDictEqual(obs, exp)
+
+    def test_generate_special_map(self):
+        fake_client = FakeClient()
+        step = Step(self.pipeline, self.qiita_id, None)
+        obs = step.generate_special_map(fake_client)
+
+        exp = [('NYU_BMS_Melanoma_13059',
+                join(fake_client.base_path, 'uploads/13059'), '13059'),
+               ('Feist_11661',
+                join(fake_client.base_path, 'uploads/11661'), '11661'),
+               ('Gerwick_6123',
+                join(fake_client.base_path, 'uploads/6123'), '6123')]
+
+        self.assertEquals(obs, exp)
