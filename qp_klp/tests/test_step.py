@@ -146,6 +146,13 @@ class FakeClient():
 
 
 class BaseStepTests(TestCase):
+    '''
+    BaseStepTests contains all the configuration information and helper
+    functions used by every child StepTests class. This class does not
+    include any tests. All tests defined in this class will be inherited by
+    every child and will consequently be run multiple times. Hence, general
+    functionality is instead tested by BasicStepSteps class.
+    '''
     CONFIGURATION = {
         "configuration": {
             "pipeline": {
@@ -310,6 +317,11 @@ class BaseStepTests(TestCase):
         rmtree(self.output_file_path)
         for fake_bin in self.delete_these:
             remove(fake_bin)
+
+
+class BasicStepTests(BaseStepTests):
+    def setUp(self):
+        super().setUp()
 
     def test_creation(self):
         # Test base-class creation method, even though base-class will never
@@ -582,19 +594,19 @@ class BaseStepTests(TestCase):
         step = Step(self.pipeline, self.qiita_id, None)
         obs = step.get_tube_ids_from_qiita(fake_client)
 
-        exp = {'13059': {'11661.RMA_KHP_rpoS_Mage_Q97D': '',
-                         '11661.RMA_KHP_rpoS_Mage_Q97L': '',
-                         '11661.RMA_KHP_rpoS_Mage_Q97N': '',
-                         '11661.RMA_KHP_rpoS_Mage_Q97E': '',
-                         '11661.JBI_KHP_HGL_021': '',
-                         '11661.JBI_KHP_HGL_022': '',
-                         '11661.JBI_KHP_HGL_023': '',
-                         '11661.JBI_KHP_HGL_024': '',
-                         '11661.JBI_KHP_HGL_025': '',
-                         '11661.JBI_KHP_HGL_026': ''},
+        exp = {'13059': {'SP331130A04': 'SP331130A-4',
+                         'AP481403B02': 'AP481403B-2',
+                         'LP127829A02': 'LP127829A-2',
+                         'BLANK3.3B': 'BLANK3.3B',
+                         'EP529635B02': 'EP529635B02',
+                         'EP542578B04': 'EP542578B-4',
+                         'EP446602B01': 'EP446602B-1',
+                         'EP121011B01': 'EP121011B-1',
+                         'EP636802A01': 'EP636802A-1',
+                         'SP573843A04': 'SP573843A-4'},
                '11661': {'1.24': '1.24', '1.57': '1.57', '1.86': '1.86',
                          '10.17': '10.17', '10.41': '10.41', '10.64': '10.64',
                          '11.18': '11.18', '11.43': '11.43', '11.64': '11.64',
                          '12.15': '12.15'}}
 
-        self.assertEqual(obs, exp)
+        self.assertDictEqual(obs, exp)

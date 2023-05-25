@@ -15,7 +15,7 @@ class MetagenomicTests(BaseStepTests):
     def setUp(self):
         super().setUp()
 
-    def test_creation(self):
+    def test_metagenomic_creation(self):
         # Test base-class creation method, even though base-class will never
         # be instantiated by itself in normal usage.
         self._delete_test_output()
@@ -47,7 +47,7 @@ class MetagenomicTests(BaseStepTests):
 
         self.assertIsNotNone(step)
 
-    def test_convert_bcl_to_fastq(self):
+    def test_metagenomic_convert_bcl_to_fastq(self):
         self._delete_test_output()
         self._create_test_input(1)
 
@@ -55,7 +55,7 @@ class MetagenomicTests(BaseStepTests):
 
         step.convert_bcl_to_fastq()
 
-    def test_quality_control(self):
+    def test_metagenomic_quality_control(self):
         self._delete_test_output()
         self._create_test_input(2)
 
