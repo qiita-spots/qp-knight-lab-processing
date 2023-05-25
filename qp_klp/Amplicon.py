@@ -92,25 +92,17 @@ class Amplicon(Step):
     def _get_data_type(self, prep_file_path):
         metadata = Step.parse_prep_file(prep_file_path)
         if 'target_gene' in metadata.columns:
-            tg = set(metadata['sample target_gene'])
+            # remove duplicate values, then convert back to list for
+            # accession.
+            tg = list(set(metadata['sample target_gene']))
             if len(tg) != 1:
                 raise ValueError("More than one value for target_gene")
 
-            data_type = None
-            for key in Step.AMPLICON_SUB_TYPES:
-                # the key sub_types are often substrings of tg,
-                # rather than equal to tg.
-                if key in tg:
-                    data_type = key
-                    break
+            if tg[0] in Step.AMPLICON_SUB_TYPES:
+                return tg[0]
 
-            if data_type is None:
-                raise ValueError(f"Valid data-types "
-                                 f"{Step.AMPLICON_SUB_TYPES} could not"
-                                 " be found within target_gene value "
-                                 f"'{tg.pop()}'")
-
-            return data_type
+            raise ValueError(f"'{tg[0]}' is not a valid type - valid data-"
+                             f"types are {Step.AMPLICON_SUB_TYPES}")
         else:
             raise ValueError("'target_gene' column not present in "
                              "generated prep-files")
