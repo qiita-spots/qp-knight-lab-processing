@@ -135,14 +135,11 @@ jobs:
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           export QP_KLP_CONFIG_FP=`pwd`/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
-          nosetests --with-coverage --cover-inclusive --cover-package qp_klp
-
-      - name: Coveralls
-        uses: AndreMiras/coveralls-python-action@develop
+          nosetests --with-doctest --with-coverage -v --cover-package=qp_klp
+      - uses: codecov/codecov-action@v1
         with:
-          parallel: true
-          flag-name: Unit Test
-
+         token: ${{ secrets.CODECOV_TOKEN }}
+         file: codecov.yml
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -158,14 +155,4 @@ jobs:
       run: |
         pip install -q flake8
         flake8 qp_klp setup.py scripts/*
-
-  coveralls_finish:
-    needs: main
-    runs-on: ubuntu-latest
-    steps:
-    - name: Coveralls Finished
-      uses: AndreMiras/coveralls-python-action@develop
-      with:
-        github-token: ${{ secrets.github_token }}
-        parallel-finished: true
 
