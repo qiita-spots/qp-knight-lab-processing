@@ -52,7 +52,6 @@ class MetagenomicTests(BaseStepTests):
         self._create_test_input(1)
 
         step = Metagenomic(self.pipeline, self.qiita_id, None)
-
         step.convert_bcl_to_fastq()
 
     def test_metagenomic_quality_control(self):
