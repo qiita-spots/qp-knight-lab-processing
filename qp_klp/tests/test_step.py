@@ -10,13 +10,149 @@ from qp_klp.Step import Step
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os.path import join, abspath
 from functools import partial
-from os import makedirs, chmod
+from os import makedirs, chmod, access, W_OK
 from shutil import rmtree
-from os import environ, remove
+from os import environ, remove, getcwd
 from json import dumps
 
 
+class FakeClient():
+    def __init__(self):
+        self.cwd = getcwd()
+        self.base_path = join(self.cwd, 'qp_klp/tests/data/QDir')
+        self.qdirs = {'Demultiplexed': 'Demultiplexed',
+                      'beta_div_plots': 'analysis/beta_div_plots',
+                      'rarefaction_curves': 'analysis/rarefaction_curves',
+                      'taxa_summary': 'analysis/taxa_summary',
+                      'q2_visualization': 'working_dir',
+                      'distance_matrix': 'working_dir',
+                      'ordination_results': 'working_dir',
+                      'alpha_vector': 'working_dir',
+                      'FASTQ': 'FASTQ',
+                      'BIOM': 'BIOM',
+                      'per_sample_FASTQ': 'per_sample_FASTQ',
+                      'SFF': 'SFF',
+                      'FASTA': 'FASTA',
+                      'FASTA_Sanger': 'FASTA_Sanger',
+                      'FeatureData': 'FeatureData',
+                      'job-output-folder': 'job-output-folder',
+                      'BAM': 'BAM',
+                      'VCF': 'VCF',
+                      'SampleData': 'SampleData',
+                      'uploads': 'uploads'}
+
+        self.samples_in_13059 = ['13059.SP331130A04', '13059.AP481403B02',
+                                 '13059.LP127829A02', '13059.BLANK3.3B',
+                                 '13059.EP529635B02', '13059.EP542578B04',
+                                 '13059.EP446602B01', '13059.EP121011B01',
+                                 '13059.EP636802A01', '13059.SP573843A04']
+
+        # note these samples have known tids, but aren't in good-sample-sheet.
+        self.samples_in_11661 = ['11661.1.24', '11661.1.57', '11661.1.86',
+                                 '11661.10.17', '11661.10.41', '11661.10.64',
+                                 '11661.11.18', '11661.11.43', '11661.11.64',
+                                 '11661.12.15']
+
+        self.samples_in_6123 = ['3A', '4A', '5B', '6A', 'BLANK_41_12G', '7A',
+                                '8A', 'ISB', 'GFR', '6123']
+
+        self.info_in_11661 = {'number-of-samples': 10,
+                              'categories': ['sample_type', 'tube_id']}
+
+        self.info_in_13059 = {'number-of-samples': 10,
+                              'categories': ['anonymized_name',
+                                             'collection_timestamp',
+                                             'description',
+                                             'dna_extracted',
+                                             'elevation', 'empo_1',
+                                             'empo_2', 'empo_3',
+                                             'env_biome', 'env_feature',
+                                             'env_material',
+                                             'env_package',
+                                             'geo_loc_name', 'host_age',
+                                             'host_age_units',
+                                             'host_body_habitat',
+                                             'host_body_mass_index',
+                                             'host_body_product',
+                                             'host_body_site',
+                                             'host_common_name',
+                                             'host_height',
+                                             'host_height_units',
+                                             'host_life_stage',
+                                             'host_scientific_name',
+                                             'host_subject_id',
+                                             'host_taxid', 'host_weight',
+                                             'host_weight_units',
+                                             'latitude', 'longitude',
+                                             'nyuid',
+                                             'physical_specimen_location',
+                                             'physical_specimen_remaining',
+                                             'predose_time',
+                                             'sample_type',
+                                             'scientific_name', 'sex',
+                                             'subject_id', 'taxon_id',
+                                             'title', 'tube_id']}
+
+        # Study not in qiita-rc. Faking results.
+        self.info_in_6123 = {'number-of-samples': 10,
+                             'categories': ['sample_type', 'subject_id',
+                                            'title']}
+
+        self.tids_13059 = {"header": ["tube_id"],
+                           "samples": {'13059.SP331130A04': ['SP331130A-4'],
+                                       '13059.AP481403B02': ['AP481403B-2'],
+                                       '13059.LP127829A02': ['LP127829A-2'],
+                                       '13059.BLANK3.3B': ['BLANK3.3B'],
+                                       '13059.EP529635B02': ['EP529635B02'],
+                                       '13059.EP542578B04': ['EP542578B-4'],
+                                       '13059.EP446602B01': ['EP446602B-1'],
+                                       '13059.EP121011B01': ['EP121011B-1'],
+                                       '13059.EP636802A01': ['EP636802A-1'],
+                                       '13059.SP573843A04': ['SP573843A-4']}}
+
+        self.tids_11661 = {"header": ["tube_id"],
+                           "samples": {"11661.1.24": ["1.24"],
+                                       "11661.1.57": ["1.57"],
+                                       "11661.1.86": ["1.86"],
+                                       "11661.10.17": ["10.17"],
+                                       "11661.10.41": ["10.41"],
+                                       "11661.10.64": ["10.64"],
+                                       "11661.11.18": ["11.18"],
+                                       "11661.11.43": ["11.43"],
+                                       "11661.11.64": ["11.64"],
+                                       "11661.12.15": ["12.15"]}}
+
+        for key in self.qdirs:
+            self.qdirs[key] = join(self.base_path, self.qdirs[key])
+
+        for qdir in self.qdirs:
+            makedirs(self.qdirs[qdir], exist_ok=True)
+
+    def get(self, url):
+        m = {'/api/v1/study/11661/samples': self.samples_in_11661,
+             '/api/v1/study/11661/samples/categories=tube_id': self.tids_11661,
+             '/api/v1/study/11661/samples/info': self.info_in_11661,
+             '/api/v1/study/13059/samples': self.samples_in_13059,
+             '/api/v1/study/13059/samples/categories=tube_id': self.tids_13059,
+             '/api/v1/study/13059/samples/info': self.info_in_13059,
+             '/api/v1/study/6123/samples': self.samples_in_6123,
+             '/api/v1/study/6123/samples/info': self.info_in_6123,
+             '/qiita_db/artifacts/types/': self.qdirs}
+
+        if url in m:
+            return m[url]
+
+        return None
+
+
 class BaseStepTests(TestCase):
+    '''
+    BaseStepTests contains all the configuration information and helper
+    functions used by every child StepTests class. This class does not
+    include any tests. All tests defined in this class will be inherited by
+    every child and will consequently be run multiple times. Hence, general
+    functionality is instead tested by BasicStepSteps class.
+    '''
     CONFIGURATION = {
         "configuration": {
             "pipeline": {
@@ -106,16 +242,6 @@ class BaseStepTests(TestCase):
 
         self.delete_these = []
 
-    def _is_writable(self, a_path):
-        try:
-            tmp = join(a_path, 'qpklp_temp_file')
-            with open(tmp, 'w') as f:
-                f.write('this is a test\n')
-            remove(tmp)
-            return True
-        except IOError:
-            return False
-
     def _get_searchable_path(self):
         searchable_paths = []
 
@@ -129,7 +255,7 @@ class BaseStepTests(TestCase):
             searchable_paths += tmp.split(':')
 
         for a_path in searchable_paths:
-            if self._is_writable(a_path):
+            if access(a_path, W_OK):
                 return a_path
 
     def _create_fake_bin(self, name, content):
@@ -182,27 +308,25 @@ class BaseStepTests(TestCase):
         for fake_bin in self.delete_these:
             remove(fake_bin)
 
+
+class BasicStepTests(BaseStepTests):
+    def setUp(self):
+        super().setUp()
+
     def test_creation(self):
         # Test base-class creation method, even though base-class will never
         # be instantiated by itself in normal usage.
         self._delete_test_output()
 
-        # TODO: Note we don't do much with this variable yet.
-        sn_tid_map_by_project = {}
-
         with self.assertRaisesRegex(ValueError, "A pipeline object is needed"
                                                 " to initialize Step"):
-            Step(None, self.qiita_id, sn_tid_map_by_project, None)
+            Step(None, self.qiita_id, None)
 
         with self.assertRaisesRegex(ValueError, "A Qiita job-id is needed to "
                                                 "initialize Step"):
-            Step(self.pipeline, None, sn_tid_map_by_project, None)
+            Step(self.pipeline, None, None)
 
-        with self.assertRaisesRegex(ValueError, "sn_tid_map_by_project is "
-                                                "needed to initialize Step"):
-            Step(self.pipeline, self.qiita_id, None, None)
-
-        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+        step = Step(self.pipeline, self.qiita_id, None)
 
         self.assertIsNotNone(step)
 
@@ -210,8 +334,7 @@ class BaseStepTests(TestCase):
         self._delete_test_output()
         self._create_test_input(1)
 
-        sn_tid_map_by_project = {}
-        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+        step = Step(self.pipeline, self.qiita_id, None)
 
         fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
         makedirs(fake_path, exist_ok=True)
@@ -247,19 +370,24 @@ class BaseStepTests(TestCase):
                     with open(file_path, 'w') as f:
                         f.write("This is a file.")
 
-        sn_tid_map_by_project = {}
-        step = Step(self.pipeline, self.qiita_id, sn_tid_map_by_project, None)
+        step = Step(self.pipeline, self.qiita_id, None)
         step._quality_control(self.config['qc'], self.good_sample_sheet_path)
 
-    def test_generate_pipeline(self):
-        tmp = join('.', 'tmp.config')
-        with open(tmp, 'w') as f:
+    def create_config_file(self):
+        tmp_path = join('.', 'tmp.config')
+        with open(tmp_path, 'w') as f:
             f.write(dumps(BaseStepTests.CONFIGURATION, indent=2))
+
+        self.delete_these.append(tmp_path)
+        return tmp_path
+
+    def test_generate_pipeline(self):
+        config_file_path = self.create_config_file()
 
         pipeline = Step.generate_pipeline(Step.METAGENOMIC_TYPE,
                                           self.good_sample_sheet_path,
                                           1,
-                                          tmp,
+                                          config_file_path,
                                           self.good_run_id,
                                           self.output_file_path,
                                           self.qiita_id)
@@ -269,7 +397,7 @@ class BaseStepTests(TestCase):
         pipeline = Step.generate_pipeline(Step.AMPLICON_TYPE,
                                           self.good_mapping_file_path,
                                           1,
-                                          tmp,
+                                          config_file_path,
                                           self.good_run_id,
                                           self.output_file_path,
                                           self.qiita_id)
@@ -279,14 +407,12 @@ class BaseStepTests(TestCase):
         pipeline = Step.generate_pipeline(Step.METATRANSCRIPTOMIC_TYPE,
                                           self.good_transcript_sheet_path,
                                           1,
-                                          tmp,
+                                          config_file_path,
                                           self.good_run_id,
                                           self.output_file_path,
                                           self.qiita_id)
 
         self.assertIsNotNone(pipeline)
-
-        remove(tmp)
 
     def test_get_project_info(self):
         obs = self.pipeline.get_project_info()
@@ -412,5 +538,67 @@ class BaseStepTests(TestCase):
                            'raw_reads': '14303',
                            'quality_filtered_reads': '12',
                            'non_host_reads': '14'}}
+
+        self.assertDictEqual(obs, exp)
+
+    def test_generate_special_map(self):
+        fake_client = FakeClient()
+        step = Step(self.pipeline, self.qiita_id, None)
+        step.generate_special_map(fake_client)
+        obs = step.special_map
+
+        exp = [('NYU_BMS_Melanoma_13059',
+                join(fake_client.base_path, 'uploads/13059'), '13059'),
+               ('Feist_11661',
+                join(fake_client.base_path, 'uploads/11661'), '11661'),
+               ('Gerwick_6123',
+                join(fake_client.base_path, 'uploads/6123'), '6123')]
+
+        self.assertEquals(obs, exp)
+
+    def test_get_samples_in_qiita(self):
+        fake_client = FakeClient()
+        step = Step(self.pipeline, self.qiita_id, None)
+        obs_samples, obs_tids = step.get_samples_in_qiita(fake_client, '13059')
+
+        exp_samples = {'EP121011B01', 'EP529635B02', 'EP542578B04',
+                       'SP573843A04', 'SP331130A04', 'EP446602B01',
+                       'BLANK3.3B', 'AP481403B02', 'LP127829A02',
+                       'EP636802A01'}
+
+        exp_tids = {'13059.SP331130A04': ['SP331130A-4'],
+                    '13059.AP481403B02': ['AP481403B-2'],
+                    '13059.LP127829A02': ['LP127829A-2'],
+                    '13059.BLANK3.3B': ['BLANK3.3B'],
+                    '13059.EP529635B02': ['EP529635B02'],
+                    '13059.EP542578B04': ['EP542578B-4'],
+                    '13059.EP446602B01': ['EP446602B-1'],
+                    '13059.EP121011B01': ['EP121011B-1'],
+                    '13059.EP636802A01': ['EP636802A-1'],
+                    '13059.SP573843A04': ['SP573843A-4']}
+
+        self.assertEqual(obs_samples, exp_samples)
+        self.assertDictEqual(obs_tids, exp_tids)
+
+    def test_get_tube_ids_from_qiita(self):
+        fake_client = FakeClient()
+        step = Step(self.pipeline, self.qiita_id, None)
+        step.get_tube_ids_from_qiita(fake_client)
+        obs = step.tube_id_map
+
+        exp = {'13059': {'SP331130A04': 'SP331130A-4',
+                         'AP481403B02': 'AP481403B-2',
+                         'LP127829A02': 'LP127829A-2',
+                         'BLANK3.3B': 'BLANK3.3B',
+                         'EP529635B02': 'EP529635B02',
+                         'EP542578B04': 'EP542578B-4',
+                         'EP446602B01': 'EP446602B-1',
+                         'EP121011B01': 'EP121011B-1',
+                         'EP636802A01': 'EP636802A-1',
+                         'SP573843A04': 'SP573843A-4'},
+               '11661': {'1.24': '1.24', '1.57': '1.57', '1.86': '1.86',
+                         '10.17': '10.17', '10.41': '10.41', '10.64': '10.64',
+                         '11.18': '11.18', '11.43': '11.43', '11.64': '11.64',
+                         '12.15': '12.15'}}
 
         self.assertDictEqual(obs, exp)

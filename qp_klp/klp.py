@@ -8,16 +8,13 @@
 from functools import partial
 from os import environ
 from qiita_client import ArtifactInfo
-from random import sample as rsampl
 from qp_klp.Amplicon import Amplicon
 from qp_klp.Metagenomic import Metagenomic
 from qp_klp.Step import Step
-from json import dumps
 from os import makedirs
 from os.path import join
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
-from collections import defaultdict
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
@@ -28,7 +25,7 @@ class StatusUpdate():
         self.qclient = qclient
         self.job_id = job_id
         self.msg = ''
-        self.current_step = 1
+        self.current_step = 0
         self.step_count = len(msgs)
         self.msgs = msgs
 
@@ -43,10 +40,11 @@ class StatusUpdate():
         # internal function that sets current_message to the new value before
         # updating the job step in the UI.
         if include_step:
-            self.msg = (f"Step {self.current_step} of {self.step_count}: "
-                        f"{self.msgs[self.step_count]}")
+            msg = "Step %d of %d: " % (self.current_step + 1, self.step_count)
         else:
-            self.msg = (f"{self.msgs[self.step_count]}")
+            msg = ""
+
+        self.msg = msg + self.msgs[self.current_step]
 
         self.current_step += 1
 
@@ -72,7 +70,6 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     bool, list, str
         The results of the job
     """
-
     # available fields for parameters are:
     #   run_identifier, sample_sheet, content_type, filename, lane_number
     run_identifier = parameters.pop('run_identifier')
@@ -97,29 +94,32 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # if file follows basic sample-sheet format, then it is most likely
         # a sample-sheet, even if it's an invalid one.
 
-        # a valid sample-sheet is going to have one and only one occurance of
+        # a valid sample-sheet is going to have one and only one occurrence of
         # 'Assay,Metagenomic' or 'Assay,Metatranscriptomic'. Anything else is
         # an error.
 
-        tmp = [x for x in user_input_file['body'] if 'Assay' in x]
+        # works best from file
+        with open(uif_path, 'r') as f:
+            assay = [x for x in f.readlines() if 'Assay' in x]
 
-        if len(tmp) == 0:
-            return False, None, ("Assay type is not defined in the "
-                                 "sample-sheet")
+            if len(assay) == 0:
+                return False, None, ("Assay type is not defined in the "
+                                     "sample-sheet")
 
-        if len(tmp) > 1:
-            return False, None, ("Assay type is defined multiple times within"
-                                 "the sample-sheet")
+            if len(assay) > 1:
+                return False, None, ("Assay type is defined multiple times "
+                                     "within the sample-sheet")
 
         pipeline_type = None
         for p_type in Step.META_TYPES:
-            if p_type in tmp[0].lower():
+            if p_type in assay[0]:
                 pipeline_type = p_type
 
         if pipeline_type is None:
             msg = [f"'{x}'" for x in Step.META_TYPES]
             return False, None, ("The following Assay types are valid within"
-                                 "a sample-sheet: %s" % ', '.join(msg))
+                                 " a sample-sheet: %s" % ', '.join(msg))
+
     elif Pipeline.is_mapping_file(uif_path):
         # if file is readable as a basic TSV and contains all the required
         # headers, then treat this as a mapping file, even if it's an invalid
@@ -155,114 +155,46 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         return False, None, str(e)
 
     try:
-        errors = []
-        sn_tid_map_by_project = {}
-
-        status_line.update_current_message()
-
-        # Update get_project_info() so that it can return a list of
-        # samples in projects['samples']. Include blanks in projects['blanks']
-        projects = pipeline.get_project_info(short_names=True)
-
-        for project in projects:
-            qsam, tids = Step.get_samples_in_qiita(qclient,
-                                                   project['qiita_id'])
-            qsam = set(qsam)
-            tids = {tids[k][0] for k in tids} if tids else None
-
-            # compare the list of samples from the user against the list of
-            # registered samples from Qiita. If the project has tube-ids, then
-            # compare against tids rather than qsam.
-            samples = set(pipeline.get_sample_ids())
-
-            # strip any leading zeroes from the sample-ids. Note that
-            # if a sample-id has more than one leading zero, all of
-            # them will be removed.
-            # my_samples = {x.lstrip('0') for x in samples}
-
-            sample_name_diff = samples - tids if tids else samples - qsam
-
-            project_name = project['project_name']
-
-            if sample_name_diff:
-                len_overlap = len(sample_name_diff)
-                # selecting at random k=5 samples to minimize space in display
-                samx = ', '.join(qsam if len(qsam) < 6 else rsampl(qsam, k=5))
-
-                # selecting the up to 4 first samples to minimize space in
-                # display
-                missing = ', '.join(sorted(sample_name_diff)[:4])
-                errors.append(
-                    f'{project_name} has {len_overlap} missing samples (i.e. '
-                    f'{missing}). Some samples from Qiita: {samx}. ')
-
-        if errors:
-            raise PipelineError('\n'.join(errors))
-
-        # find the uploads directory all trimmed files will need to be
-        # moved to and generate a map.
-        special_map = Step.generate_special_map(
-            qclient.get("/qiita_db/artifacts/types/"),
-            pipeline.get_project_info())
-
         if pipeline.pipeline_type in Step.META_TYPES:
-            step = Metagenomic(pipeline, job_id, sn_tid_map_by_project,
-                               status_line)
+            step = Metagenomic(pipeline, job_id, status_line)
         else:
             # pipeline.pipeline_type == Step.AMPLICON_TYPE:
-            step = Amplicon(pipeline, job_id, sn_tid_map_by_project,
-                            status_line)
+            step = Amplicon(pipeline, job_id, status_line)
+
+        step.get_tube_ids_from_qiita(qclient)
 
         status_line.update_current_message()
-        step.convert_bcl_to_fastq()
 
-        status_line.update_current_message()
-        step.quality_control()
+        # compare sample-ids/tube-ids in sample-sheet/mapping file
+        # against what's in Qiita.
+        results = step.compare_samples_against_qiita()
 
-        status_line.update_current_message()
-        step.generate_reports()
+        if results is not None:
+            msgs = []
+            for comparison in results:
+                not_in_qiita_count = len(comparison['samples_not_in_qiita'])
+                examples_in_qiita = ', '.join(comparison['examples_in_qiita'])
+                p_name = comparison['project_name']
+                uses_tids = comparison['tids']
 
-        status_line.update_current_message()
-        step.generate_prep_file()
+                msgs.append(f"Project '{p_name}' has {not_in_qiita_count} "
+                            "samples not registered in Qiita.")
 
-        from_qiita = {}
+                msgs.append(f"Some registered samples in Project '{p_name}'"
+                            f" include: {examples_in_qiita}")
 
-        for study_id in step.prep_file_paths:
-            samples = list(qclient.get(f'/api/v1/study/{study_id}/samples'))
-            from_qiita[study_id] = samples
+                if uses_tids:
+                    msgs.append(f"Project '{p_name}' is using tube-ids. You "
+                                "may be using sample names in your file.")
 
-        status_line.update_current_message()
-        sifs = step.generate_sifs(from_qiita)
+            if msgs:
+                raise PipelineError('\n'.join(msgs))
 
-        status_line.update_current_message()
-        Step.update_blanks_in_qiita(sifs, qclient)
-
-        prep_file_paths = step.get_prep_file_paths()
-
-        status_line.update_current_message()
-        ptype = step.pipeline.pipeline_type
-        Step.update_prep_templates(qclient, prep_file_paths, ptype)
-
-        touched_studies_prep_info = defaultdict(list)
-
-        for study_id in step.prep_file_paths:
-            for prep_file_path in step.prep_file_paths[study_id]:
-                metadata = Step.parse_prep_file(prep_file_path)
-                data = {'prep_info': dumps(metadata),
-                        'study': study_id,
-                        'data_type': step.pipeline.pipeline_type}
-
-                reply = qclient.post('/qiita_db/prep_template/', data=data)
-                prep_id = reply['prep']
-
-                touched_studies_prep_info[study_id].append(prep_id)
-
-        # generate commands to execute
-        status_line.update_current_message()
-        step.generate_commands(special_map, touched_studies_prep_info)
-
-        status_line.update_current_message()
-        step.execute_commands()
+        # set update=False to prevent updating Qiita database and copying
+        # files into uploads directory. Useful for testing.
+        step.execute_pipeline(qclient,
+                              status_line.update_current_message(),
+                              update=True)
 
     except PipelineError as e:
         return False, None, str(e)

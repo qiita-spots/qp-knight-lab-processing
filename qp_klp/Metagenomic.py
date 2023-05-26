@@ -1,16 +1,17 @@
 from os import walk
-from os.path import exists, join, basename
+from os.path import exists
 from sequence_processing_pipeline.PipelineError import PipelineError
 import pandas as pd
-from qp_klp.Step import Step, FailedSamplesRecord
+from qp_klp.Step import FailedSamplesRecord
+from os.path import join,  basename
+from qp_klp.Step import Step
 
 
 class Metagenomic(Step):
-    def __init__(self, pipeline, master_qiita_job_id, sn_tid_map_by_project,
+    def __init__(self, pipeline, master_qiita_job_id,
                  status_update_callback=None):
         super().__init__(pipeline,
                          master_qiita_job_id,
-                         sn_tid_map_by_project,
                          status_update_callback)
 
         if pipeline.pipeline_type not in Step.META_TYPES:
@@ -22,7 +23,6 @@ class Metagenomic(Step):
         # is not available.
         self.fsr = FailedSamplesRecord(self.pipeline.output_path,
                                        pipeline.sample_sheet.samples)
-        self.project_names = None
 
     def convert_bcl_to_fastq(self):
         # The 'bcl-convert' key is a convention hard-coded into mg-scripts and
@@ -41,7 +41,7 @@ class Metagenomic(Step):
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'QCJob')
 
     def generate_reports(self):
-        job = super()._generate_reports(self.pipeline.sample_sheet.path)
+        job = super()._generate_reports()
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'FastQCJob')
 
         self.project_names = job.project_names
@@ -59,8 +59,19 @@ class Metagenomic(Step):
 
         self.prep_file_paths = job.prep_file_paths
 
-    def generate_commands(self, special_map, server_url,
-                          touched_studies_prep_info):
+    def generate_touched_studies(self, qclient):
+        results = {}
+
+        for study_id, pf_paths in self.prep_file_paths.items():
+            for pf_path in pf_paths:
+                # record the data-type as either metagenomic or
+                # metatranscriptomic, according to what's stored in the
+                # pipeline.
+                results[pf_path] = self.pipeline.pipeline_type
+
+        super()._generate_touched_studies(qclient, results)
+
+    def generate_commands(self, qclient):
         super()._generate_commands()
 
         out_dir = self.pipeline.output_path
@@ -90,7 +101,7 @@ class Metagenomic(Step):
 
         touched_studies = []
 
-        for project, upload_dir, qiita_id in special_map:
+        for project, upload_dir, qiita_id in self.special_map:
             # sif filenames are of the form:
             blanks_file = f'{self.pipeline.run_id}_{project}_blanks.tsv'
             if self.sifs and [x for x in self.sifs if blanks_file in x]:
@@ -134,12 +145,12 @@ class Metagenomic(Step):
 
         data = []
         for qiita_id, project in touched_studies:
-            for prep_id in touched_studies_prep_info[qiita_id]:
-                study_url = f'{server_url}/study/description/{qiita_id}'
-                prep_url = (f'{server_url}/study/description/'
+            for prep_id in self.touched_studies_prep_info[qiita_id]:
+                surl = f'{qclient._server_url}/study/description/{qiita_id}'
+                prep_url = (f'{qclient._server_url}/study/description/'
                             f'{qiita_id}?prep_id={prep_id}')
                 data.append({'Project': project, 'Qiita Study ID': qiita_id,
-                             'Qiita Prep ID': prep_id, 'Qiita URL': study_url,
+                             'Qiita Prep ID': prep_id, 'Qiita URL': surl,
                              'Prep URL': prep_url})
 
         df = pd.DataFrame(data)
