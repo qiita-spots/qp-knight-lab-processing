@@ -139,7 +139,7 @@ jobs:
       - uses: codecov/codecov-action@v3
         with:
          token: ${{ secrets.CODECOV_TOKEN }}
-         file: codecov.yml
+
   lint:
     runs-on: ubuntu-latest
     steps:
