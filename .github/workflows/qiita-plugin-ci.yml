@@ -160,7 +160,7 @@ jobs:
         flake8 qp_klp setup.py scripts/*
 
   coveralls_finish:
-    needs: build
+    needs: main
     runs-on: ubuntu-latest
     steps:
     - name: Coveralls Finished
