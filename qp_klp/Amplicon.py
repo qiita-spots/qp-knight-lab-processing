@@ -113,8 +113,6 @@ class Amplicon(Step):
             for pf_path in pf_paths:
                 results[pf_path] = self._get_data_type(pf_path)
 
-        super()._generate_touched_studies(qclient, results)
-
     def generate_prep_file(self):
         config = self.pipeline.configuration['seqpro']
         seqpro_path = config['seqpro_path'].replace('seqpro', 'seqpro_mf')

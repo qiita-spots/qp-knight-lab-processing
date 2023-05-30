@@ -69,8 +69,6 @@ class Metagenomic(Step):
                 # pipeline.
                 results[pf_path] = self.pipeline.pipeline_type
 
-        super()._generate_touched_studies(qclient, results)
-
     def generate_commands(self, qclient):
         super()._generate_commands()
 

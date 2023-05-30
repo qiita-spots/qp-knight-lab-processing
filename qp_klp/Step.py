@@ -168,8 +168,7 @@ class Step:
 
         self.special_map = special_map
 
-    @classmethod
-    def update_prep_templates(cls, qclient, prep_file_paths, pipeline_type):
+    def update_prep_templates(self, qclient, prep_file_paths, pipeline_type):
         '''
         Update prep-template info in Qiita. Get dict of prep-ids by study-id.
         :param qclient:
@@ -203,6 +202,7 @@ class Step:
                 prep_id = reply['prep']
                 results[study_id].append(prep_id)
 
+        self.touched_studies_prep_info = results
         return results
 
     @classmethod
@@ -559,31 +559,6 @@ class Step:
 
                 return data
 
-    def _generate_touched_studies(self, qclient, data_types):
-        '''
-        Generates touched-studies metadata
-        :param qclient: Qiita client library object
-        :param data_types: A dict w/a file-name as k and its data-type as v
-        :return: None
-        '''
-        touched_studies_prep_info = defaultdict(list)
-
-        for study_id in self.prep_file_paths:
-            for prep_file_path in self.prep_file_paths[study_id]:
-                metadata = Step.parse_prep_file(prep_file_path)
-                data = {'prep_info': dumps(metadata),
-                        'study': study_id,
-                        # a data-type is assumed to be prep-file-wide, but
-                        # potentially different between any two prep-files.
-                        'data_type': data_types[prep_file_path]}
-
-                reply = qclient.post('/qiita_db/prep_template/', data=data)
-                prep_id = reply['prep']
-
-                touched_studies_prep_info[study_id].append(prep_id)
-
-        self.touched_studies_prep_info = touched_studies_prep_info
-
     def execute_pipeline(self, qclient, increment_status, update=True):
         '''
         Executes steps of pipeline in proper sequence.
@@ -620,7 +595,7 @@ class Step:
         ptype = self.pipeline.pipeline_type
 
         if update:
-            Step.update_prep_templates(qclient, prep_file_paths, ptype)
+            self.update_prep_templates(qclient, prep_file_paths, ptype)
 
         self.generate_touched_studies(qclient)
 
