@@ -73,7 +73,8 @@ class Step:
     AMPLICON_SUB_TYPES = {'16S', '18S', 'ITS'}
 
     def __init__(self, pipeline, master_qiita_job_id,
-                 status_update_callback=None):
+                 status_update_callback=None,
+                 lane_number=None):
         if pipeline is None:
             raise ValueError("A pipeline object is needed to initialize Step")
 
@@ -81,6 +82,7 @@ class Step:
             raise ValueError("A Qiita job-id is needed to initialize Step")
 
         self.pipeline = pipeline
+        self.lane_number = lane_number
         self.master_qiita_job_id = master_qiita_job_id
 
         if status_update_callback is not None:
@@ -176,13 +178,17 @@ class Step:
         :return: A dict of lists of prep-ids, keyed by study-id.
         '''
         results = defaultdict(list)
+        rid = self.pipeline.run_id
+        lane_number = self.lane_number
 
         for study_id in prep_file_paths:
             for prep_file_path in prep_file_paths[study_id]:
                 metadata = Step.parse_prep_file(prep_file_path)
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
-                        'data_type': None}
+                        'data_type': None,
+                        'job-id': self.master_qiita_job_id,
+                        'name': f'{rid}_{lane_number}'}
                 if pipeline_type in Step.META_TYPES:
                     data['data_type'] = pipeline_type
                 elif pipeline_type == Step.AMPLICON_TYPE:

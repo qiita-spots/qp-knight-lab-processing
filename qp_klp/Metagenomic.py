@@ -9,10 +9,11 @@ from qp_klp.Step import Step
 
 class Metagenomic(Step):
     def __init__(self, pipeline, master_qiita_job_id,
-                 status_update_callback=None):
+                 status_update_callback=None, lane_number=None):
         super().__init__(pipeline,
                          master_qiita_job_id,
-                         status_update_callback)
+                         status_update_callback,
+                         lane_number)
 
         if pipeline.pipeline_type not in Step.META_TYPES:
             raise ValueError("Cannot instantiate Metagenomic object from "

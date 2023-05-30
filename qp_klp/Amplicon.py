@@ -6,10 +6,12 @@ from qp_klp.Step import Step
 
 class Amplicon(Step):
     def __init__(self, pipeline, master_qiita_job_id,
-                 status_update_callback=None):
+                 status_update_callback=None,
+                 lane_number=None):
         super().__init__(pipeline,
                          master_qiita_job_id,
-                         status_update_callback)
+                         status_update_callback,
+                         lane_number)
 
         if pipeline.pipeline_type != Step.AMPLICON_TYPE:
             raise ValueError("Cannot create an Amplicon run using a "
