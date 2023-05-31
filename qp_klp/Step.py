@@ -2,8 +2,8 @@ from collections import defaultdict
 from itertools import chain
 from json import dumps
 from metapool import KLSampleSheet
-from os import makedirs
-from os.path import join
+from os import makedirs, walk
+from os.path import join, exists
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
@@ -327,12 +327,80 @@ class Step:
         return gpf_job
 
     def _generate_commands(self):
+        out_dir = self.pipeline.output_path
+        qclient = self.qclient
+
         cmds = ['tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                 'tar zcvf logs-FastQCJob.tgz FastQCJob/logs',
                 'tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc',
                 'tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/logs',
                 'tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles']
-        self.cmds = [f'cd {self.pipeline.output_path}; {x}' for x in cmds]
+        self.cmds = [f'cd {out_dir}; {x}' for x in cmds]
+
+        data = []
+        for project, _, qiita_id in self.special_map:
+            if self.pipeline.pipeline_type in Step.META_TYPES:
+                self.cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
+                                 f'QCJob/{project}/fastp_reports_dir')
+
+            # AFAIK there can only be 1 prep per project
+            prep_id = self.touched_studies_prep_info[qiita_id][0]
+            surl = f'{qclient._server_url}/study/description/{qiita_id}'
+            prep_url = (f'{qclient._server_url}/study/description/'
+                        f'{qiita_id}?prep_id={prep_id}')
+
+            bd = f'{out_dir}/QCJob/{project}'
+            if exists(f'{bd}/filtered_sequences'):
+                atype = 'per_sample_FASTQ'
+                af = [f for f in walk(f'{bd}/filtered_sequences/*.fastq.gz')]
+                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
+                for f in af:
+                    if '.R1.' in f:
+                        files['raw_forward_seqs'].append(f)
+                    elif '.R2.' in f:
+                        files['raw_reverse_seqs'].append(f)
+                    else:
+                        raise ValueError(f'Not recognized file: {f}')
+            elif exists(f'{bd}/trimmed_sequences'):
+                atype = 'per_sample_FASTQ'
+                af = [f for f in walk(f'{bd}/trimmed_sequences/*.fastq.gz')]
+                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
+                for f in af:
+                    if '.R1.' in f:
+                        files['raw_forward_seqs'].append(f)
+                    elif '.R2.' in f:
+                        files['raw_reverse_seqs'].append(f)
+                    else:
+                        raise ValueError(f'Not recognized file: {f}')
+            elif exists(f'{bd}/amplicon'):
+                atype = 'FASTQ'
+                af = sorted([f for f in walk(f'{bd}/amplicon/*.fastq.gz')])
+                files = {'raw_barcoes': af[0],
+                         'raw_forward_seqs': af[1],
+                         'raw_reverse_seqs': af[2]}
+            else:
+                raise PipelineError("QCJob output not in expected location")
+            # ideally we would use the email of the user that started the SPP
+            # run but at this point there is no easy way to retrieve it
+            data = {'user_email': 'qiita.help@gmail.com',
+                    'prep_id': prep_id,
+                    'artifact_type': atype,
+                    'command_artifact_name': self.generated_artifact_name,
+                    'files': files}
+            reply = qclient.post('/qiita_db/artifact/', data=data)
+
+            data.append({'Project': project, 'Qiita Study ID': qiita_id,
+                         'Qiita Prep ID': prep_id, 'Qiita URL': surl,
+                         'Prep URL': prep_url, 'Linking Job': reply})
+
+        df = pd.DataFrame(data)
+        with open(join(out_dir, 'touched_studies.html'), 'w') as f:
+            f.write(df.to_html(border=2, index=False, justify="left",
+                               render_links=True, escape=False))
+
+        if exists(join(out_dir, 'failed_samples.html')):
+            tmp = f'cd {out_dir}; mv failed_samples.html final_results'
+            self.cmds.append(tmp)
 
     def write_commands_to_output_path(self):
         self.cmds_log_path = join(self.pipeline.output_path, 'cmds.log')
