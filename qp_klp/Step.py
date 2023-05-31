@@ -343,7 +343,11 @@ class Step:
                 self.cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                                  f'QCJob/{project}/fastp_reports_dir')
 
-            # AFAIK there can only be 1 prep per project
+            if len(self.touched_studies_prep_info[qiita_id]) != 1:
+                raise ValueError(
+                    f"Too many preps for {qiita_id}: "
+                    f"{self.touched_studies_prep_info[qiita_id]}")
+
             prep_id = self.touched_studies_prep_info[qiita_id][0]
             surl = f'{qclient._server_url}/study/description/{qiita_id}'
             prep_url = (f'{qclient._server_url}/study/description/'
@@ -387,11 +391,11 @@ class Step:
                     'artifact_type': atype,
                     'command_artifact_name': self.generated_artifact_name,
                     'files': files}
-            reply = qclient.post('/qiita_db/artifact/', data=data)
+            job_id = qclient.post('/qiita_db/artifact/', data=data)
 
             data.append({'Project': project, 'Qiita Study ID': qiita_id,
                          'Qiita Prep ID': prep_id, 'Qiita URL': surl,
-                         'Prep URL': prep_url, 'Linking Job': reply})
+                         'Prep URL': prep_url, 'Linking JobID': job_id})
 
         df = pd.DataFrame(data)
         with open(join(out_dir, 'touched_studies.html'), 'w') as f:
