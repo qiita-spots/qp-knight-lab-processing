@@ -1,10 +1,8 @@
 from os import walk
-from os.path import exists
+from os.path import exists, join
 from sequence_processing_pipeline.PipelineError import PipelineError
 import pandas as pd
-from qp_klp.Step import FailedSamplesRecord
-from os.path import join,  basename
-from qp_klp.Step import Step
+from qp_klp.Step import FailedSamplesRecord, Step
 
 
 class Metagenomic(Step):
@@ -74,7 +72,6 @@ class Metagenomic(Step):
         super()._generate_commands()
 
         out_dir = self.pipeline.output_path
-        output_path = self.pipeline.output_path
 
         self.cmds.append(f'cd {self.pipeline.output_path}; '
                          'tar zcvf logs-QCJob.tgz QCJob/logs')
@@ -85,75 +82,63 @@ class Metagenomic(Step):
 
         self.write_commands_to_output_path()
 
-        if self.sifs:
-            # just use the filenames for tarballing the sifs.
-            # the sifs should all be stored in the {out_dir} by default.
-            tmp = [basename(x) for x in self.sifs]
-            # convert sifs into a list of filenames.
-            tmp = ' '.join(tmp)
-            self.cmds.append(f'cd {out_dir}; tar zcvf sample-files.tgz {tmp}')
-
-        csv_fps = []
-        for root, dirs, files in walk(join(output_path, 'PrepFiles')):
-            for csv_file in files:
-                csv_fps.append(join(root, csv_file))
-
-        touched_studies = []
-
-        for project, upload_dir, qiita_id in self.special_map:
-            # sif filenames are of the form:
-            blanks_file = f'{self.pipeline.run_id}_{project}_blanks.tsv'
-            if self.sifs and [x for x in self.sifs if blanks_file in x]:
-                # move uncompressed sifs to upload_dir.
-                tmp = f'cd {out_dir}; mv {blanks_file} {upload_dir}'
-                self.cmds.append(tmp)
-
-            # record that something is being moved into a Qiita Study.
-            # this will allow us to notify the user which Studies to
-            # review upon completion.
-            touched_studies.append((qiita_id, project))
-
+        data = []
+        for project, _, qiita_id in self.special_map:
             if self.pipeline.pipeline_type in Step.META_TYPES:
                 self.cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
                                  f'QCJob/{project}/fastp_reports_dir')
 
-            if exists(f'{out_dir}/QCJob/{project}/filtered_sequences'):
-                self.cmds.append(f'cd {out_dir}; mv '
-                                 f'QCJob/{project}/filtered_sequences/* '
-                                 f'{upload_dir}')
-            elif exists(f'{out_dir}/QCJob/{project}/trimmed_sequences'):
-                self.cmds.append(f'cd {out_dir}; mv '
-                                 f'QCJob/{project}/trimmed_sequences/* '
-                                 f'{upload_dir}')
-            elif exists(f'{out_dir}/QCJob/{project}/amplicon'):
-                self.cmds.append(f'cd {out_dir}; mv '
-                                 f'QCJob/{project}/amplicon/* '
-                                 f'{upload_dir}')
+            # AFAIK there can only be 1 prep per project
+            prep_id = self.touched_studies_prep_info[qiita_id][0]
+            surl = f'{qclient._server_url}/study/description/{qiita_id}'
+            prep_url = (f'{qclient._server_url}/study/description/'
+                        f'{qiita_id}?prep_id={prep_id}')
+
+            bd = f'{out_dir}/QCJob/{project}'
+            if exists(f'{bd}/filtered_sequences'):
+                atype = 'per_sample_FASTQ'
+                af = [f for f in walk(f'{bd}/filtered_sequences/*.fastq.gz')]
+                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
+                for f in af:
+                    if '.R1.' in f:
+                        files['raw_forward_seqs'].append(f)
+                    elif '.R2.' in f:
+                        files['raw_reverse_seqs'].append(f)
+                    else:
+                        raise ValueError(f'Not recognized file: {f}')
+            elif exists(f'{bd}/trimmed_sequences'):
+                atype = 'per_sample_FASTQ'
+                af = [f for f in walk(f'{bd}/trimmed_sequences/*.fastq.gz')]
+                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
+                for f in af:
+                    if '.R1.' in f:
+                        files['raw_forward_seqs'].append(f)
+                    elif '.R2.' in f:
+                        files['raw_reverse_seqs'].append(f)
+                    else:
+                        raise ValueError(f'Not recognized file: {f}')
+            elif exists(f'{bd}/amplicon'):
+                atype = 'FASTQ'
+                af = sorted([f for f in walk(f'{bd}/amplicon/*.fastq.gz')])
+                files = {'raw_barcoes': af[0],
+                         'raw_forward_seqs': af[1],
+                         'raw_reverse_seqs': af[2]}
             else:
                 raise PipelineError("QCJob output not in expected location")
+            # ideally we would use the email of the user that started the SPP
+            # run but at this point there is no easy way to retrieve it
+            data = {'user_email': 'qiita.help@gmail.com',
+                    'prep_id': prep_id,
+                    'artifact_type': atype,
+                    'command_artifact_name': self.generated_artifact_name,
+                    'files': files}
+            reply = qclient.post('/qiita_db/artifact/', data=data)
 
-            for csv_file in csv_fps:
-                if project in csv_file:
-                    tmp = f'cd {out_dir}; mv {csv_file} {upload_dir}'
-                    self.cmds.append(tmp)
-                    break
-
-        # create a set of unique study-ids that were touched by the Pipeline
-        # and return this information to the user.
-        touched_studies = sorted(list(set(touched_studies)))
-
-        data = []
-        for qiita_id, project in touched_studies:
-            for prep_id in self.touched_studies_prep_info[qiita_id]:
-                surl = f'{qclient._server_url}/study/description/{qiita_id}'
-                prep_url = (f'{qclient._server_url}/study/description/'
-                            f'{qiita_id}?prep_id={prep_id}')
-                data.append({'Project': project, 'Qiita Study ID': qiita_id,
-                             'Qiita Prep ID': prep_id, 'Qiita URL': surl,
-                             'Prep URL': prep_url})
+            data.append({'Project': project, 'Qiita Study ID': qiita_id,
+                         'Qiita Prep ID': prep_id, 'Qiita URL': surl,
+                         'Prep URL': prep_url, 'Linking Job': reply})
 
         df = pd.DataFrame(data)
-
         with open(join(out_dir, 'touched_studies.html'), 'w') as f:
             f.write(df.to_html(border=2, index=False, justify="left",
                                render_links=True, escape=False))

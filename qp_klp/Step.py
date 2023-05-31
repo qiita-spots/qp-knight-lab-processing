@@ -83,6 +83,8 @@ class Step:
 
         self.pipeline = pipeline
         self.lane_number = lane_number
+        self.generated_artifact_name = \
+            f'{self.pipeline.run_id}_{self.lane_number}'
         self.master_qiita_job_id = master_qiita_job_id
 
         if status_update_callback is not None:
@@ -178,8 +180,6 @@ class Step:
         :return: A dict of lists of prep-ids, keyed by study-id.
         '''
         results = defaultdict(list)
-        rid = self.pipeline.run_id
-        lane_number = self.lane_number
 
         for study_id in prep_file_paths:
             for prep_file_path in prep_file_paths[study_id]:
@@ -188,7 +188,7 @@ class Step:
                         'study': study_id,
                         'data_type': None,
                         'job-id': self.master_qiita_job_id,
-                        'name': f'{rid}_{lane_number}'}
+                        'name': self.generated_artifact_name}
                 if pipeline_type in Step.META_TYPES:
                     data['data_type'] = pipeline_type
                 elif pipeline_type == Step.AMPLICON_TYPE:
