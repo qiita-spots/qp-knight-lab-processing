@@ -590,8 +590,8 @@ class Step:
                                         qiita_id,
                                         self.tube_id_map)
 
-    def update_blanks_in_qiita(self, sifs, qclient):
-        for sif_path in sifs:
+    def update_blanks_in_qiita(self, qclient):
+        for sif_path in self.sifs:
             # get study_id from sif_file_name ...something_14385_blanks.tsv
             study_id = sif_path.split('_')[-2]
 
