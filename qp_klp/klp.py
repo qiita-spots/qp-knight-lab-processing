@@ -194,7 +194,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # set update=False to prevent updating Qiita database and copying
         # files into uploads directory. Useful for testing.
         step.execute_pipeline(qclient,
-                              status_line.update_current_message(),
+                              status_line.update_current_message,
                               update=True)
 
     except PipelineError as e:

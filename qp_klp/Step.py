@@ -590,8 +590,8 @@ class Step:
                                         qiita_id,
                                         self.tube_id_map)
 
-    def update_blanks_in_qiita(self, qclient):
-        for sif_path in self.sifs:
+    def update_blanks_in_qiita(self, sifs, qclient):
+        for sif_path in sifs:
             # get study_id from sif_file_name ...something_14385_blanks.tsv
             study_id = sif_path.split('_')[-2]
 
@@ -660,12 +660,12 @@ class Step:
         self.generate_prep_file()
 
         increment_status()
-        sifs = self.generate_sifs(qclient)
+        self.sifs = self.generate_sifs(qclient)
 
         increment_status()
 
         if update:
-            Step.update_blanks_in_qiita(sifs, qclient)
+            self.update_blanks_in_qiita(qclient)
 
         prep_file_paths = self.get_prep_file_paths()
 
