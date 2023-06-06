@@ -6,10 +6,12 @@ from qp_klp.Step import Step
 
 class Amplicon(Step):
     def __init__(self, pipeline, master_qiita_job_id,
-                 status_update_callback=None):
+                 status_update_callback=None,
+                 lane_number=None):
         super().__init__(pipeline,
                          master_qiita_job_id,
-                         status_update_callback)
+                         status_update_callback,
+                         lane_number)
 
         if pipeline.pipeline_type != Step.AMPLICON_TYPE:
             raise ValueError("Cannot create an Amplicon run using a "
@@ -113,8 +115,6 @@ class Amplicon(Step):
             for pf_path in pf_paths:
                 results[pf_path] = self._get_data_type(pf_path)
 
-        super()._generate_touched_studies(qclient, results)
-
     def generate_prep_file(self):
         config = self.pipeline.configuration['seqpro']
         seqpro_path = config['seqpro_path'].replace('seqpro', 'seqpro_mf')
@@ -129,7 +129,6 @@ class Amplicon(Step):
         self.prep_file_paths = job.prep_file_paths
 
     def generate_commands(self, qclient):
+        self.qclient = qclient
         super()._generate_commands()
-        self.cmds.append(f'cd {self.pipeline.output_path}; '
-                         'tar zcvf reports-ConvertJob.tgz ConvertJob/Reports')
         self.write_commands_to_output_path()

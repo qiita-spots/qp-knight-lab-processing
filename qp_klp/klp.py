@@ -156,10 +156,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
     try:
         if pipeline.pipeline_type in Step.META_TYPES:
-            step = Metagenomic(pipeline, job_id, status_line)
+            step = Metagenomic(
+                pipeline, job_id, status_line, lane_number)
         else:
-            # pipeline.pipeline_type == Step.AMPLICON_TYPE:
-            step = Amplicon(pipeline, job_id, status_line)
+            step = Amplicon(
+                pipeline, job_id, status_line, lane_number)
 
         step.get_tube_ids_from_qiita(qclient)
 

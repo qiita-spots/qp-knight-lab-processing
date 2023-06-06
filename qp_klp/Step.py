@@ -2,8 +2,8 @@ from collections import defaultdict
 from itertools import chain
 from json import dumps
 from metapool import KLSampleSheet
-from os import makedirs
-from os.path import join
+from os import makedirs, walk
+from os.path import join, exists
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
@@ -73,7 +73,8 @@ class Step:
     AMPLICON_SUB_TYPES = {'16S', '18S', 'ITS'}
 
     def __init__(self, pipeline, master_qiita_job_id,
-                 status_update_callback=None):
+                 status_update_callback=None,
+                 lane_number=None):
         if pipeline is None:
             raise ValueError("A pipeline object is needed to initialize Step")
 
@@ -81,6 +82,9 @@ class Step:
             raise ValueError("A Qiita job-id is needed to initialize Step")
 
         self.pipeline = pipeline
+        self.lane_number = lane_number
+        self.generated_artifact_name = \
+            f'{self.pipeline.run_id}_{self.lane_number}'
         self.master_qiita_job_id = master_qiita_job_id
 
         if status_update_callback is not None:
@@ -168,8 +172,7 @@ class Step:
 
         self.special_map = special_map
 
-    @classmethod
-    def update_prep_templates(cls, qclient, prep_file_paths, pipeline_type):
+    def update_prep_templates(self, qclient, prep_file_paths, pipeline_type):
         '''
         Update prep-template info in Qiita. Get dict of prep-ids by study-id.
         :param qclient:
@@ -183,7 +186,9 @@ class Step:
                 metadata = Step.parse_prep_file(prep_file_path)
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
-                        'data_type': None}
+                        'data_type': None,
+                        'job-id': self.master_qiita_job_id,
+                        'name': self.generated_artifact_name}
                 if pipeline_type in Step.META_TYPES:
                     data['data_type'] = pipeline_type
                 elif pipeline_type == Step.AMPLICON_TYPE:
@@ -203,6 +208,7 @@ class Step:
                 prep_id = reply['prep']
                 results[study_id].append(prep_id)
 
+        self.touched_studies_prep_info = results
         return results
 
     @classmethod
@@ -321,12 +327,84 @@ class Step:
         return gpf_job
 
     def _generate_commands(self):
+        out_dir = self.pipeline.output_path
+        qclient = self.qclient
+
         cmds = ['tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
                 'tar zcvf logs-FastQCJob.tgz FastQCJob/logs',
                 'tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc',
                 'tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/logs',
                 'tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles']
-        self.cmds = [f'cd {self.pipeline.output_path}; {x}' for x in cmds]
+        self.cmds = [f'cd {out_dir}; {x}' for x in cmds]
+
+        data = []
+        for project, _, qiita_id in self.special_map:
+            if self.pipeline.pipeline_type in Step.META_TYPES:
+                self.cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
+                                 f'QCJob/{project}/fastp_reports_dir')
+
+            if len(self.touched_studies_prep_info[qiita_id]) != 1:
+                raise ValueError(
+                    f"Too many preps for {qiita_id}: "
+                    f"{self.touched_studies_prep_info[qiita_id]}")
+
+            prep_id = self.touched_studies_prep_info[qiita_id][0]
+            surl = f'{qclient._server_url}/study/description/{qiita_id}'
+            prep_url = (f'{qclient._server_url}/study/description/'
+                        f'{qiita_id}?prep_id={prep_id}')
+
+            bd = f'{out_dir}/QCJob/{project}'
+            if exists(f'{bd}/filtered_sequences'):
+                atype = 'per_sample_FASTQ'
+                af = [f for f in walk(f'{bd}/filtered_sequences/*.fastq.gz')]
+                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
+                for f in af:
+                    if '.R1.' in f:
+                        files['raw_forward_seqs'].append(f)
+                    elif '.R2.' in f:
+                        files['raw_reverse_seqs'].append(f)
+                    else:
+                        raise ValueError(f'Not recognized file: {f}')
+            elif exists(f'{bd}/trimmed_sequences'):
+                atype = 'per_sample_FASTQ'
+                af = [f for f in walk(f'{bd}/trimmed_sequences/*.fastq.gz')]
+                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
+                for f in af:
+                    if '.R1.' in f:
+                        files['raw_forward_seqs'].append(f)
+                    elif '.R2.' in f:
+                        files['raw_reverse_seqs'].append(f)
+                    else:
+                        raise ValueError(f'Not recognized file: {f}')
+            elif exists(f'{bd}/amplicon'):
+                atype = 'FASTQ'
+                af = sorted([f for f in walk(f'{bd}/amplicon/*.fastq.gz')])
+                files = {'raw_barcoes': af[0],
+                         'raw_forward_seqs': af[1],
+                         'raw_reverse_seqs': af[2]}
+            else:
+                raise PipelineError("QCJob output not in expected location")
+            # ideally we would use the email of the user that started the SPP
+            # run but at this point there is no easy way to retrieve it
+            data = {'user_email': 'qiita.help@gmail.com',
+                    'prep_id': prep_id,
+                    'artifact_type': atype,
+                    'command_artifact_name': self.generated_artifact_name,
+                    'files': files}
+            job_id = qclient.post('/qiita_db/artifact/', data=data)
+
+            data.append({'Project': project, 'Qiita Study ID': qiita_id,
+                         'Qiita Prep ID': prep_id, 'Qiita URL': surl,
+                         'Prep URL': prep_url, 'Linking JobID': job_id})
+
+        df = pd.DataFrame(data)
+        with open(join(out_dir, 'touched_studies.html'), 'w') as f:
+            f.write(df.to_html(border=2, index=False, justify="left",
+                               render_links=True, escape=False))
+
+        if exists(join(out_dir, 'failed_samples.html')):
+            tmp = f'cd {out_dir}; mv failed_samples.html final_results'
+            self.cmds.append(tmp)
 
     def write_commands_to_output_path(self):
         self.cmds_log_path = join(self.pipeline.output_path, 'cmds.log')
@@ -559,31 +637,6 @@ class Step:
 
                 return data
 
-    def _generate_touched_studies(self, qclient, data_types):
-        '''
-        Generates touched-studies metadata
-        :param qclient: Qiita client library object
-        :param data_types: A dict w/a file-name as k and its data-type as v
-        :return: None
-        '''
-        touched_studies_prep_info = defaultdict(list)
-
-        for study_id in self.prep_file_paths:
-            for prep_file_path in self.prep_file_paths[study_id]:
-                metadata = Step.parse_prep_file(prep_file_path)
-                data = {'prep_info': dumps(metadata),
-                        'study': study_id,
-                        # a data-type is assumed to be prep-file-wide, but
-                        # potentially different between any two prep-files.
-                        'data_type': data_types[prep_file_path]}
-
-                reply = qclient.post('/qiita_db/prep_template/', data=data)
-                prep_id = reply['prep']
-
-                touched_studies_prep_info[study_id].append(prep_id)
-
-        self.touched_studies_prep_info = touched_studies_prep_info
-
     def execute_pipeline(self, qclient, increment_status, update=True):
         '''
         Executes steps of pipeline in proper sequence.
@@ -620,7 +673,7 @@ class Step:
         ptype = self.pipeline.pipeline_type
 
         if update:
-            Step.update_prep_templates(qclient, prep_file_paths, ptype)
+            self.update_prep_templates(qclient, prep_file_paths, ptype)
 
         self.generate_touched_studies(qclient)
 
