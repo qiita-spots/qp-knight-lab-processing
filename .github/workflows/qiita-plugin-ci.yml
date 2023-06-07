@@ -86,6 +86,7 @@ jobs:
           pip --quiet install https://github.com/qiita-spots/qtp-job-output-folder/archive/refs/heads/main.zip
           pip --quiet install .
           pip --quiet install coveralls
+
           export QP_KLP_CONFIG_FP=`pwd`/configuration.json
 
           configure_qtp_job_output_folder --env-script "source /home/runner/.profile; conda activate klp" --server-cert $QIITA_SERVER_CERT
@@ -134,13 +135,10 @@ jobs:
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           export QP_KLP_CONFIG_FP=`pwd`/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
-
           nosetests --with-doctest --with-coverage -v --cover-package=qp_klp
-
       - uses: codecov/codecov-action@v3
         with:
          token: ${{ secrets.CODECOV_TOKEN }}
-         file: codecov.yml
 
   lint:
     runs-on: ubuntu-latest
@@ -157,3 +155,4 @@ jobs:
       run: |
         pip install -q flake8
         flake8 qp_klp setup.py scripts/*
+
