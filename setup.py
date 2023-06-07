@@ -27,7 +27,7 @@ classes = """
 """
 
 
-with open('README.md') as f:
+with open('README.rst') as f:
     long_description = f.read()
 
 classifiers = [s.strip() for s in classes.split('\n') if s]
