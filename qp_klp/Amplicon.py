@@ -127,8 +127,3 @@ class Amplicon(Step):
                                           project_names)
 
         self.prep_file_paths = job.prep_file_paths
-
-    def generate_commands(self, qclient):
-        self.qclient = qclient
-        super()._generate_commands()
-        self.write_commands_to_output_path()

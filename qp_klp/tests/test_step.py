@@ -14,6 +14,7 @@ from os import makedirs, chmod, access, W_OK
 from shutil import rmtree
 from os import environ, remove, getcwd
 from json import dumps
+from os.path import exists
 
 
 class FakeClient():
@@ -53,7 +54,7 @@ class FakeClient():
                                  '11661.11.18', '11661.11.43', '11661.11.64',
                                  '11661.12.15']
 
-        self.samples_in_6123 = ['3A', '4A', '5B', '6A', 'BLANK_41_12G', '7A',
+        self.samples_in_6123 = ['3A', '4A', '5B', '6A', 'BLANK.41.12G', '7A',
                                 '8A', 'ISB', 'GFR', '6123']
 
         self.info_in_11661 = {'number-of-samples': 10,
@@ -242,6 +243,15 @@ class BaseStepTests(TestCase):
 
         self.delete_these = []
 
+    def tearDown(self):
+        if exists(self.output_file_path):
+            rmtree(self.output_file_path)
+        for fake_bin in self.delete_these:
+            if exists(fake_bin):
+                remove(fake_bin)
+        if exists('tmp.config'):
+            remove('tmp.config')
+
     def _get_searchable_path(self):
         searchable_paths = []
 
@@ -269,6 +279,8 @@ class BaseStepTests(TestCase):
     def _create_test_input(self, stage):
         if stage >= 1:
             fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
+            makedirs(fake_path, exist_ok=True)
+            fake_path = join(self.output_file_path, 'ConvertJob', 'Reports')
             makedirs(fake_path, exist_ok=True)
 
             self._create_fake_bin('sbatch', "echo 'Submitted "
@@ -303,20 +315,84 @@ class BaseStepTests(TestCase):
                         with open(file_path, 'w') as f:
                             f.write("This is a file.")
 
-    def _delete_test_output(self):
-        rmtree(self.output_file_path)
-        for fake_bin in self.delete_these:
-            remove(fake_bin)
+        if stage >= 4:
+            fake_path = join(self.output_file_path, 'GenPrepFileJob',
+                             'PrepFiles')
+            makedirs(fake_path, exist_ok=True)
+            names = ['NYU_BMS_Melanoma_13059.1.tsv', 'Feist_11661.1.tsv',
+                     'Gerwick_6123.1.tsv']
+
+            for name in names:
+                with open(join(fake_path, name), 'w') as f:
+                    f.write("This is a file.")
+
+            fake_path = join(self.output_file_path, 'QCJob',
+                             'NYU_BMS_Melanoma_13059', 'fastp_reports_dir')
+            makedirs(fake_path, exist_ok=True)
+            with open(join(fake_path, 'a_file'), 'w') as f:
+                f.write("This is a file.")
+
+            fake_path = join(self.output_file_path, 'QCJob',
+                             'Feist_11661', 'fastp_reports_dir')
+            makedirs(fake_path, exist_ok=True)
+            with open(join(fake_path, 'a_file'), 'w') as f:
+                f.write("This is a file.")
+
+            fake_path = join(self.output_file_path, 'QCJob',
+                             'Gerwick_6123', 'fastp_reports_dir')
+            makedirs(fake_path, exist_ok=True)
+            with open(join(fake_path, 'a_file'), 'w') as f:
+                f.write("This is a file.")
+
+            names = ['NYU_BMS_Melanoma_13059', 'Feist_11661',
+                     'Gerwick_6123']
+
+            for project in names:
+                file_name = f'{self.good_run_id}_{project}_blanks.tsv'
+                fake_path = join(self.output_file_path, file_name)
+                with open(fake_path, 'w') as f:
+                    f.write("This is a file")
+
+            x = ['logs-ConvertJob.tgz', 'logs-FastQCJob.tgz',
+                 'logs-GenPrepFileJob.tgz', 'logs-QCJob.tgz', 'prep-files.tgz',
+                 'reports-ConvertJob.tgz', 'reports-FastQCJob.tgz',
+                 'reports-QCJob.tgz', 'sample-files.tgz']
+
+            for file_name in x:
+                fake_path = join(self.output_file_path, file_name)
+                with open(fake_path, 'w') as f:
+                    f.write("This is a file")
+
+            x = ['o1611416-26', 'e1611416-26']
+            for file_name in x:
+                file_name = f'{self.good_run_id}_FastQCJob.{file_name}'
+                fake_path = join(self.output_file_path, 'FastQCJob', 'logs')
+                makedirs(fake_path, exist_ok=True)
+                with open(join(fake_path, file_name), 'w') as f:
+                    f.write("This is a file")
+
+            # we're just going to create a directory for FastQC results and
+            # create a single file. We aren't going to replicate the entire
+            # directory structure for now.
+            fake_path = join(self.output_file_path, 'FastQCJob', 'fastqc')
+            makedirs(fake_path, exist_ok=True)
+            with open(join(fake_path, 'a_file.txt'), 'w') as f:
+                f.write("This is a file")
+
+            fake_path = join(self.output_file_path, 'GenPrepFileJob', 'logs')
+            makedirs(fake_path, exist_ok=True)
+            with open(join(fake_path, 'a_file.txt'), 'w') as f:
+                f.write("This is a file")
+
+            fake_path = join(self.output_file_path, 'failed_samples.html')
+            with open(fake_path, 'w') as f:
+                f.write("This is a file")
 
 
 class BasicStepTests(BaseStepTests):
-    def setUp(self):
-        super().setUp()
-
     def test_creation(self):
         # Test base-class creation method, even though base-class will never
         # be instantiated by itself in normal usage.
-        self._delete_test_output()
 
         with self.assertRaisesRegex(ValueError, "A pipeline object is needed"
                                                 " to initialize Step"):
@@ -331,7 +407,6 @@ class BasicStepTests(BaseStepTests):
         self.assertIsNotNone(step)
 
     def test_convert_bcl_to_fastq(self):
-        self._delete_test_output()
         self._create_test_input(1)
 
         step = Step(self.pipeline, self.qiita_id, None)
@@ -343,7 +418,6 @@ class BasicStepTests(BaseStepTests):
                                    self.good_sample_sheet_path)
 
     def test_quality_control(self):
-        self._delete_test_output()
         self._create_test_input(2)
 
         fake_path = join(self.output_file_path, 'QCJob', 'logs')
@@ -378,7 +452,6 @@ class BasicStepTests(BaseStepTests):
         with open(tmp_path, 'w') as f:
             f.write(dumps(BaseStepTests.CONFIGURATION, indent=2))
 
-        self.delete_these.append(tmp_path)
         return tmp_path
 
     def test_generate_pipeline(self):
@@ -413,6 +486,9 @@ class BasicStepTests(BaseStepTests):
                                           self.qiita_id)
 
         self.assertIsNotNone(pipeline)
+
+        # don't construct a fake pipeline type to test Error raise on an
+        # unknown pipeline type. Rely on pipeline testing for that.
 
     def test_get_project_info(self):
         obs = self.pipeline.get_project_info()
@@ -583,7 +659,7 @@ class BasicStepTests(BaseStepTests):
     def test_get_tube_ids_from_qiita(self):
         fake_client = FakeClient()
         step = Step(self.pipeline, self.qiita_id, None)
-        step.get_tube_ids_from_qiita(fake_client)
+        step._get_tube_ids_from_qiita(fake_client)
         obs = step.tube_id_map
 
         exp = {'13059': {'SP331130A04': 'SP331130A-4',
@@ -602,3 +678,117 @@ class BasicStepTests(BaseStepTests):
                          '12.15': '12.15'}}
 
         self.assertDictEqual(obs, exp)
+
+    def test_compare_samples_against_qiita(self):
+        fake_client = FakeClient()
+        step = Step(self.pipeline, self.qiita_id, None)
+        results = step._compare_samples_against_qiita(fake_client)
+
+        # confirm projects in results match what's expected
+        obs = set([x['project_name'] for x in results])
+        exp = {"NYU_BMS_Melanoma", "Feist", "Gerwick"}
+        self.assertEqual(obs, exp)
+
+        # confirm projects using tube-ids match what's expected
+
+        # results are a list of project dicts, rather than a dict of dicts.
+        # however they are faked and can be expected to be returned in a
+        # fixed order. Assert the order is as expected so the following tests
+        # will be meaningful.
+        self.assertEqual(results[0]['project_name'], 'NYU_BMS_Melanoma')
+        self.assertEqual(results[1]['project_name'], 'Feist')
+        self.assertEqual(results[2]['project_name'], 'Gerwick')
+
+        self.assertEqual(results[0]['tids'], True)
+        self.assertEqual(results[1]['tids'], True)
+        self.assertEqual(results[2]['tids'], False)
+
+        # 'EP448041B04' is a sample-name from the sample-sheet and should not
+        # be in fake-Qiita, as defined in FakeQiita() class. Therefore, it
+        # should appear in the 'samples_not_in_qiita' list.
+        self.assertTrue('EP448041B04' in results[0]['samples_not_in_qiita'])
+
+        # 'BLANK3.3B' is defined in the sample-sheet and also in FakeQiita,
+        # both as a sample-name and as a tube-id (One of the few to be so
+        # named). It shouldn't appear in 'samples_not_in_qiita' list.
+        self.assertTrue('BLANK3.3B' not in results[0]['samples_not_in_qiita'])
+
+        # 'SP331130A-4' is a tube-id in qiita and should be present in the
+        # 'examples_in_qiita' list
+        # the tube-ids in 'examples_in_qiita' list should be a subset of all
+        # the tube-ids in FakeQiita().
+        exp = {'SP331130A-4', 'AP481403B-2', 'LP127829A-2', 'BLANK3.3B',
+               'EP529635B02', 'EP542578B-4', 'EP446602B-1', 'EP121011B-1',
+               'EP636802A-1', 'SP573843A-4'}
+
+        self.assertTrue(set(results[0]['examples_in_qiita']).issubset(exp))
+
+        # Gerwick has a small number of samples in the sample-sheet, and all
+        # of which are in FakeQiita().
+        self.assertEqual(results[2]['samples_not_in_qiita'], set())
+
+    def test_generate_commands(self):
+        self._create_test_input(4)
+
+        fake_client = FakeClient()
+
+        # self.pipeline represents a metagenomic pathway.
+        step = Step(self.pipeline, self.qiita_id, None)
+
+        # need to generate some metadata in order to generate commands.
+        step.generate_special_map(fake_client)
+
+        # test base _generate_commands() method; contains only commands used
+        # across all pipeline types.
+        step.generate_commands()
+
+        exp = [
+            (f'cd {self.output_file_path}; '
+             'tar zcvf logs-ConvertJob.tgz ConvertJob/logs'),
+            (f'cd {self.output_file_path}; '
+             'tar zcvf reports-ConvertJob.tgz ConvertJob/Reports '
+             'ConvertJob/Logs'),
+            (f'cd {self.output_file_path}; '
+             'tar zcvf logs-FastQCJob.tgz FastQCJob/logs'),
+            (f'cd {self.output_file_path}; '
+             'tar zcvf logs-QCJob.tgz QCJob/logs'),
+            (f'cd {self.output_file_path}; '
+             'tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc'),
+            (f'cd {self.output_file_path}; '
+             'tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/logs'),
+            (f'cd {self.output_file_path}; '
+             'tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles'),
+            (f'cd {self.output_file_path}; '
+             'mv failed_samples.html final_results'),
+            (f'cd {self.output_file_path}; '
+             'tar zcvf reports-QCJob.tgz QCJob/NYU_BMS_Melanoma_13059/'
+             'fastp_reports_dir QCJob/Feist_11661/fastp_reports_dir '
+             'QCJob/Gerwick_6123/fastp_reports_dir'),
+            (f'cd {self.output_file_path}; '
+             'tar zcvf sample-files.tgz 211021_A00000_0000_SAMPLE_NYU_BMS_'
+             'Melanoma_13059_blanks.tsv 211021_A00000_0000_SAMPLE_Feist_'
+             '11661_blanks.tsv 211021_A00000_0000_SAMPLE_Gerwick_6123_'
+             'blanks.tsv'),
+            (f'cd {self.output_file_path}; '
+             'mv 211021_A00000_0000_SAMPLE_NYU_BMS_Melanoma_13059_blanks.tsv '
+             '/Users/ccowart/CREW2/qp-knight-lab-processing/qp_klp/tests/data'
+             '/QDir/uploads/13059'),
+            (f'cd {self.output_file_path}; '
+             'mv 211021_A00000_0000_SAMPLE_Feist_11661_blanks.tsv /Users/'
+             'ccowart/CREW2/qp-knight-lab-processing/qp_klp/tests/data/QDir/'
+             'uploads/11661'),
+            (f'cd {self.output_file_path}; '
+             'mv 211021_A00000_0000_SAMPLE_Gerwick_6123_blanks.tsv /Users/'
+             'ccowart/CREW2/qp-knight-lab-processing/qp_klp/tests/data/QDir/'
+             'uploads/6123'),
+            (f'cd {self.output_file_path}; '
+             'mv NYU_BMS_Melanoma_13059.1.tsv /Users/ccowart/CREW2/'
+             'qp-knight-lab-processing/qp_klp/tests/data/QDir/uploads/13059'),
+            (f'cd {self.output_file_path}; '
+             'mv Gerwick_6123.1.tsv /Users/ccowart/CREW2/'
+             'qp-knight-lab-processing/qp_klp/tests/data/QDir/uploads/6123'),
+            (f'cd {self.output_file_path}; '
+             'mv Feist_11661.1.tsv /Users/ccowart/CREW2/'
+             'qp-knight-lab-processing/qp_klp/tests/data/QDir/uploads/11661')]
+
+        self.assertEqual(step.cmds, exp)

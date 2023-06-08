@@ -63,20 +63,3 @@ class Metagenomic(Step):
                 # metatranscriptomic, according to what's stored in the
                 # pipeline.
                 results[pf_path] = self.pipeline.pipeline_type
-
-    def generate_commands(self, qclient):
-        self.qclient = qclient
-        super()._generate_commands()
-        out_dir = self.pipeline.output_path
-        self.cmds.append(f'cd {self.pipeline.output_path}; '
-                         'tar zcvf logs-QCJob.tgz QCJob/logs')
-
-        # copy all tgz files, including sample-files.tgz, to final_results.
-        self.cmds.append(f'cd {out_dir}; mv *.tgz final_results')
-        self.cmds.append(f'cd {out_dir}; mv FastQCJob/multiqc final_results')
-
-        self.cmds.append(f'cd {self.pipeline.output_path}; '
-                         'tar zcvf reports-ConvertJob.tgz ConvertJob/Reports '
-                         'ConvertJob/Logs')
-
-        self.write_commands_to_output_path()

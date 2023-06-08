@@ -162,34 +162,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             step = Amplicon(
                 pipeline, job_id, status_line, lane_number)
 
-        step.get_tube_ids_from_qiita(qclient)
-
         status_line.update_current_message()
 
-        # compare sample-ids/tube-ids in sample-sheet/mapping file
-        # against what's in Qiita.
-        results = step.compare_samples_against_qiita()
-
-        if results is not None:
-            msgs = []
-            for comparison in results:
-                not_in_qiita_count = len(comparison['samples_not_in_qiita'])
-                examples_in_qiita = ', '.join(comparison['examples_in_qiita'])
-                p_name = comparison['project_name']
-                uses_tids = comparison['tids']
-
-                msgs.append(f"Project '{p_name}' has {not_in_qiita_count} "
-                            "samples not registered in Qiita.")
-
-                msgs.append(f"Some registered samples in Project '{p_name}'"
-                            f" include: {examples_in_qiita}")
-
-                if uses_tids:
-                    msgs.append(f"Project '{p_name}' is using tube-ids. You "
-                                "may be using sample names in your file.")
-
-            if msgs:
-                raise PipelineError('\n'.join(msgs))
+        step.precheck(qclient)
 
         # set update=False to prevent updating Qiita database and copying
         # files into uploads directory. Useful for testing.

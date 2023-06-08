@@ -2,8 +2,8 @@ from collections import defaultdict
 from itertools import chain
 from json import dumps
 from metapool import KLSampleSheet
-from os import makedirs, walk
-from os.path import join, exists
+from os import makedirs, walk, listdir
+from os.path import join, exists, split
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
@@ -326,23 +326,166 @@ class Step:
 
         return gpf_job
 
-    def _generate_commands(self):
+    def _helper_process_fastp_report_dirs(self):
+        report_dirs = []
+
+        for root, dirs, files in walk(self.pipeline.output_path):
+            for dir_name in dirs:
+                if dir_name == 'fastp_reports_dir':
+                    # generate the full path for this directory before
+                    # truncating everything up to the QCJob directory.
+                    full_path = join(root, dir_name).split('QCJob/')
+                    report_dirs.append(join('QCJob', full_path[1]))
+
+        return 'tar zcvf reports-QCJob.tgz ' + ' '.join(report_dirs)
+
+    def _helper_process_blanks(self):
+        results = [x for x in listdir(self.pipeline.output_path) if
+                   x.endswith('_blanks.tsv')]
+
+        if len(results) > 0:
+            return 'tar zcvf sample-files.tgz' + ' ' + ' '.join(results)
+
+    def _helper_process_blank_files(self):
+        blanks_files = [x for x in listdir(self.pipeline.output_path) if
+                        x.endswith('_blanks.tsv')]
+
+        uploads_folders = {x[2]: x[1] for x in self.special_map}
+
+        cmds = []
+        for blanks_file in blanks_files:
+            # assume filename like:
+            # 180716_M05314_0106_000000000-BYB7J_Metcalf_NIJ_14989_blanks.tsv
+            qiita_id = blanks_file.split('_')[-2]
+            uploads_folder = uploads_folders[qiita_id]
+
+            if not exists(uploads_folder):
+                raise ValueError(f"Uploads folder '{uploads_folder}' does "
+                                 "not exist")
+
+            cmds.append(f"mv {blanks_file} {uploads_folder}")
+
+        return cmds
+
+    def _helper_process_prep_files(self):
+        pf_dir = join(self.pipeline.output_path, 'GenPrepFileJob', 'PrepFiles')
+        pf_files = [x for x in listdir(pf_dir) if x.endswith('.tsv')]
+
+        cmds = []
+
+        uploads_folders = {x[2]: x[1] for x in self.special_map}
+
+        for pf_file in pf_files:
+            # assume filename like:
+            # 0000-L446B.CMI_LOreal_Acne_16SV1-V3_14901.1.tsv
+            qiita_id = pf_file.split('_')[-1].split('.')[0]
+            uploads_folder = uploads_folders[qiita_id]
+
+            if not exists(uploads_folder):
+                raise ValueError(f"Uploads folder '{uploads_folder}' does "
+                                 "not exist")
+
+            cmds.append(f"mv {pf_file} {uploads_folder}")
+
+        return cmds
+
+    def _helper_process_fastq_files(self):
+        cmds = []
+
+        data_dirs = [x for x in
+                     listdir(join(self.pipeline.output_path, 'QCJob')) if
+                     x in ['amplicon', 'filtered_sequences',
+                           'trimmed_sequences']]
+
+        uploads_folders = {x[2]: x[1] for x in self.special_map}
+
+        for data_dir in data_dirs:
+            # assume paths like:
+            # QCJob/Finrisk_12142/filtered_sequences
+            # QCJob/ABTX_11052/amplicon
+            tmp, _ = split(data_dir)
+            _, tmp = split(tmp)
+            _, qiita_id = tmp.split('_')
+
+            uploads_folder = uploads_folders[qiita_id]
+
+            if not exists(uploads_folder):
+                raise ValueError(f"Uploads folder '{uploads_folder}' does "
+                                 "not exist")
+
+            cmds.append("mv {data_dir}/*  {uploads_folder}")
+
+        return cmds
+
+    def generate_commands(self):
+        cmds = []
+
+        if exists(join(self.pipeline.output_path, 'ConvertJob/logs')):
+            cmds.append('tar zcvf logs-ConvertJob.tgz ConvertJob/logs')
+
+        if exists(join(self.pipeline.output_path, 'ConvertJob/Reports')):
+            cmds.append('tar zcvf reports-ConvertJob.tgz ConvertJob/Reports '
+                        'ConvertJob/Logs')
+        elif exists(join(self.pipeline.output_path, 'ConvertJob/Logs')):
+            cmds.append('tar zcvf reports-ConvertJob.tgz ConvertJob/Logs')
+
+        if exists(join(self.pipeline.output_path, 'FastQCJob/logs')):
+            cmds.append('tar zcvf logs-FastQCJob.tgz FastQCJob/logs')
+
+        if exists(join(self.pipeline.output_path, 'FastQCJob/logs')):
+            cmds.append('tar zcvf logs-QCJob.tgz QCJob/logs')
+
+        if exists(join(self.pipeline.output_path, 'FastQCJob/fastqc')):
+            cmds.append('tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc')
+
+        if exists(join(self.pipeline.output_path, 'GenPrepFileJob/logs')):
+            cmds.append('tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/logs')
+
+        if exists(join(self.pipeline.output_path, 'GenPrepFileJob/PrepFiles')):
+            cmds.append('tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles')
+
+        if exists(join(self.pipeline.output_path, 'failed_samples.html')):
+            cmds.append('mv failed_samples.html final_results')
+
+        if exists(join(self.pipeline.output_path, 'touched_studies.html')):
+            cmds.append('mv touched_studies.html final_results')
+
+        cmds.append(self._helper_process_fastp_report_dirs())
+
+        cmds.append(self._helper_process_blanks())
+
+        # if one or more tar-gzip files are found (which we expect there to
+        # be), move them into the 'final_results' directory.
+        results = [x for x in listdir(self.pipeline.output_path) if
+                   x.endswith('.tgz')]
+
+        if len(results) > 0:
+            'mv *.tgz final_results'
+
+        cmds += self._helper_process_blank_files()
+
+        cmds += self._helper_process_prep_files()
+
+        cmds += self._helper_process_fastq_files()
+
+        # move FastQC reports into final_results for viewing
+        if exists(join(self.pipeline.output_path, 'FastQCJob/multiqc')):
+            cmds.append('mv FastQCJob/multiqc final_results')
+
+        # prepend each command with a change-directory to the correct
+        # location.
+        cmds = [f'cd {self.pipeline.output_path}; {x}' for x in cmds]
+
+        self.cmds = cmds
+
+        self.write_commands_to_output_path()
+
+    def load_preps_into_qiita(self):
         out_dir = self.pipeline.output_path
         qclient = self.qclient
 
-        cmds = ['tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
-                'tar zcvf logs-FastQCJob.tgz FastQCJob/logs',
-                'tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc',
-                'tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/logs',
-                'tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles']
-        self.cmds = [f'cd {out_dir}; {x}' for x in cmds]
-
         data = []
         for project, _, qiita_id in self.special_map:
-            if self.pipeline.pipeline_type in Step.META_TYPES:
-                self.cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
-                                 f'QCJob/{project}/fastp_reports_dir')
-
             if len(self.touched_studies_prep_info[qiita_id]) != 1:
                 raise ValueError(
                     f"Too many preps for {qiita_id}: "
@@ -402,10 +545,6 @@ class Step:
             f.write(df.to_html(border=2, index=False, justify="left",
                                render_links=True, escape=False))
 
-        if exists(join(out_dir, 'failed_samples.html')):
-            tmp = f'cd {out_dir}; mv failed_samples.html final_results'
-            self.cmds.append(tmp)
-
     def write_commands_to_output_path(self):
         self.cmds_log_path = join(self.pipeline.output_path, 'cmds.log')
         with open(self.cmds_log_path, 'w') as f:
@@ -461,7 +600,7 @@ class Step:
     def get_prep_file_paths(self):
         return self.prep_file_paths
 
-    def get_tube_ids_from_qiita(self, qclient):
+    def _get_tube_ids_from_qiita(self, qclient):
         # Update get_project_info() so that it can return a list of
         # samples in projects['samples']. Include blanks in projects['blanks']
         # just in case there are duplicate qiita_ids
@@ -495,8 +634,9 @@ class Step:
         self.tube_id_map = tids_by_qiita_id
         self.samples_in_qiita = sample_names_by_qiita_id
 
-    def compare_samples_against_qiita(self):
+    def _compare_samples_against_qiita(self, qclient):
         projects = self.pipeline.get_project_info(short_names=True)
+        self._get_tube_ids_from_qiita(qclient)
 
         results = []
         for project in projects:
@@ -505,7 +645,7 @@ class Step:
 
             # get list of samples as presented by the sample-sheet or mapping
             # file and confirm that they are all registered in Qiita.
-            samples = set(self.pipeline.get_sample_names())
+            samples = set(self.pipeline.get_sample_names(project_name))
 
             # strip any leading zeroes from the sample-ids. Note that
             # if a sample-id has more than one leading zero, all of
@@ -523,19 +663,21 @@ class Step:
                 used_tids = True
             else:
                 # assume project is in samples_in_qiita
-                not_in_qiita = samples - set(self.samples_in_qiita)
+                not_in_qiita = samples - set(self.samples_in_qiita[qiita_id])
                 examples = list(samples)[:5]
                 used_tids = False
 
             # convert to strings before returning
             examples = [str(x) for x in examples]
 
-            if not_in_qiita:
-                # if there are actual differences
-                results.append({'samples_not_in_qiita': not_in_qiita,
-                                'examples_in_qiita': examples,
-                                'project_name': project_name,
-                                'tids': used_tids})
+            # return an entry for all projects, even when samples_not_in_qiita
+            # is an empty list, as the information is still valuable.
+
+            results.append({'samples_not_in_qiita': not_in_qiita,
+                            'examples_in_qiita': examples,
+                            'project_name': project_name,
+                            'tids': used_tids})
+
         return results
 
     @classmethod
@@ -637,6 +779,32 @@ class Step:
 
                 return data
 
+    def precheck(self, qclient):
+        # compare sample-ids/tube-ids in sample-sheet/mapping file
+        # against what's in Qiita.
+        results = self._compare_samples_against_qiita(qclient)
+
+        if results is not None:
+            msgs = []
+            for comparison in results:
+                not_in_qiita_count = len(comparison['samples_not_in_qiita'])
+                examples_in_qiita = ', '.join(comparison['examples_in_qiita'])
+                p_name = comparison['project_name']
+                uses_tids = comparison['tids']
+
+                msgs.append(f"Project '{p_name}' has {not_in_qiita_count} "
+                            "samples not registered in Qiita.")
+
+                msgs.append(f"Some registered samples in Project '{p_name}'"
+                            f" include: {examples_in_qiita}")
+
+                if uses_tids:
+                    msgs.append(f"Project '{p_name}' is using tube-ids. You "
+                                "may be using sample names in your file.")
+
+            if msgs:
+                raise PipelineError('\n'.join(msgs))
+
     def execute_pipeline(self, qclient, increment_status, update=True):
         '''
         Executes steps of pipeline in proper sequence.
@@ -678,7 +846,10 @@ class Step:
         self.generate_touched_studies(qclient)
 
         increment_status()
-        self.generate_commands(qclient)
+        self.load_preps_into_qiita()
+
+        increment_status()
+        self.generate_commands()
 
         increment_status()
         if update:
