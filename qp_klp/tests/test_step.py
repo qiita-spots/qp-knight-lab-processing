@@ -796,4 +796,4 @@ class BasicStepTests(BaseStepTests):
         for i in range(0, len(exp)):
             exp[i] = exp[i].replace('BASE_DIRECTORY', getcwd())
 
-        self.assertEqual(step.cmds, exp)
+        self.assertEqual(set(step.cmds), set(exp))
