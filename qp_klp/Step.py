@@ -337,6 +337,7 @@ class Step:
                     full_path = join(root, dir_name).split('QCJob/')
                     report_dirs.append(join('QCJob', full_path[1]))
 
+        report_dirs.sort()
         return 'tar zcvf reports-QCJob.tgz ' + ' '.join(report_dirs)
 
     def _helper_process_blanks(self):

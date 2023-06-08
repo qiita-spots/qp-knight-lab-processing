@@ -353,18 +353,19 @@ class BaseStepTests(TestCase):
                 with open(fake_path, 'w') as f:
                     f.write("This is a file")
 
-            x = ['logs-ConvertJob.tgz', 'logs-FastQCJob.tgz',
-                 'logs-GenPrepFileJob.tgz', 'logs-QCJob.tgz', 'prep-files.tgz',
-                 'reports-ConvertJob.tgz', 'reports-FastQCJob.tgz',
-                 'reports-QCJob.tgz', 'sample-files.tgz']
+            tarballs = ['logs-ConvertJob.tgz', 'logs-FastQCJob.tgz',
+                        'logs-GenPrepFileJob.tgz', 'logs-QCJob.tgz',
+                        'prep-files.tgz', 'reports-ConvertJob.tgz',
+                        'reports-FastQCJob.tgz', 'reports-QCJob.tgz',
+                        'sample-files.tgz']
 
-            for file_name in x:
+            for file_name in tarballs:
                 fake_path = join(self.output_file_path, file_name)
                 with open(fake_path, 'w') as f:
                     f.write("This is a file")
 
-            x = ['o1611416-26', 'e1611416-26']
-            for file_name in x:
+            suffixes = ['o1611416-26', 'e1611416-26']
+            for file_name in suffixes:
                 file_name = f'{self.good_run_id}_FastQCJob.{file_name}'
                 fake_path = join(self.output_file_path, 'FastQCJob', 'logs')
                 makedirs(fake_path, exist_ok=True)
@@ -761,9 +762,9 @@ class BasicStepTests(BaseStepTests):
             (f'cd {self.output_file_path}; '
              'mv failed_samples.html final_results'),
             (f'cd {self.output_file_path}; '
-             'tar zcvf reports-QCJob.tgz QCJob/NYU_BMS_Melanoma_13059/'
-             'fastp_reports_dir QCJob/Feist_11661/fastp_reports_dir '
-             'QCJob/Gerwick_6123/fastp_reports_dir'),
+             'tar zcvf reports-QCJob.tgz QCJob/Feist_11661/fastp_reports_dir '
+             'QCJob/Gerwick_6123/fastp_reports_dir '
+             'QCJob/NYU_BMS_Melanoma_13059/fastp_reports_dir'),
             (f'cd {self.output_file_path}; '
              'tar zcvf sample-files.tgz 211021_A00000_0000_SAMPLE_NYU_BMS_'
              'Melanoma_13059_blanks.tsv 211021_A00000_0000_SAMPLE_Feist_'
