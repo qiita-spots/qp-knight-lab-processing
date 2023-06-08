@@ -771,24 +771,29 @@ class BasicStepTests(BaseStepTests):
              'blanks.tsv'),
             (f'cd {self.output_file_path}; '
              'mv 211021_A00000_0000_SAMPLE_NYU_BMS_Melanoma_13059_blanks.tsv '
-             '/Users/ccowart/CREW2/qp-knight-lab-processing/qp_klp/tests/data'
+             'BASE_DIRECTORY/qp_klp/tests/data'
              '/QDir/uploads/13059'),
             (f'cd {self.output_file_path}; '
-             'mv 211021_A00000_0000_SAMPLE_Feist_11661_blanks.tsv /Users/'
-             'ccowart/CREW2/qp-knight-lab-processing/qp_klp/tests/data/QDir/'
+             'mv 211021_A00000_0000_SAMPLE_Feist_11661_blanks.tsv '
+             'BASE_DIRECTORY/qp_klp/tests/data/QDir/'
              'uploads/11661'),
             (f'cd {self.output_file_path}; '
-             'mv 211021_A00000_0000_SAMPLE_Gerwick_6123_blanks.tsv /Users/'
-             'ccowart/CREW2/qp-knight-lab-processing/qp_klp/tests/data/QDir/'
+             'mv 211021_A00000_0000_SAMPLE_Gerwick_6123_blanks.tsv '
+             'BASE_DIRECTORY/qp_klp/tests/data/QDir/'
              'uploads/6123'),
             (f'cd {self.output_file_path}; '
-             'mv NYU_BMS_Melanoma_13059.1.tsv /Users/ccowart/CREW2/'
-             'qp-knight-lab-processing/qp_klp/tests/data/QDir/uploads/13059'),
+             'mv NYU_BMS_Melanoma_13059.1.tsv BASE_DIRECTORY/qp_klp/tests/'
+             'data/QDir/uploads/13059'),
             (f'cd {self.output_file_path}; '
-             'mv Gerwick_6123.1.tsv /Users/ccowart/CREW2/'
-             'qp-knight-lab-processing/qp_klp/tests/data/QDir/uploads/6123'),
+             'mv Gerwick_6123.1.tsv BASE_DIRECTORY/qp_klp/tests/data/QDir/'
+             'uploads/6123'),
             (f'cd {self.output_file_path}; '
-             'mv Feist_11661.1.tsv /Users/ccowart/CREW2/'
-             'qp-knight-lab-processing/qp_klp/tests/data/QDir/uploads/11661')]
+             'mv Feist_11661.1.tsv BASE_DIRECTORY/qp_klp/tests/data/QDir/'
+             'uploads/11661')]
+
+        # replace unique string w/the base-directory path in the expected
+        # output.
+        for i in range(0, len(exp)):
+            exp[i] = exp[i].replace('BASE_DIRECTORY', getcwd())
 
         self.assertEqual(step.cmds, exp)
