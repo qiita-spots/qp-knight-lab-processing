@@ -748,7 +748,7 @@ class BasicStepTests(BaseStepTests):
              'tar zcvf logs-ConvertJob.tgz ConvertJob/logs'),
             (f'cd {self.output_file_path}; '
              'tar zcvf reports-ConvertJob.tgz ConvertJob/Reports '
-             'ConvertJob/Logs'),
+             'ConvertJob/logs'),
             (f'cd {self.output_file_path}; '
              'tar zcvf logs-FastQCJob.tgz FastQCJob/logs'),
             (f'cd {self.output_file_path}; '
