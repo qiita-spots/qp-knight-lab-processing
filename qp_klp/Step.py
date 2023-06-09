@@ -205,7 +205,6 @@ class Step:
                     raise ValueError(f"'{pipeline_type}' is not a valid "
                                      "pipeline type")
 
-                # HERE
                 reply = qclient.post('/qiita_db/prep_template/', data=data)
                 prep_id = reply['prep']
                 results[study_id].append(prep_id)
@@ -565,19 +564,20 @@ class Step:
                 raise PipelineError("QCJob output not in expected location")
             # ideally we would use the email of the user that started the SPP
             # run but at this point there is no easy way to retrieve it
-            data = {'user_email': 'qiita.help@gmail.com',
-                    'prep_id': prep_id,
-                    'artifact_type': atype,
-                    'command_artifact_name': self.generated_artifact_name,
-                    'files': files}
-            job_id = qclient.post('/qiita_db/artifact/', data=data)
+            pdata = {'user_email': 'qiita.help@gmail.com',
+                     'prep_id': prep_id,
+                     'artifact_type': atype,
+                     'command_artifact_name': self.generated_artifact_name,
+                     'files': dumps(files)}
+            job_id = qclient.post('/qiita_db/artifact/', data=pdata)
 
             data.append({'Project': project, 'Qiita Study ID': qiita_id,
                          'Qiita Prep ID': prep_id, 'Qiita URL': surl,
                          'Prep URL': prep_url, 'Linking JobID': job_id})
 
         df = pd.DataFrame(data)
-        with open(join(out_dir, 'touched_studies.html'), 'w') as f:
+        with open(join(out_dir, 'final_results',
+                       'touched_studies.html'), 'w') as f:
             f.write(df.to_html(border=2, index=False, justify="left",
                                render_links=True, escape=False))
 
@@ -730,8 +730,10 @@ class Step:
 
             # remove leading zeroes if they exist to match Qiita results.
             sample_name = sample_name.lstrip('0')
-            if sample_name in tube_id_map[qiita_id]:
-                df.at[i, "sample_name"] = tube_id_map[qiita_id][sample_name]
+
+            reversed_map = {tube_id_map[k]: k for k in tube_id_map}
+            if sample_name in reversed_map:
+                df.at[i, "sample_name"] = reversed_map[sample_name]
 
         df.to_csv(prep_file_path, index=False, sep="\t")
 
