@@ -1,9 +1,9 @@
-from collections import defaultdict
 from itertools import chain
+from collections import defaultdict
 from json import dumps
 from metapool import KLSampleSheet
 from os import makedirs, walk, listdir
-from os.path import join, exists, split
+from os.path import join, exists, isdir
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
@@ -12,6 +12,7 @@ from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 import pandas as pd
+import re
 
 
 class FailedSamplesRecord:
@@ -204,6 +205,7 @@ class Step:
                     raise ValueError(f"'{pipeline_type}' is not a valid "
                                      "pipeline type")
 
+                # HERE
                 reply = qclient.post('/qiita_db/prep_template/', data=data)
                 prep_id = reply['prep']
                 results[study_id].append(prep_id)
@@ -348,10 +350,11 @@ class Step:
             return 'tar zcvf sample-files.tgz' + ' ' + ' '.join(results)
 
     def _helper_process_blank_files(self):
-        blanks_files = [x for x in listdir(self.pipeline.output_path) if
-                        x.endswith('_blanks.tsv')]
+        blanks_files = [a_file for a_file in listdir(self.pipeline.output_path)
+                        if a_file.endswith('_blanks.tsv')]
 
-        uploads_folders = {x[2]: x[1] for x in self.special_map}
+        # where proj[2] is a Qiita ID and proj[1] is a project uploads path.
+        uploads_folders = {proj[2]: proj[1] for proj in self.special_map}
 
         cmds = []
         for blanks_file in blanks_files:
@@ -360,31 +363,24 @@ class Step:
             qiita_id = blanks_file.split('_')[-2]
             uploads_folder = uploads_folders[qiita_id]
 
-            if not exists(uploads_folder):
-                raise ValueError(f"Uploads folder '{uploads_folder}' does "
-                                 "not exist")
-
             cmds.append(f"mv {blanks_file} {uploads_folder}")
 
         return cmds
 
     def _helper_process_prep_files(self):
         pf_dir = join(self.pipeline.output_path, 'GenPrepFileJob', 'PrepFiles')
-        pf_files = [x for x in listdir(pf_dir) if x.endswith('.tsv')]
+        pf_files = [a_file for a_file in listdir(pf_dir) if
+                    a_file.endswith('.tsv')]
 
         cmds = []
 
-        uploads_folders = {x[2]: x[1] for x in self.special_map}
+        uploads_folders = {proj[2]: proj[1] for proj in self.special_map}
 
         for pf_file in pf_files:
             # assume filename like:
             # 0000-L446B.CMI_LOreal_Acne_16SV1-V3_14901.1.tsv
             qiita_id = pf_file.split('_')[-1].split('.')[0]
             uploads_folder = uploads_folders[qiita_id]
-
-            if not exists(uploads_folder):
-                raise ValueError(f"Uploads folder '{uploads_folder}' does "
-                                 "not exist")
 
             cmds.append(f"mv {pf_file} {uploads_folder}")
 
@@ -393,28 +389,28 @@ class Step:
     def _helper_process_fastq_files(self):
         cmds = []
 
-        data_dirs = [x for x in
-                     listdir(join(self.pipeline.output_path, 'QCJob')) if
-                     x in ['amplicon', 'filtered_sequences',
-                           'trimmed_sequences']]
+        valid_dir_names = [join(self.pipeline.output_path, 'QCJob', a_dir) for
+                           a_dir in ['amplicon', 'filtered_sequences',
+                                     'trimmed_sequences']]
 
-        uploads_folders = {x[2]: x[1] for x in self.special_map}
+        data_dirs = [a_dir for a_dir in valid_dir_names if
+                     exists(a_dir) and isdir(a_dir)]
+
+        uploads_folders = {proj[2]: proj[1] for proj in self.special_map}
 
         for data_dir in data_dirs:
             # assume paths like:
             # QCJob/Finrisk_12142/filtered_sequences
             # QCJob/ABTX_11052/amplicon
-            tmp, _ = split(data_dir)
-            _, tmp = split(tmp)
-            _, qiita_id = tmp.split('_')
+            exp = re.compile(r"^QCJob/[A-Za-z0-9]+_(\d+)/[a-z_]+$")
+            match = exp.match(data_dir)
 
+            if match is None:
+                raise ValueError(f"Unexpected directory structure: {data_dir}")
+
+            qiita_id = match.groups()[0]
             uploads_folder = uploads_folders[qiita_id]
-
-            if not exists(uploads_folder):
-                raise ValueError(f"Uploads folder '{uploads_folder}' does "
-                                 "not exist")
-
-            cmds.append("mv {data_dir}/*  {uploads_folder}")
+            cmds.append(f"mv {data_dir}/*  {uploads_folder}")
 
         return cmds
 
@@ -430,11 +426,11 @@ class Step:
         elif exists(join(self.pipeline.output_path, 'ConvertJob/Logs')):
             cmds.append('tar zcvf reports-ConvertJob.tgz ConvertJob/Logs')
 
-        if exists(join(self.pipeline.output_path, 'FastQCJob/logs')):
-            cmds.append('tar zcvf logs-FastQCJob.tgz FastQCJob/logs')
+        if exists(join(self.pipeline.output_path, 'QCJob/logs')):
+            cmds.append('tar zcvf logs-QCJob.tgz QCJob/logs')
 
         if exists(join(self.pipeline.output_path, 'FastQCJob/logs')):
-            cmds.append('tar zcvf logs-QCJob.tgz QCJob/logs')
+            cmds.append('tar zcvf logs-FastQCJob.tgz FastQCJob/logs')
 
         if exists(join(self.pipeline.output_path, 'FastQCJob/fastqc')):
             cmds.append('tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc')
@@ -457,11 +453,18 @@ class Step:
 
         # if one or more tar-gzip files are found (which we expect there to
         # be), move them into the 'final_results' directory.
-        results = [x for x in listdir(self.pipeline.output_path) if
-                   x.endswith('.tgz')]
+        tarballs = [a_file for a_file in listdir(self.pipeline.output_path) if
+                    a_file.endswith('.tgz')]
 
-        if len(results) > 0:
+        if len(tarballs) > 0:
             'mv *.tgz final_results'
+
+        # confirm uploads files exist as expected before using helper
+        # methods.
+        for uploads_folder in [proj[1] for proj in self.special_map]:
+            if not exists(uploads_folder):
+                raise ValueError(f"Uploads folder '{uploads_folder}' does "
+                                 "not exist")
 
         cmds += self._helper_process_blank_files()
 
@@ -574,8 +577,8 @@ class Step:
 
         add_sif_info = []
 
-        qid_pn_map = {x['qiita_id']: x['project_name'] for
-                      x in self.pipeline.get_project_info()}
+        qid_pn_map = {proj['qiita_id']: proj['project_name'] for
+                      proj in self.pipeline.get_project_info()}
 
         # in case we really do need to query for samples again:
         # assume set of valid study_ids can be determined from prep_file_paths.
@@ -605,7 +608,7 @@ class Step:
         # Update get_project_info() so that it can return a list of
         # samples in projects['samples']. Include blanks in projects['blanks']
         # just in case there are duplicate qiita_ids
-        qiita_ids = [x['qiita_id'] for x in
+        qiita_ids = [proj['qiita_id'] for proj in
                      self.pipeline.get_project_info(short_names=True)]
 
         tids_by_qiita_id = {}
@@ -651,13 +654,13 @@ class Step:
             # strip any leading zeroes from the sample-ids. Note that
             # if a sample-id has more than one leading zero, all of
             # them will be removed.
-            samples = {x.lstrip('0') for x in samples}
+            samples = {sample.lstrip('0') for sample in samples}
 
             # just get a list of the tube-ids themselves, not what they map
             # to.
             if qiita_id in self.tube_id_map:
                 # if map is not empty
-                tids = [self.tube_id_map[qiita_id][x] for x in
+                tids = [self.tube_id_map[qiita_id][sample] for sample in
                         self.tube_id_map[qiita_id]]
                 not_in_qiita = samples - set(tids)
                 examples = tids[:5]
@@ -669,7 +672,7 @@ class Step:
                 used_tids = False
 
             # convert to strings before returning
-            examples = [str(x) for x in examples]
+            examples = [str(example) for example in examples]
 
             # return an entry for all projects, even when samples_not_in_qiita
             # is an empty list, as the information is still valuable.
@@ -720,7 +723,8 @@ class Step:
             # 20220423_FS10001773_12_BRB11603-0615.Matrix_Tube_LBM_14332.1.tsv
             # search on project_name vs qiita_id since it's slightly more
             # unique.
-            matching_files = [x for x in prep_file_paths if project_name in x]
+            matching_files = [prep_file for prep_file in prep_file_paths if
+                              project_name in prep_file]
 
             if len(matching_files) == 0:
                 continue
@@ -778,8 +782,6 @@ class Step:
                 qclient.http_patch(f'/api/v1/study/{study_id}/samples',
                                    data=dumps(data))
 
-                return data
-
     def precheck(self, qclient):
         # compare sample-ids/tube-ids in sample-sheet/mapping file
         # against what's in Qiita.
@@ -805,6 +807,9 @@ class Step:
 
             if msgs:
                 raise PipelineError('\n'.join(msgs))
+
+        # Note: falling through and returning None is normal and expected
+        # behavior.
 
     def execute_pipeline(self, qclient, increment_status, update=True):
         '''

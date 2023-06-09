@@ -5,12 +5,10 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-from qp_klp.tests.test_step import BaseStepTests, FakeClient
+from qp_klp.tests.test_step import BaseStepTests
 from qp_klp.Metagenomic import Metagenomic
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os import makedirs
-from os.path import join
-from os.path import exists
 
 
 class MetagenomicTests(BaseStepTests):
@@ -59,54 +57,3 @@ class MetagenomicTests(BaseStepTests):
 
         step = Metagenomic(self.pipeline, self.qiita_id, None)
         step.quality_control()
-
-    def atest_generate_commands(self):
-        self._create_test_input(4)
-        fake_client = FakeClient()
-
-        # confirm metagenomic version is correct. Output should be written to
-        # cmds.log file.
-        mg_step = Metagenomic(self.pipeline, self.qiita_id, None, 1)
-
-        # need to generate some metadata in order to generate commands.
-        mg_step.generate_special_map(fake_client)
-
-        mg_step.generate_commands()
-
-        exp = [(f'cd {self.output_file_path}; '
-                'tar zcvf logs-ConvertJob.tgz ConvertJob/logs'),
-               (f'cd {self.output_file_path}; '
-                'tar zcvf logs-FastQCJob.tgz FastQCJob/logs'),
-               (f'cd {self.output_file_path}; '
-                'tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc'),
-               (f'cd {self.output_file_path}; '
-                'tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/logs'),
-               (f'cd {self.output_file_path}; '
-                'tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles'),
-               (f'cd {self.output_file_path}; '
-                'tar zcvf reports-QCJob.tgz QCJob/NYU_BMS_Melanoma_13059/'
-                'fastp_reports_dir'),
-               (f'cd {self.output_file_path}; '
-                'tar zcvf reports-QCJob.tgz QCJob/Feist_11661/'
-                'fastp_reports_dir'),
-               (f'cd {self.output_file_path}; '
-                'tar zcvf reports-QCJob.tgz QCJob/Gerwick_6123/'
-                'fastp_reports_dir'),
-               (f'cd {self.output_file_path}; '
-                'tar zcvf logs-QCJob.tgz QCJob/logs'),
-               (f'cd {self.output_file_path}; '
-                'mv *.tgz final_results'),
-               (f'cd {self.output_file_path}; '
-                'mv FastQCJob/multiqc final_results'),
-               (f'cd {self.output_file_path}; '
-                'tar zcvf reports-ConvertJob.tgz ConvertJob/'
-                'Reports ConvertJob/Logs')]
-
-        tmp = join(self.output_file_path, 'cmds.log')
-        self.assertTrue(exists(tmp))
-
-        with open(tmp, 'r') as f:
-            obs = f.readlines()
-            obs = [x.strip() for x in obs]
-
-        self.assertEqual(obs, exp)
