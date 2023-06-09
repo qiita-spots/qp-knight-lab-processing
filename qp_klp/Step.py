@@ -576,8 +576,7 @@ class Step:
                          'Prep URL': prep_url, 'Linking JobID': job_id})
 
         df = pd.DataFrame(data)
-        with open(join(out_dir, 'final_results',
-                       'touched_studies.html'), 'w') as f:
+        with open(join(out_dir, 'touched_studies.html'), 'w') as f:
             f.write(df.to_html(border=2, index=False, justify="left",
                                render_links=True, escape=False))
 
