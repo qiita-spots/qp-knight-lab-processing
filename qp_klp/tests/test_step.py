@@ -790,7 +790,9 @@ class BasicStepTests(BaseStepTests):
              'uploads/6123'),
             (f'cd {self.output_file_path}; '
              'mv Feist_11661.1.tsv BASE_DIRECTORY/qp_klp/tests/data/QDir/'
-             'uploads/11661')]
+             'uploads/11661'),
+            (f'cd {self.output_file_path}; '
+             '([ -f *.tgz ] && mv *.tgz final_results) || true')]
 
         # replace unique string w/the base-directory path in the expected
         # output.

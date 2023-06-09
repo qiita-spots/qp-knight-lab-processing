@@ -414,50 +414,86 @@ class Step:
 
         return cmds
 
-    def generate_commands(self):
+    def _helper_process_operations(self):
+        MOVE_CMD = 'mv'
+        RESULTS_DIR = 'final_results'
+        ORDER_AOI = 'AOI'   # for Action, Output, Input(s)
+        ORDER_AIO = 'AIO'   # for Action, Input(s), Output
+        TAR_CMD = 'tar zcvf'
+        LOG_PREFIX = 'logs'
+        REPORT_PREFIX = 'reports'
+        PREP_PREFIX = 'prep-files'
+        CONVERT_JOB = 'ConvertJob'
+        QC_JOB = 'QCJob'
+        FASTQC_JOB = 'FastQCJob'
+        PREPFILE_JOB = 'GenPrepFileJob'
+        TAR_EXT = 'tgz'
+
+        op_meta = [(['ConvertJob/logs'], TAR_CMD,
+                    f'{LOG_PREFIX}-{CONVERT_JOB}.{TAR_EXT}', ORDER_AOI),
+
+                   (['ConvertJob/Reports', 'ConvertJob/Logs'], TAR_CMD,
+                    f'{REPORT_PREFIX}-{CONVERT_JOB}.{TAR_EXT}',
+                    ORDER_AOI),
+
+                   (['QCJob/logs'], TAR_CMD,
+                    f'{LOG_PREFIX}-{QC_JOB}.{TAR_EXT}', ORDER_AOI),
+
+                   (['FastQCJob/logs'], TAR_CMD,
+                    f'{LOG_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', ORDER_AOI),
+
+                   (['FastQCJob/fastqc'], TAR_CMD,
+                    f'{REPORT_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', ORDER_AOI),
+
+                   (['GenPrepFileJob/logs'], TAR_CMD,
+                    f'{LOG_PREFIX}-{PREPFILE_JOB}.{TAR_EXT}', ORDER_AOI),
+
+                   (['GenPrepFileJob/PrepFiles'], TAR_CMD,
+                    f'{PREP_PREFIX}.{TAR_EXT}', ORDER_AOI),
+
+                   (['failed_samples.html', 'touched_studies.html'],
+                    MOVE_CMD, RESULTS_DIR, ORDER_AIO),
+
+                   (['FastQCJob/multiqc'], MOVE_CMD, RESULTS_DIR, ORDER_AIO)]
+
         cmds = []
 
-        if exists(join(self.pipeline.output_path, 'ConvertJob/logs')):
-            cmds.append('tar zcvf logs-ConvertJob.tgz ConvertJob/logs')
+        for inputs, action, output, order in op_meta:
+            confirmed_inputs = []
+            for input in inputs:
+                if exists(join(self.pipeline.output_path, input)):
+                    # it's expected that some inputs may not exist due to
+                    # different pipeline types. If one or more inputs do not
+                    # exist, do not include them in the command-line as they
+                    # may cause an error.
+                    confirmed_inputs.append(input)
 
-        if exists(join(self.pipeline.output_path, 'ConvertJob/Reports')):
-            cmds.append('tar zcvf reports-ConvertJob.tgz ConvertJob/Reports '
-                        'ConvertJob/Logs')
-        elif exists(join(self.pipeline.output_path, 'ConvertJob/Logs')):
-            cmds.append('tar zcvf reports-ConvertJob.tgz ConvertJob/Logs')
+            # do not add the command to the list unless at least one of
+            # the inputs exists. It's okay for a command to go unprocessed.
+            if confirmed_inputs:
+                # convert to string form before using.
+                confirmed_inputs = ' '.join(confirmed_inputs)
+                if order == 'AOI':
+                    cmds.append(f'{action} {output} {confirmed_inputs}')
+                elif order == 'AIO':
+                    cmds.append(f'{action} {confirmed_inputs} {output}')
+                else:
+                    raise ValueError(f"'{order}' is not a defined order of "
+                                     "operations")
 
-        if exists(join(self.pipeline.output_path, 'QCJob/logs')):
-            cmds.append('tar zcvf logs-QCJob.tgz QCJob/logs')
+        return cmds
 
-        if exists(join(self.pipeline.output_path, 'FastQCJob/logs')):
-            cmds.append('tar zcvf logs-FastQCJob.tgz FastQCJob/logs')
-
-        if exists(join(self.pipeline.output_path, 'FastQCJob/fastqc')):
-            cmds.append('tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc')
-
-        if exists(join(self.pipeline.output_path, 'GenPrepFileJob/logs')):
-            cmds.append('tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/logs')
-
-        if exists(join(self.pipeline.output_path, 'GenPrepFileJob/PrepFiles')):
-            cmds.append('tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles')
-
-        if exists(join(self.pipeline.output_path, 'failed_samples.html')):
-            cmds.append('mv failed_samples.html final_results')
-
-        if exists(join(self.pipeline.output_path, 'touched_studies.html')):
-            cmds.append('mv touched_studies.html final_results')
+    def generate_commands(self):
+        cmds = self._helper_process_operations()
 
         cmds.append(self._helper_process_fastp_report_dirs())
 
         cmds.append(self._helper_process_blanks())
 
         # if one or more tar-gzip files are found (which we expect there to
-        # be), move them into the 'final_results' directory.
-        tarballs = [a_file for a_file in listdir(self.pipeline.output_path) if
-                    a_file.endswith('.tgz')]
-
-        if len(tarballs) > 0:
-            'mv *.tgz final_results'
+        # be), move them into the 'final_results' directory. However, if none
+        # are present, don't raise an error.
+        cmds.append('([ -f *.tgz ] && mv *.tgz final_results) || true')
 
         # confirm uploads files exist as expected before using helper
         # methods.
@@ -472,13 +508,9 @@ class Step:
 
         cmds += self._helper_process_fastq_files()
 
-        # move FastQC reports into final_results for viewing
-        if exists(join(self.pipeline.output_path, 'FastQCJob/multiqc')):
-            cmds.append('mv FastQCJob/multiqc final_results')
-
         # prepend each command with a change-directory to the correct
         # location.
-        cmds = [f'cd {self.pipeline.output_path}; {x}' for x in cmds]
+        cmds = [f'cd {self.pipeline.output_path}; {cmd}' for cmd in cmds]
 
         self.cmds = cmds
 
