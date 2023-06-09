@@ -8,13 +8,13 @@
 from unittest import TestCase
 from qp_klp.Step import Step
 from sequence_processing_pipeline.Pipeline import Pipeline
-from os.path import join, abspath
+from os.path import join, abspath, exists, dirname
 from functools import partial
 from os import makedirs, chmod, access, W_OK
-from shutil import rmtree
+from shutil import rmtree, copy
 from os import environ, remove, getcwd
 from json import dumps
-from os.path import exists
+import pandas as pd
 
 
 class FakeClient():
@@ -225,6 +225,7 @@ class BaseStepTests(TestCase):
         self.good_run_id = '211021_A00000_0000_SAMPLE'
         self.good_sample_sheet_path = cc_path('good-sample-sheet.csv')
         self.good_mapping_file_path = cc_path('good-mapping-file.txt')
+        self.good_prep_info_file_path = cc_path('good-sample-prep.tsv')
         self.good_transcript_sheet_path = cc_path('good-sample-sheet-'
                                                   'transcriptomics.csv')
         self.output_file_path = cc_path('output_dir')
@@ -800,3 +801,43 @@ class BasicStepTests(BaseStepTests):
             exp[i] = exp[i].replace('BASE_DIRECTORY', getcwd())
 
         self.assertEqual(set(step.cmds), set(exp))
+
+    def test_overwrite_prep_files(self):
+        # use a prep-file specifically for modification by the
+        # _overwrite_prep_files() method.
+        fake_client = FakeClient()
+        step = Step(self.pipeline, self.qiita_id, None)
+
+        # 20220423_FS10001773_12_BRB11603-0615.Matrix_Tube_LBM_14332.1.tsv
+
+        # copy the file so that we do not overwrite the original, which is
+        # useful for other tests.
+
+        sample_path = join(dirname(self.good_prep_info_file_path),
+                           ('20230101_XX99999999_99_LOL99999-9999.'
+                            'NYU_BMS_Melanoma_13059.1.tsv'))
+
+        copy(self.good_prep_info_file_path, sample_path)
+
+        # needed to prep for _overwrite_prep_files()
+        step._get_tube_ids_from_qiita(fake_client)
+        step._overwrite_prep_files([sample_path])
+
+        # read in the changed prep-file and confirm that the sample_name
+        # column contains sample-names instead of tube-ids and that the
+        # tube-ids have been moved to a new column named 'old_sample_name'.
+        df = pd.read_csv(sample_path, sep='\t', dtype=str, index_col=False)
+
+        new_sample_names = set(df['sample_name'])
+
+        # use the list of sample-names for the project stored in FakeClient()
+        # as the expected set of metadata.
+        exp = set([sample_name.replace('13059.', '') for sample_name in
+                   fake_client.samples_in_13059])
+        self.assertEqual(new_sample_names, exp)
+
+        # confirm tids are where they're expected to be as well
+        new_old_sample_names = set(df['old_sample_name'])
+        tids = fake_client.tids_13059['samples']
+        exp = set([tids[t][0] for t in tids])
+        self.assertEqual(new_old_sample_names, exp)

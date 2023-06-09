@@ -716,7 +716,7 @@ class Step:
         return results
 
     @classmethod
-    def _replace_with_tube_ids(cls, prep_file_path, qiita_id, tube_id_map):
+    def _replace_with_tube_ids(cls, prep_file_path, tube_id_map):
         # passing tube_id_map as a parameter allows for easier testing.
         df = pd.read_csv(prep_file_path, sep='\t', dtype=str, index_col=False)
         # save copy of sample_name column as 'old_sample_name'
@@ -767,8 +767,7 @@ class Step:
                                  f"'{project_name}': {str(matching_files)}")
 
             Step._replace_with_tube_ids(matching_files[0],
-                                        qiita_id,
-                                        self.tube_id_map)
+                                        self.tube_id_map[qiita_id])
 
     def update_blanks_in_qiita(self, qclient):
         for sif_path in self.sifs:
