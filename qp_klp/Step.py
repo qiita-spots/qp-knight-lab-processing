@@ -432,7 +432,7 @@ class Step:
         op_meta = [(['ConvertJob/logs'], TAR_CMD,
                     f'{LOG_PREFIX}-{CONVERT_JOB}.{TAR_EXT}', ORDER_AOI),
 
-                   (['ConvertJob/Reports', 'ConvertJob/Logs'], TAR_CMD,
+                   (['ConvertJob/Reports', 'ConvertJob/logs'], TAR_CMD,
                     f'{REPORT_PREFIX}-{CONVERT_JOB}.{TAR_EXT}',
                     ORDER_AOI),
 
