@@ -13,6 +13,7 @@ from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 import pandas as pd
 import re
+from glob import glob
 
 
 class FailedSamplesRecord:
@@ -338,8 +339,13 @@ class Step:
                     full_path = join(root, dir_name).split('QCJob/')
                     report_dirs.append(join('QCJob', full_path[1]))
 
-        report_dirs.sort()
-        return 'tar zcvf reports-QCJob.tgz ' + ' '.join(report_dirs)
+        if report_dirs:
+            report_dirs.sort()
+            return 'tar zcvf reports-QCJob.tgz ' + ' '.join(report_dirs)
+        else:
+            # It is okay to return an empty list of commands if reports_dirs
+            # is empty. Some pipelines do not generate fastp reports.
+            return []
 
     def _helper_process_blanks(self):
         results = [x for x in listdir(self.pipeline.output_path) if
@@ -363,25 +369,6 @@ class Step:
             uploads_folder = uploads_folders[qiita_id]
 
             cmds.append(f"mv {blanks_file} {uploads_folder}")
-
-        return cmds
-
-    def _helper_process_prep_files(self):
-        pf_dir = join(self.pipeline.output_path, 'GenPrepFileJob', 'PrepFiles')
-        pf_files = [a_file for a_file in listdir(pf_dir) if
-                    a_file.endswith('.tsv')]
-
-        cmds = []
-
-        uploads_folders = {proj[2]: proj[1] for proj in self.special_map}
-
-        for pf_file in pf_files:
-            # assume filename like:
-            # 0000-L446B.CMI_LOreal_Acne_16SV1-V3_14901.1.tsv
-            qiita_id = pf_file.split('_')[-1].split('.')[0]
-            uploads_folder = uploads_folders[qiita_id]
-
-            cmds.append(f"mv {pf_file} {uploads_folder}")
 
         return cmds
 
@@ -485,14 +472,18 @@ class Step:
     def generate_commands(self):
         cmds = self._helper_process_operations()
 
-        cmds.append(self._helper_process_fastp_report_dirs())
+        result = self._helper_process_fastp_report_dirs()
+
+        if result:
+            cmds.append(result)
 
         cmds.append(self._helper_process_blanks())
 
         # if one or more tar-gzip files are found (which we expect there to
         # be), move them into the 'final_results' directory. However, if none
         # are present, don't raise an error.
-        cmds.append('([ -f *.tgz ] && mv *.tgz final_results) || true')
+        cmds.append('(find *.tgz -maxdepth 1 -type f | xargs mv -t '
+                    'final_results) || true')
 
         # confirm uploads files exist as expected before using helper
         # methods.
@@ -502,8 +493,6 @@ class Step:
                                  "not exist")
 
         cmds += self._helper_process_blank_files()
-
-        cmds += self._helper_process_prep_files()
 
         cmds += self._helper_process_fastq_files()
 
@@ -515,9 +504,8 @@ class Step:
 
         self.write_commands_to_output_path()
 
-    def load_preps_into_qiita(self):
+    def load_preps_into_qiita(self, qclient):
         out_dir = self.pipeline.output_path
-        qclient = self.qclient
 
         data = []
         for project, _, qiita_id in self.special_map:
@@ -534,34 +522,52 @@ class Step:
             bd = f'{out_dir}/QCJob/{project}'
             if exists(f'{bd}/filtered_sequences'):
                 atype = 'per_sample_FASTQ'
-                af = [f for f in walk(f'{bd}/filtered_sequences/*.fastq.gz')]
+                af = [f for f in glob(f'{bd}/filtered_sequences/*.fastq.gz')]
                 files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
                 for f in af:
-                    if '.R1.' in f:
+                    if '_R1_' in f:
                         files['raw_forward_seqs'].append(f)
-                    elif '.R2.' in f:
+                    elif '_R2_' in f:
                         files['raw_reverse_seqs'].append(f)
                     else:
                         raise ValueError(f'Not recognized file: {f}')
             elif exists(f'{bd}/trimmed_sequences'):
                 atype = 'per_sample_FASTQ'
-                af = [f for f in walk(f'{bd}/trimmed_sequences/*.fastq.gz')]
+                af = [f for f in glob(f'{bd}/trimmed_sequences/*.fastq.gz')]
                 files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
                 for f in af:
-                    if '.R1.' in f:
+                    if '_R1_' in f:
                         files['raw_forward_seqs'].append(f)
-                    elif '.R2.' in f:
+                    elif '_R2_' in f:
                         files['raw_reverse_seqs'].append(f)
                     else:
                         raise ValueError(f'Not recognized file: {f}')
             elif exists(f'{bd}/amplicon'):
                 atype = 'FASTQ'
-                af = sorted([f for f in walk(f'{bd}/amplicon/*.fastq.gz')])
-                files = {'raw_barcoes': af[0],
-                         'raw_forward_seqs': af[1],
-                         'raw_reverse_seqs': af[2]}
+                af = [f for f in glob(f'{bd}/amplicon/*.fastq.gz')]
+
+                files = {'raw_barcodes': [], 'raw_forward_seqs': [],
+                         'raw_reverse_seqs': []}
+
+                for fastq_file in af:
+                    if '_I1_' in fastq_file:
+                        files['raw_barcodes'].append(fastq_file)
+                    elif '_R1_' in fastq_file:
+                        files['raw_forward_seqs'].append(fastq_file)
+                    elif '_R2_' in fastq_file:
+                        files['raw_reverse_seqs'].append(fastq_file)
+                    else:
+                        raise ValueError(f"Unrecognized file: {fastq_file}")
+
+                files['raw_barcodes'].sort()
+                files['raw_forward_seqs'].sort()
+                files['raw_reverse_seqs'].sort()
             else:
                 raise PipelineError("QCJob output not in expected location")
+
+            # TODO: need a test to check that files isn't empty and if it is
+            # raise an error instead of failing silently!
+
             # ideally we would use the email of the user that started the SPP
             # run but at this point there is no easy way to retrieve it
             pdata = {'user_email': 'qiita.help@gmail.com',
@@ -569,7 +575,8 @@ class Step:
                      'artifact_type': atype,
                      'command_artifact_name': self.generated_artifact_name,
                      'files': dumps(files)}
-            job_id = qclient.post('/qiita_db/artifact/', data=pdata)
+
+            job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
 
             data.append({'Project': project, 'Qiita Study ID': qiita_id,
                          'Qiita Prep ID': prep_id, 'Qiita URL': surl,
@@ -816,10 +823,18 @@ class Step:
 
     def precheck(self, qclient):
         # compare sample-ids/tube-ids in sample-sheet/mapping file
-        # against what's in Qiita.
+        # against what's in Qiita. Results are a list of dictionaries, one
+        # per project.
         results = self._compare_samples_against_qiita(qclient)
 
-        if results is not None:
+        # obtain a list of non-zero counts of samples missing in Qiita, one
+        # for each project. The names of the projects are unimportant. We
+        # want to abort early if any project in the sample-sheet/pre-prep file
+        # contains samples that aren't registered in Qiita.
+        tmp = [len(project['samples_not_in_qiita']) for project in results]
+        missing_counts = [count for count in tmp if count != 0]
+
+        if missing_counts:
             msgs = []
             for comparison in results:
                 not_in_qiita_count = len(comparison['samples_not_in_qiita'])
@@ -868,23 +883,17 @@ class Step:
         increment_status()
         self.sifs = self.generate_sifs(qclient)
 
-        increment_status()
-
+        increment_status()  # increment status regardless of update
         if update:
             self.update_blanks_in_qiita(qclient)
 
+        increment_status()  # status encompasses multiple operations
         prep_file_paths = self.get_prep_file_paths()
-
-        increment_status()
         ptype = self.pipeline.pipeline_type
-
         if update:
             self.update_prep_templates(qclient, prep_file_paths, ptype)
-
         self.generate_touched_studies(qclient)
-
-        increment_status()
-        self.load_preps_into_qiita()
+        self.load_preps_into_qiita(qclient)
 
         increment_status()
         self.generate_commands()

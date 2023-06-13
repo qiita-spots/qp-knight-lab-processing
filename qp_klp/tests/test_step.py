@@ -783,17 +783,8 @@ class BasicStepTests(BaseStepTests):
              'mv 211021_A00000_0000_SAMPLE_Gerwick_6123_blanks.tsv '
              'BASE_DIRECTORY/qp_klp/tests/data/QDir/'
              'uploads/6123'),
-            (f'cd {self.output_file_path}; '
-             'mv NYU_BMS_Melanoma_13059.1.tsv BASE_DIRECTORY/qp_klp/tests/'
-             'data/QDir/uploads/13059'),
-            (f'cd {self.output_file_path}; '
-             'mv Gerwick_6123.1.tsv BASE_DIRECTORY/qp_klp/tests/data/QDir/'
-             'uploads/6123'),
-            (f'cd {self.output_file_path}; '
-             'mv Feist_11661.1.tsv BASE_DIRECTORY/qp_klp/tests/data/QDir/'
-             'uploads/11661'),
-            (f'cd {self.output_file_path}; '
-             '([ -f *.tgz ] && mv *.tgz final_results) || true')]
+            (f'cd {self.output_file_path}; (find *.tgz -maxdepth 1 -type f '
+             '| xargs mv -t final_results) || true')]
 
         # replace unique string w/the base-directory path in the expected
         # output.

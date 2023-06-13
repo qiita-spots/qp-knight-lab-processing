@@ -132,11 +132,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                              "-sheet or a mapping-file.")
 
     msgs = ["Setting up pipeline", "Getting project information",
-            "Converting BCL to Fastq", "Performing Quality Control",
-            "Generating FastQC Reports", "Generating Prep Files",
-            "Generating Sample Information ", "Updating Blanks in Qiita",
-            "Adding Prep Templates to Qiita", "Packaging results",
-            "Finishing up"]
+            "Converting data", "Performing quality control",
+            "Generating reports", "Generating preps",
+            "Generating sample information ", "Registering blanks in Qiita",
+            "Loading preps into Qiita", "Generating packaging commands",
+            "Packaging results", "SPP finished"]
 
     status_line = StatusUpdate(qclient, job_id, msgs)
     status_line.update_current_message()
@@ -171,6 +171,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         step.execute_pipeline(qclient,
                               status_line.update_current_message,
                               update=True)
+
+        status_line.update_current_message()
 
     except PipelineError as e:
         return False, None, str(e)
