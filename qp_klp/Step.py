@@ -351,6 +351,8 @@ class Step:
         results = [x for x in listdir(self.pipeline.output_path) if
                    x.endswith('_blanks.tsv')]
 
+        results.sort()
+
         if len(results) > 0:
             return 'tar zcvf sample-files.tgz' + ' ' + ' '.join(results)
 

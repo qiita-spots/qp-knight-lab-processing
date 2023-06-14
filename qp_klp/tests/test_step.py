@@ -766,10 +766,9 @@ class BasicStepTests(BaseStepTests):
              'QCJob/Gerwick_6123/fastp_reports_dir '
              'QCJob/NYU_BMS_Melanoma_13059/fastp_reports_dir'),
             (f'cd {self.output_file_path}; '
-             'tar zcvf sample-files.tgz 211021_A00000_0000_SAMPLE_NYU_BMS_'
-             'Melanoma_13059_blanks.tsv 211021_A00000_0000_SAMPLE_Feist_'
-             '11661_blanks.tsv 211021_A00000_0000_SAMPLE_Gerwick_6123_'
-             'blanks.tsv'),
+             'tar zcvf sample-files.tgz 211021_A00000_0000_SAMPLE_Feist_11661'
+             '_blanks.tsv 211021_A00000_0000_SAMPLE_Gerwick_6123_blanks.tsv '
+             '211021_A00000_0000_SAMPLE_NYU_BMS_Melanoma_13059_blanks.tsv'),
             (f'cd {self.output_file_path}; (find *.tgz -maxdepth 1 -type f '
              '| xargs mv -t final_results) || true')]
 
