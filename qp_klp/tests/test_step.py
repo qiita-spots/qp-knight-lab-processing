@@ -253,6 +253,13 @@ class BaseStepTests(TestCase):
         if exists('tmp.config'):
             remove('tmp.config')
 
+    def _create_config_file(self):
+        tmp_path = join('.', 'tmp.config')
+        with open(tmp_path, 'w') as f:
+            f.write(dumps(BaseStepTests.CONFIGURATION, indent=2))
+
+        return tmp_path
+
     def _get_searchable_path(self):
         searchable_paths = []
 
@@ -449,15 +456,8 @@ class BasicStepTests(BaseStepTests):
         step = Step(self.pipeline, self.qiita_id, None)
         step._quality_control(self.config['qc'], self.good_sample_sheet_path)
 
-    def create_config_file(self):
-        tmp_path = join('.', 'tmp.config')
-        with open(tmp_path, 'w') as f:
-            f.write(dumps(BaseStepTests.CONFIGURATION, indent=2))
-
-        return tmp_path
-
     def test_generate_pipeline(self):
-        config_file_path = self.create_config_file()
+        config_file_path = self._create_config_file()
 
         pipeline = Step.generate_pipeline(Step.METAGENOMIC_TYPE,
                                           self.good_sample_sheet_path,
@@ -488,9 +488,6 @@ class BasicStepTests(BaseStepTests):
                                           self.qiita_id)
 
         self.assertIsNotNone(pipeline)
-
-        # don't construct a fake pipeline type to test Error raise on an
-        # unknown pipeline type. Rely on pipeline testing for that.
 
     def test_get_project_info(self):
         obs = self.pipeline.get_project_info()
@@ -618,6 +615,11 @@ class BasicStepTests(BaseStepTests):
                            'non_host_reads': '14'}}
 
         self.assertDictEqual(obs, exp)
+
+        # simply confirm that a DataFrame is returned when convert_to_dict is
+        # False. We already know that the contents of obs will be correct.
+        obs = Step.parse_prep_file(good_prep_file, convert_to_dict=False)
+        self.assertTrue(isinstance(obs, pd.DataFrame))
 
     def test_generate_special_map(self):
         fake_client = FakeClient()

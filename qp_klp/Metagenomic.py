@@ -53,13 +53,3 @@ class Metagenomic(Step):
                                           self.project_names)
 
         self.prep_file_paths = job.prep_file_paths
-
-    def generate_touched_studies(self, qclient):
-        results = {}
-
-        for study_id, pf_paths in self.prep_file_paths.items():
-            for pf_path in pf_paths:
-                # record the data-type as either metagenomic or
-                # metatranscriptomic, according to what's stored in the
-                # pipeline.
-                results[pf_path] = self.pipeline.pipeline_type

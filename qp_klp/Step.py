@@ -108,7 +108,6 @@ class Step:
         self.tube_id_map = None
         self.samples_in_qiita = None
         self.output_path = None
-        self.prep_file_paths = None
         self.sample_state = None
         self.special_map = None
         self.touched_studies_prep_info = None
@@ -139,7 +138,7 @@ class Step:
             sheet.write(f)
 
     @classmethod
-    def parse_prep_file(cls, prep_file_path):
+    def parse_prep_file(cls, prep_file_path, convert_to_dict=True):
         metadata = pd.read_csv(prep_file_path,
                                dtype=str,
                                delimiter='\t',
@@ -152,8 +151,10 @@ class Step:
 
         metadata.set_index('sample_name', inplace=True)
 
-        # convert to standard dictionary.
-        return metadata.to_dict('index')
+        if convert_to_dict:
+            return metadata.to_dict('index')
+        else:
+            return metadata
 
     def generate_special_map(self, qclient):
         # this function should be able to be tested by passing in simulated =
@@ -565,8 +566,11 @@ class Step:
             else:
                 raise PipelineError("QCJob output not in expected location")
 
-            # TODO: need a test to check that files isn't empty and if it is
-            # raise an error instead of failing silently!
+            for f_type in files:
+                if not files[f_type]:
+                    # if one or more of the expected list of reads is empty,
+                    # raise an Error.
+                    raise ValueError(f"'{f_type}' is empty")
 
             # ideally we would use the email of the user that started the SPP
             # run but at this point there is no easy way to retrieve it
@@ -892,7 +896,7 @@ class Step:
         ptype = self.pipeline.pipeline_type
         if update:
             self.update_prep_templates(qclient, prep_file_paths, ptype)
-        self.generate_touched_studies(qclient)
+
         self.load_preps_into_qiita(qclient)
 
         increment_status()
