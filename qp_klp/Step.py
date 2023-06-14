@@ -3,7 +3,7 @@ from collections import defaultdict
 from json import dumps
 from metapool import KLSampleSheet
 from os import makedirs, walk, listdir
-from os.path import join, exists, isdir
+from os.path import join, exists
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
@@ -12,7 +12,6 @@ from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 import pandas as pd
-import re
 from glob import glob
 
 
@@ -355,57 +354,8 @@ class Step:
         if len(results) > 0:
             return 'tar zcvf sample-files.tgz' + ' ' + ' '.join(results)
 
-    def _helper_process_blank_files(self):
-        blanks_files = [a_file for a_file in listdir(self.pipeline.output_path)
-                        if a_file.endswith('_blanks.tsv')]
-
-        # where proj[2] is a Qiita ID and proj[1] is a project uploads path.
-        uploads_folders = {proj[2]: proj[1] for proj in self.special_map}
-
-        cmds = []
-        for blanks_file in blanks_files:
-            # assume filename like:
-            # 180716_M05314_0106_000000000-BYB7J_Metcalf_NIJ_14989_blanks.tsv
-            qiita_id = blanks_file.split('_')[-2]
-            uploads_folder = uploads_folders[qiita_id]
-
-            cmds.append(f"mv {blanks_file} {uploads_folder}")
-
-        return cmds
-
-    def _helper_process_fastq_files(self):
-        cmds = []
-
-        valid_dir_names = [join(self.pipeline.output_path, 'QCJob', a_dir) for
-                           a_dir in ['amplicon', 'filtered_sequences',
-                                     'trimmed_sequences']]
-
-        data_dirs = [a_dir for a_dir in valid_dir_names if
-                     exists(a_dir) and isdir(a_dir)]
-
-        uploads_folders = {proj[2]: proj[1] for proj in self.special_map}
-
-        for data_dir in data_dirs:
-            # assume paths like:
-            # QCJob/Finrisk_12142/filtered_sequences
-            # QCJob/ABTX_11052/amplicon
-            exp = re.compile(r"^QCJob/[A-Za-z0-9]+_(\d+)/[a-z_]+$")
-            match = exp.match(data_dir)
-
-            if match is None:
-                raise ValueError(f"Unexpected directory structure: {data_dir}")
-
-            qiita_id = match.groups()[0]
-            uploads_folder = uploads_folders[qiita_id]
-            cmds.append(f"mv {data_dir}/*  {uploads_folder}")
-
-        return cmds
-
     def _helper_process_operations(self):
-        MOVE_CMD = 'mv'
         RESULTS_DIR = 'final_results'
-        ORDER_AOI = 'AOI'   # for Action, Output, Input(s)
-        ORDER_AIO = 'AIO'   # for Action, Input(s), Output
         TAR_CMD = 'tar zcvf'
         LOG_PREFIX = 'logs'
         REPORT_PREFIX = 'reports'
@@ -417,31 +367,31 @@ class Step:
         TAR_EXT = 'tgz'
 
         op_meta = [(['ConvertJob/logs'], TAR_CMD,
-                    f'{LOG_PREFIX}-{CONVERT_JOB}.{TAR_EXT}', ORDER_AOI),
+                    f'{LOG_PREFIX}-{CONVERT_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
 
                    (['ConvertJob/Reports', 'ConvertJob/logs'], TAR_CMD,
                     f'{REPORT_PREFIX}-{CONVERT_JOB}.{TAR_EXT}',
-                    ORDER_AOI),
+                    'OUTPUT_FIRST'),
 
                    (['QCJob/logs'], TAR_CMD,
-                    f'{LOG_PREFIX}-{QC_JOB}.{TAR_EXT}', ORDER_AOI),
+                    f'{LOG_PREFIX}-{QC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
 
                    (['FastQCJob/logs'], TAR_CMD,
-                    f'{LOG_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', ORDER_AOI),
+                    f'{LOG_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
 
                    (['FastQCJob/fastqc'], TAR_CMD,
-                    f'{REPORT_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', ORDER_AOI),
+                    f'{REPORT_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
 
                    (['GenPrepFileJob/logs'], TAR_CMD,
-                    f'{LOG_PREFIX}-{PREPFILE_JOB}.{TAR_EXT}', ORDER_AOI),
+                    f'{LOG_PREFIX}-{PREPFILE_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
 
                    (['GenPrepFileJob/PrepFiles'], TAR_CMD,
-                    f'{PREP_PREFIX}.{TAR_EXT}', ORDER_AOI),
+                    f'{PREP_PREFIX}.{TAR_EXT}', 'OUTPUT_FIRST'),
 
                    (['failed_samples.html', 'touched_studies.html'],
-                    MOVE_CMD, RESULTS_DIR, ORDER_AIO),
+                    'mv', RESULTS_DIR, 'INPUTS_FIRST'),
 
-                   (['FastQCJob/multiqc'], MOVE_CMD, RESULTS_DIR, ORDER_AIO)]
+                   (['FastQCJob/multiqc'], 'mv', RESULTS_DIR, 'INPUTS_FIRST')]
 
         cmds = []
 
@@ -460,9 +410,9 @@ class Step:
             if confirmed_inputs:
                 # convert to string form before using.
                 confirmed_inputs = ' '.join(confirmed_inputs)
-                if order == 'AOI':
+                if order == 'OUTPUT_FIRST':
                     cmds.append(f'{action} {output} {confirmed_inputs}')
-                elif order == 'AIO':
+                elif order == 'INPUTS_FIRST':
                     cmds.append(f'{action} {confirmed_inputs} {output}')
                 else:
                     raise ValueError(f"'{order}' is not a defined order of "
@@ -492,10 +442,6 @@ class Step:
             if not exists(uploads_folder):
                 raise ValueError(f"Uploads folder '{uploads_folder}' does "
                                  "not exist")
-
-        cmds += self._helper_process_blank_files()
-
-        cmds += self._helper_process_fastq_files()
 
         # prepend each command with a change-directory to the correct
         # location.

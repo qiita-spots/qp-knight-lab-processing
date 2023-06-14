@@ -710,7 +710,7 @@ class BasicStepTests(BaseStepTests):
         # 'EP448041B04' is a sample-name from the sample-sheet and should not
         # be in fake-Qiita, as defined in FakeQiita() class. Therefore, it
         # should appear in the 'samples_not_in_qiita' list.
-        self.assertTrue('EP448041B04' in results[0]['samples_not_in_qiita'])
+        self.assertIn('EP448041B04', results[0]['samples_not_in_qiita'])
 
         # 'BLANK3.3B' is defined in the sample-sheet and also in FakeQiita,
         # both as a sample-name and as a tube-id (One of the few to be so
@@ -753,9 +753,9 @@ class BasicStepTests(BaseStepTests):
              'tar zcvf reports-ConvertJob.tgz ConvertJob/Reports '
              'ConvertJob/logs'),
             (f'cd {self.output_file_path}; '
-             'tar zcvf logs-FastQCJob.tgz FastQCJob/logs'),
-            (f'cd {self.output_file_path}; '
              'tar zcvf logs-QCJob.tgz QCJob/logs'),
+            (f'cd {self.output_file_path}; '
+             'tar zcvf logs-FastQCJob.tgz FastQCJob/logs'),
             (f'cd {self.output_file_path}; '
              'tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc'),
             (f'cd {self.output_file_path}; '
@@ -773,18 +773,6 @@ class BasicStepTests(BaseStepTests):
              'Melanoma_13059_blanks.tsv 211021_A00000_0000_SAMPLE_Feist_'
              '11661_blanks.tsv 211021_A00000_0000_SAMPLE_Gerwick_6123_'
              'blanks.tsv'),
-            (f'cd {self.output_file_path}; '
-             'mv 211021_A00000_0000_SAMPLE_NYU_BMS_Melanoma_13059_blanks.tsv '
-             'BASE_DIRECTORY/qp_klp/tests/data'
-             '/QDir/uploads/13059'),
-            (f'cd {self.output_file_path}; '
-             'mv 211021_A00000_0000_SAMPLE_Feist_11661_blanks.tsv '
-             'BASE_DIRECTORY/qp_klp/tests/data/QDir/'
-             'uploads/11661'),
-            (f'cd {self.output_file_path}; '
-             'mv 211021_A00000_0000_SAMPLE_Gerwick_6123_blanks.tsv '
-             'BASE_DIRECTORY/qp_klp/tests/data/QDir/'
-             'uploads/6123'),
             (f'cd {self.output_file_path}; (find *.tgz -maxdepth 1 -type f '
              '| xargs mv -t final_results) || true')]
 
@@ -793,7 +781,7 @@ class BasicStepTests(BaseStepTests):
         for i in range(0, len(exp)):
             exp[i] = exp[i].replace('BASE_DIRECTORY', getcwd())
 
-        self.assertEqual(set(step.cmds), set(exp))
+        self.assertEqual(step.cmds, exp)
 
     def test_overwrite_prep_files(self):
         # use a prep-file specifically for modification by the
