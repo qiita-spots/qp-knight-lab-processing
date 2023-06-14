@@ -209,8 +209,7 @@ class BaseStepTests(TestCase):
                 "modules_to_load": ["fastqc_0.11.5"],
                 "fastqc_executable_path": "fastqc",
                 "multiqc_executable_path": "multiqc",
-                "multiqc_config_file_path": ("sequence_processing_pipeline/"
-                                             "multiqc-bclconvert-config.yaml"),
+                "multiqc_config_file_path": ("multiqc-bclconvert-config.yaml"),
                 "job_total_memory_limit": "20gb",
                 "job_pool_size": 30,
                 "job_max_array_length": 1000
@@ -619,7 +618,7 @@ class BasicStepTests(BaseStepTests):
         # simply confirm that a DataFrame is returned when convert_to_dict is
         # False. We already know that the contents of obs will be correct.
         obs = Step.parse_prep_file(good_prep_file, convert_to_dict=False)
-        self.assertTrue(isinstance(obs, pd.DataFrame))
+        self.assertIsInstance(obs, pd.DataFrame)
 
     def test_generate_special_map(self):
         fake_client = FakeClient()
@@ -689,8 +688,8 @@ class BasicStepTests(BaseStepTests):
         results = step._compare_samples_against_qiita(fake_client)
 
         # confirm projects in results match what's expected
-        obs = set([x['project_name'] for x in results])
-        exp = {"NYU_BMS_Melanoma", "Feist", "Gerwick"}
+        obs = [project['project_name'] for project in results]
+        exp = ["NYU_BMS_Melanoma", "Feist", "Gerwick"]
         self.assertEqual(obs, exp)
 
         # confirm projects using tube-ids match what's expected
@@ -699,13 +698,11 @@ class BasicStepTests(BaseStepTests):
         # however they are faked and can be expected to be returned in a
         # fixed order. Assert the order is as expected so the following tests
         # will be meaningful.
-        self.assertEqual(results[0]['project_name'], 'NYU_BMS_Melanoma')
-        self.assertEqual(results[1]['project_name'], 'Feist')
-        self.assertEqual(results[2]['project_name'], 'Gerwick')
+        self.assertCountEqual([proj['project_name'] for proj in results],
+                              ['NYU_BMS_Melanoma', 'Feist', 'Gerwick'])
 
-        self.assertEqual(results[0]['tids'], True)
-        self.assertEqual(results[1]['tids'], True)
-        self.assertEqual(results[2]['tids'], False)
+        self.assertCountEqual([proj['tids'] for proj in results],
+                              [True, True, False])
 
         # 'EP448041B04' is a sample-name from the sample-sheet and should not
         # be in fake-Qiita, as defined in FakeQiita() class. Therefore, it
@@ -715,7 +712,7 @@ class BasicStepTests(BaseStepTests):
         # 'BLANK3.3B' is defined in the sample-sheet and also in FakeQiita,
         # both as a sample-name and as a tube-id (One of the few to be so
         # named). It shouldn't appear in 'samples_not_in_qiita' list.
-        self.assertTrue('BLANK3.3B' not in results[0]['samples_not_in_qiita'])
+        self.assertNotIn('BLANK3.3B', results[0]['samples_not_in_qiita'])
 
         # 'SP331130A-4' is a tube-id in qiita and should be present in the
         # 'examples_in_qiita' list
@@ -788,8 +785,6 @@ class BasicStepTests(BaseStepTests):
         # _overwrite_prep_files() method.
         fake_client = FakeClient()
         step = Step(self.pipeline, self.qiita_id, None)
-
-        # 20220423_FS10001773_12_BRB11603-0615.Matrix_Tube_LBM_14332.1.tsv
 
         # copy the file so that we do not overwrite the original, which is
         # useful for other tests.

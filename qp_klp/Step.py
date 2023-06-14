@@ -436,13 +436,6 @@ class Step:
         cmds.append('(find *.tgz -maxdepth 1 -type f | xargs mv -t '
                     'final_results) || true')
 
-        # confirm uploads files exist as expected before using helper
-        # methods.
-        for uploads_folder in [proj[1] for proj in self.special_map]:
-            if not exists(uploads_folder):
-                raise ValueError(f"Uploads folder '{uploads_folder}' does "
-                                 "not exist")
-
         # prepend each command with a change-directory to the correct
         # location.
         cmds = [f'cd {self.pipeline.output_path}; {cmd}' for cmd in cmds]
@@ -804,9 +797,6 @@ class Step:
 
             if msgs:
                 raise PipelineError('\n'.join(msgs))
-
-        # Note: falling through and returning None is normal and expected
-        # behavior.
 
     def execute_pipeline(self, qclient, increment_status, update=True):
         '''
