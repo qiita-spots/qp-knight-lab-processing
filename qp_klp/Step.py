@@ -1,8 +1,8 @@
-from collections import defaultdict
 from itertools import chain
+from collections import defaultdict
 from json import dumps
 from metapool import KLSampleSheet
-from os import makedirs, walk
+from os import makedirs, walk, listdir
 from os.path import join, exists
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
@@ -12,6 +12,7 @@ from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 import pandas as pd
+from glob import glob
 
 
 class FailedSamplesRecord:
@@ -106,7 +107,6 @@ class Step:
         self.tube_id_map = None
         self.samples_in_qiita = None
         self.output_path = None
-        self.prep_file_paths = None
         self.sample_state = None
         self.special_map = None
         self.touched_studies_prep_info = None
@@ -137,7 +137,7 @@ class Step:
             sheet.write(f)
 
     @classmethod
-    def parse_prep_file(cls, prep_file_path):
+    def parse_prep_file(cls, prep_file_path, convert_to_dict=True):
         metadata = pd.read_csv(prep_file_path,
                                dtype=str,
                                delimiter='\t',
@@ -150,8 +150,10 @@ class Step:
 
         metadata.set_index('sample_name', inplace=True)
 
-        # convert to standard dictionary.
-        return metadata.to_dict('index')
+        if convert_to_dict:
+            return metadata.to_dict('index')
+        else:
+            return metadata
 
     def generate_special_map(self, qclient):
         # this function should be able to be tested by passing in simulated =
@@ -326,23 +328,129 @@ class Step:
 
         return gpf_job
 
-    def _generate_commands(self):
-        out_dir = self.pipeline.output_path
-        qclient = self.qclient
+    def _helper_process_fastp_report_dirs(self):
+        report_dirs = []
 
-        cmds = ['tar zcvf logs-ConvertJob.tgz ConvertJob/logs',
-                'tar zcvf logs-FastQCJob.tgz FastQCJob/logs',
-                'tar zcvf reports-FastQCJob.tgz FastQCJob/fastqc',
-                'tar zcvf logs-GenPrepFileJob.tgz GenPrepFileJob/logs',
-                'tar zcvf prep-files.tgz GenPrepFileJob/PrepFiles']
-        self.cmds = [f'cd {out_dir}; {x}' for x in cmds]
+        for root, dirs, files in walk(self.pipeline.output_path):
+            for dir_name in dirs:
+                if dir_name == 'fastp_reports_dir':
+                    # generate the full path for this directory before
+                    # truncating everything up to the QCJob directory.
+                    full_path = join(root, dir_name).split('QCJob/')
+                    report_dirs.append(join('QCJob', full_path[1]))
+
+        if report_dirs:
+            report_dirs.sort()
+            return 'tar zcvf reports-QCJob.tgz ' + ' '.join(report_dirs)
+        else:
+            # It is okay to return an empty list of commands if reports_dirs
+            # is empty. Some pipelines do not generate fastp reports.
+            return []
+
+    def _helper_process_blanks(self):
+        results = [x for x in listdir(self.pipeline.output_path) if
+                   x.endswith('_blanks.tsv')]
+
+        results.sort()
+
+        if len(results) > 0:
+            return 'tar zcvf sample-files.tgz' + ' ' + ' '.join(results)
+
+    def _helper_process_operations(self):
+        RESULTS_DIR = 'final_results'
+        TAR_CMD = 'tar zcvf'
+        LOG_PREFIX = 'logs'
+        REPORT_PREFIX = 'reports'
+        PREP_PREFIX = 'prep-files'
+        CONVERT_JOB = 'ConvertJob'
+        QC_JOB = 'QCJob'
+        FASTQC_JOB = 'FastQCJob'
+        PREPFILE_JOB = 'GenPrepFileJob'
+        TAR_EXT = 'tgz'
+
+        op_meta = [(['ConvertJob/logs'], TAR_CMD,
+                    f'{LOG_PREFIX}-{CONVERT_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
+
+                   (['ConvertJob/Reports', 'ConvertJob/logs'], TAR_CMD,
+                    f'{REPORT_PREFIX}-{CONVERT_JOB}.{TAR_EXT}',
+                    'OUTPUT_FIRST'),
+
+                   (['QCJob/logs'], TAR_CMD,
+                    f'{LOG_PREFIX}-{QC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
+
+                   (['FastQCJob/logs'], TAR_CMD,
+                    f'{LOG_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
+
+                   (['FastQCJob/fastqc'], TAR_CMD,
+                    f'{REPORT_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
+
+                   (['GenPrepFileJob/logs'], TAR_CMD,
+                    f'{LOG_PREFIX}-{PREPFILE_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
+
+                   (['GenPrepFileJob/PrepFiles'], TAR_CMD,
+                    f'{PREP_PREFIX}.{TAR_EXT}', 'OUTPUT_FIRST'),
+
+                   (['failed_samples.html', 'touched_studies.html'],
+                    'mv', RESULTS_DIR, 'INPUTS_FIRST'),
+
+                   (['FastQCJob/multiqc'], 'mv', RESULTS_DIR, 'INPUTS_FIRST')]
+
+        cmds = []
+
+        for inputs, action, output, order in op_meta:
+            confirmed_inputs = []
+            for input in inputs:
+                if exists(join(self.pipeline.output_path, input)):
+                    # it's expected that some inputs may not exist due to
+                    # different pipeline types. If one or more inputs do not
+                    # exist, do not include them in the command-line as they
+                    # may cause an error.
+                    confirmed_inputs.append(input)
+
+            # do not add the command to the list unless at least one of
+            # the inputs exists. It's okay for a command to go unprocessed.
+            if confirmed_inputs:
+                # convert to string form before using.
+                confirmed_inputs = ' '.join(confirmed_inputs)
+                if order == 'OUTPUT_FIRST':
+                    cmds.append(f'{action} {output} {confirmed_inputs}')
+                elif order == 'INPUTS_FIRST':
+                    cmds.append(f'{action} {confirmed_inputs} {output}')
+                else:
+                    raise ValueError(f"'{order}' is not a defined order of "
+                                     "operations")
+
+        return cmds
+
+    def generate_commands(self):
+        cmds = self._helper_process_operations()
+
+        result = self._helper_process_fastp_report_dirs()
+
+        if result:
+            cmds.append(result)
+
+        cmds.append(self._helper_process_blanks())
+
+        # if one or more tar-gzip files are found (which we expect there to
+        # be), move them into the 'final_results' directory. However, if none
+        # are present, don't raise an error.
+        cmds.append('(find *.tgz -maxdepth 1 -type f | xargs mv -t '
+                    'final_results) || true')
+
+        # prepend each command with a change-directory to the correct
+        # location.
+        cmds = [f'cd {self.pipeline.output_path}; {cmd}' for cmd in cmds]
+
+        self.cmds = cmds
+
+        self.write_commands_to_output_path()
+
+    def load_preps_into_qiita(self, qclient):
+        out_dir = self.pipeline.output_path
 
         data = []
         for project, _, qiita_id in self.special_map:
-            if self.pipeline.pipeline_type in Step.META_TYPES:
-                self.cmds.append(f'cd {out_dir}; tar zcvf reports-QCJob.tgz '
-                                 f'QCJob/{project}/fastp_reports_dir')
-
             if len(self.touched_studies_prep_info[qiita_id]) != 1:
                 raise ValueError(
                     f"Too many preps for {qiita_id}: "
@@ -356,42 +464,64 @@ class Step:
             bd = f'{out_dir}/QCJob/{project}'
             if exists(f'{bd}/filtered_sequences'):
                 atype = 'per_sample_FASTQ'
-                af = [f for f in walk(f'{bd}/filtered_sequences/*.fastq.gz')]
+                af = [f for f in glob(f'{bd}/filtered_sequences/*.fastq.gz')]
                 files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
                 for f in af:
-                    if '.R1.' in f:
+                    if '_R1_' in f:
                         files['raw_forward_seqs'].append(f)
-                    elif '.R2.' in f:
+                    elif '_R2_' in f:
                         files['raw_reverse_seqs'].append(f)
                     else:
                         raise ValueError(f'Not recognized file: {f}')
             elif exists(f'{bd}/trimmed_sequences'):
                 atype = 'per_sample_FASTQ'
-                af = [f for f in walk(f'{bd}/trimmed_sequences/*.fastq.gz')]
+                af = [f for f in glob(f'{bd}/trimmed_sequences/*.fastq.gz')]
                 files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
                 for f in af:
-                    if '.R1.' in f:
+                    if '_R1_' in f:
                         files['raw_forward_seqs'].append(f)
-                    elif '.R2.' in f:
+                    elif '_R2_' in f:
                         files['raw_reverse_seqs'].append(f)
                     else:
                         raise ValueError(f'Not recognized file: {f}')
             elif exists(f'{bd}/amplicon'):
                 atype = 'FASTQ'
-                af = sorted([f for f in walk(f'{bd}/amplicon/*.fastq.gz')])
-                files = {'raw_barcoes': af[0],
-                         'raw_forward_seqs': af[1],
-                         'raw_reverse_seqs': af[2]}
+                af = [f for f in glob(f'{bd}/amplicon/*.fastq.gz')]
+
+                files = {'raw_barcodes': [], 'raw_forward_seqs': [],
+                         'raw_reverse_seqs': []}
+
+                for fastq_file in af:
+                    if '_I1_' in fastq_file:
+                        files['raw_barcodes'].append(fastq_file)
+                    elif '_R1_' in fastq_file:
+                        files['raw_forward_seqs'].append(fastq_file)
+                    elif '_R2_' in fastq_file:
+                        files['raw_reverse_seqs'].append(fastq_file)
+                    else:
+                        raise ValueError(f"Unrecognized file: {fastq_file}")
+
+                files['raw_barcodes'].sort()
+                files['raw_forward_seqs'].sort()
+                files['raw_reverse_seqs'].sort()
             else:
                 raise PipelineError("QCJob output not in expected location")
+
+            for f_type in files:
+                if not files[f_type]:
+                    # if one or more of the expected list of reads is empty,
+                    # raise an Error.
+                    raise ValueError(f"'{f_type}' is empty")
+
             # ideally we would use the email of the user that started the SPP
             # run but at this point there is no easy way to retrieve it
-            data = {'user_email': 'qiita.help@gmail.com',
-                    'prep_id': prep_id,
-                    'artifact_type': atype,
-                    'command_artifact_name': self.generated_artifact_name,
-                    'files': files}
-            job_id = qclient.post('/qiita_db/artifact/', data=data)
+            pdata = {'user_email': 'qiita.help@gmail.com',
+                     'prep_id': prep_id,
+                     'artifact_type': atype,
+                     'command_artifact_name': self.generated_artifact_name,
+                     'files': dumps(files)}
+
+            job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
 
             data.append({'Project': project, 'Qiita Study ID': qiita_id,
                          'Qiita Prep ID': prep_id, 'Qiita URL': surl,
@@ -401,10 +531,6 @@ class Step:
         with open(join(out_dir, 'touched_studies.html'), 'w') as f:
             f.write(df.to_html(border=2, index=False, justify="left",
                                render_links=True, escape=False))
-
-        if exists(join(out_dir, 'failed_samples.html')):
-            tmp = f'cd {out_dir}; mv failed_samples.html final_results'
-            self.cmds.append(tmp)
 
     def write_commands_to_output_path(self):
         self.cmds_log_path = join(self.pipeline.output_path, 'cmds.log')
@@ -434,8 +560,8 @@ class Step:
 
         add_sif_info = []
 
-        qid_pn_map = {x['qiita_id']: x['project_name'] for
-                      x in self.pipeline.get_project_info()}
+        qid_pn_map = {proj['qiita_id']: proj['project_name'] for
+                      proj in self.pipeline.get_project_info()}
 
         # in case we really do need to query for samples again:
         # assume set of valid study_ids can be determined from prep_file_paths.
@@ -461,11 +587,11 @@ class Step:
     def get_prep_file_paths(self):
         return self.prep_file_paths
 
-    def get_tube_ids_from_qiita(self, qclient):
+    def _get_tube_ids_from_qiita(self, qclient):
         # Update get_project_info() so that it can return a list of
         # samples in projects['samples']. Include blanks in projects['blanks']
         # just in case there are duplicate qiita_ids
-        qiita_ids = [x['qiita_id'] for x in
+        qiita_ids = [proj['qiita_id'] for proj in
                      self.pipeline.get_project_info(short_names=True)]
 
         tids_by_qiita_id = {}
@@ -495,8 +621,9 @@ class Step:
         self.tube_id_map = tids_by_qiita_id
         self.samples_in_qiita = sample_names_by_qiita_id
 
-    def compare_samples_against_qiita(self):
+    def _compare_samples_against_qiita(self, qclient):
         projects = self.pipeline.get_project_info(short_names=True)
+        self._get_tube_ids_from_qiita(qclient)
 
         results = []
         for project in projects:
@@ -505,41 +632,43 @@ class Step:
 
             # get list of samples as presented by the sample-sheet or mapping
             # file and confirm that they are all registered in Qiita.
-            samples = set(self.pipeline.get_sample_names())
+            samples = set(self.pipeline.get_sample_names(project_name))
 
             # strip any leading zeroes from the sample-ids. Note that
             # if a sample-id has more than one leading zero, all of
             # them will be removed.
-            samples = {x.lstrip('0') for x in samples}
+            samples = {sample.lstrip('0') for sample in samples}
 
             # just get a list of the tube-ids themselves, not what they map
             # to.
             if qiita_id in self.tube_id_map:
                 # if map is not empty
-                tids = [self.tube_id_map[qiita_id][x] for x in
+                tids = [self.tube_id_map[qiita_id][sample] for sample in
                         self.tube_id_map[qiita_id]]
                 not_in_qiita = samples - set(tids)
                 examples = tids[:5]
                 used_tids = True
             else:
                 # assume project is in samples_in_qiita
-                not_in_qiita = samples - set(self.samples_in_qiita)
+                not_in_qiita = samples - set(self.samples_in_qiita[qiita_id])
                 examples = list(samples)[:5]
                 used_tids = False
 
             # convert to strings before returning
-            examples = [str(x) for x in examples]
+            examples = [str(example) for example in examples]
 
-            if not_in_qiita:
-                # if there are actual differences
-                results.append({'samples_not_in_qiita': not_in_qiita,
-                                'examples_in_qiita': examples,
-                                'project_name': project_name,
-                                'tids': used_tids})
+            # return an entry for all projects, even when samples_not_in_qiita
+            # is an empty list, as the information is still valuable.
+
+            results.append({'samples_not_in_qiita': not_in_qiita,
+                            'examples_in_qiita': examples,
+                            'project_name': project_name,
+                            'tids': used_tids})
+
         return results
 
     @classmethod
-    def _replace_with_tube_ids(cls, prep_file_path, qiita_id, tube_id_map):
+    def _replace_with_tube_ids(cls, prep_file_path, tube_id_map):
         # passing tube_id_map as a parameter allows for easier testing.
         df = pd.read_csv(prep_file_path, sep='\t', dtype=str, index_col=False)
         # save copy of sample_name column as 'old_sample_name'
@@ -552,8 +681,10 @@ class Step:
 
             # remove leading zeroes if they exist to match Qiita results.
             sample_name = sample_name.lstrip('0')
-            if sample_name in tube_id_map[qiita_id]:
-                df.at[i, "sample_name"] = tube_id_map[qiita_id][sample_name]
+
+            reversed_map = {tube_id_map[k]: k for k in tube_id_map}
+            if sample_name in reversed_map:
+                df.at[i, "sample_name"] = reversed_map[sample_name]
 
         df.to_csv(prep_file_path, index=False, sep="\t")
 
@@ -577,7 +708,8 @@ class Step:
             # 20220423_FS10001773_12_BRB11603-0615.Matrix_Tube_LBM_14332.1.tsv
             # search on project_name vs qiita_id since it's slightly more
             # unique.
-            matching_files = [x for x in prep_file_paths if project_name in x]
+            matching_files = [prep_file for prep_file in prep_file_paths if
+                              project_name in prep_file]
 
             if len(matching_files) == 0:
                 continue
@@ -587,8 +719,7 @@ class Step:
                                  f"'{project_name}': {str(matching_files)}")
 
             Step._replace_with_tube_ids(matching_files[0],
-                                        qiita_id,
-                                        self.tube_id_map)
+                                        self.tube_id_map[qiita_id])
 
     def update_blanks_in_qiita(self, qclient):
         for sif_path in self.sifs:
@@ -635,7 +766,39 @@ class Step:
                 qclient.http_patch(f'/api/v1/study/{study_id}/samples',
                                    data=dumps(data))
 
-                return data
+    def precheck(self, qclient):
+        # compare sample-ids/tube-ids in sample-sheet/mapping file
+        # against what's in Qiita. Results are a list of dictionaries, one
+        # per project.
+        results = self._compare_samples_against_qiita(qclient)
+
+        # obtain a list of non-zero counts of samples missing in Qiita, one
+        # for each project. The names of the projects are unimportant. We
+        # want to abort early if any project in the sample-sheet/pre-prep file
+        # contains samples that aren't registered in Qiita.
+        tmp = [len(project['samples_not_in_qiita']) for project in results]
+        missing_counts = [count for count in tmp if count != 0]
+
+        if missing_counts:
+            msgs = []
+            for comparison in results:
+                not_in_qiita_count = len(comparison['samples_not_in_qiita'])
+                examples_in_qiita = ', '.join(comparison['examples_in_qiita'])
+                p_name = comparison['project_name']
+                uses_tids = comparison['tids']
+
+                msgs.append(f"Project '{p_name}' has {not_in_qiita_count} "
+                            "samples not registered in Qiita.")
+
+                msgs.append(f"Some registered samples in Project '{p_name}'"
+                            f" include: {examples_in_qiita}")
+
+                if uses_tids:
+                    msgs.append(f"Project '{p_name}' is using tube-ids. You "
+                                "may be using sample names in your file.")
+
+            if msgs:
+                raise PipelineError('\n'.join(msgs))
 
     def execute_pipeline(self, qclient, increment_status, update=True):
         '''
@@ -662,23 +825,20 @@ class Step:
         increment_status()
         self.sifs = self.generate_sifs(qclient)
 
-        increment_status()
-
+        increment_status()  # increment status regardless of update
         if update:
             self.update_blanks_in_qiita(qclient)
 
+        increment_status()  # status encompasses multiple operations
         prep_file_paths = self.get_prep_file_paths()
-
-        increment_status()
         ptype = self.pipeline.pipeline_type
-
         if update:
             self.update_prep_templates(qclient, prep_file_paths, ptype)
 
-        self.generate_touched_studies(qclient)
+        self.load_preps_into_qiita(qclient)
 
         increment_status()
-        self.generate_commands(qclient)
+        self.generate_commands()
 
         increment_status()
         if update:

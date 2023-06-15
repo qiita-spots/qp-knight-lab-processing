@@ -18,7 +18,6 @@ class MetagenomicTests(BaseStepTests):
     def test_metagenomic_creation(self):
         # Test base-class creation method, even though base-class will never
         # be instantiated by itself in normal usage.
-        self._delete_test_output()
 
         with self.assertRaisesRegex(ValueError, "A pipeline object is needed"
                                                 " to initialize Step"):
@@ -48,14 +47,12 @@ class MetagenomicTests(BaseStepTests):
         self.assertIsNotNone(step)
 
     def test_metagenomic_convert_bcl_to_fastq(self):
-        self._delete_test_output()
         self._create_test_input(1)
 
         step = Metagenomic(self.pipeline, self.qiita_id, None)
         step.convert_bcl_to_fastq()
 
     def test_metagenomic_quality_control(self):
-        self._delete_test_output()
         self._create_test_input(2)
 
         step = Metagenomic(self.pipeline, self.qiita_id, None)

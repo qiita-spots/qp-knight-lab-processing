@@ -92,28 +92,26 @@ class Amplicon(Step):
         return None  # amplicon doesn't need project names
 
     def _get_data_type(self, prep_file_path):
-        metadata = Step.parse_prep_file(prep_file_path)
+        metadata = Step.parse_prep_file(prep_file_path, convert_to_dict=False)
+
         if 'target_gene' in metadata.columns:
-            # remove duplicate values, then convert back to list for
-            # accession.
-            tg = list(set(metadata['sample target_gene']))
-            if len(tg) != 1:
+            target_genes = metadata.target_gene.unique()
+        else:
+            target_genes = []
+
+        if target_genes:
+            if len(target_genes) != 1:
                 raise ValueError("More than one value for target_gene")
 
-            if tg[0] in Step.AMPLICON_SUB_TYPES:
-                return tg[0]
+            for key in Step.AMPLICON_SUB_TYPES:
+                if key in target_genes[0]:
+                    return key
 
-            raise ValueError(f"'{tg[0]}' is not a valid type - valid data-"
-                             f"types are {Step.AMPLICON_SUB_TYPES}")
+            raise ValueError(f"'{target_genes[0]}' is not a valid type - valid"
+                             f" data-types are {Step.AMPLICON_SUB_TYPES}")
         else:
             raise ValueError("'target_gene' column not present in "
                              "generated prep-files")
-
-    def generate_touched_studies(self, qclient):
-        results = {}
-        for study_id, pf_paths in self.prep_file_paths.items():
-            for pf_path in pf_paths:
-                results[pf_path] = self._get_data_type(pf_path)
 
     def generate_prep_file(self):
         config = self.pipeline.configuration['seqpro']
@@ -127,8 +125,3 @@ class Amplicon(Step):
                                           project_names)
 
         self.prep_file_paths = job.prep_file_paths
-
-    def generate_commands(self, qclient):
-        self.qclient = qclient
-        super()._generate_commands()
-        self.write_commands_to_output_path()
