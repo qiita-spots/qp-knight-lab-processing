@@ -7,7 +7,7 @@
 # -----------------------------------------------------------------------------
 from unittest import TestCase
 from qp_klp.Step import Step
-from sequence_processing_pipeline.Pipeline import Pipeline
+from sequence_processing_pipeline.Pipeline import Pipeline, PipelineError
 from os.path import join, abspath, exists, dirname
 from functools import partial
 from os import makedirs, chmod, access, W_OK
@@ -146,6 +146,63 @@ class FakeClient():
         return None
 
 
+class AnotherFakeClient():
+    def __init__(self):
+        self.cwd = getcwd()
+        self.base_path = join(self.cwd, 'qp_klp/tests/data/QDir')
+        self.qdirs = {'Demultiplexed': 'Demultiplexed',
+                      'beta_div_plots': 'analysis/beta_div_plots',
+                      'rarefaction_curves': 'analysis/rarefaction_curves',
+                      'taxa_summary': 'analysis/taxa_summary',
+                      'q2_visualization': 'working_dir',
+                      'distance_matrix': 'working_dir',
+                      'ordination_results': 'working_dir',
+                      'alpha_vector': 'working_dir',
+                      'FASTQ': 'FASTQ',
+                      'BIOM': 'BIOM',
+                      'per_sample_FASTQ': 'per_sample_FASTQ',
+                      'SFF': 'SFF',
+                      'FASTA': 'FASTA',
+                      'FASTA_Sanger': 'FASTA_Sanger',
+                      'FeatureData': 'FeatureData',
+                      'job-output-folder': 'job-output-folder',
+                      'BAM': 'BAM',
+                      'VCF': 'VCF',
+                      'SampleData': 'SampleData',
+                      'uploads': 'uploads'}
+
+        self.samples_in_99999 = ['99999.AAAAAAAAAAA',
+                                 '99999.BBBBBBBBBBB',
+                                 '99999.CCCCCCCCCCC',
+                                 '99999.BLANK1.1BCD']
+
+        self.info_in_99999 = {'number-of-samples': 10,
+                              'categories': ['column1', 'column2', 'tube_id']}
+
+        self.tids_99999 = {"header": ["tube_id"],
+                           "samples": {'99999.AAAAAAAAAAA': ['1234567890a'],
+                                       '99999.BBBBBBBBBBB': ['234567890ab'],
+                                       '99999.CCCCCCCCCCC': ['34567890abc'],
+                                       '99999.BLANK1.1BCD': ['BLANK1.1BCD']}}
+
+        for key in self.qdirs:
+            self.qdirs[key] = join(self.base_path, self.qdirs[key])
+
+        for qdir in self.qdirs:
+            makedirs(self.qdirs[qdir], exist_ok=True)
+
+    def get(self, url):
+        m = {'/api/v1/study/99999/samples': self.samples_in_99999,
+             '/api/v1/study/99999/samples/categories=tube_id': self.tids_99999,
+             '/api/v1/study/99999/samples/info': self.info_in_99999,
+             '/qiita_db/artifacts/types/': self.qdirs}
+
+        if url in m:
+            return m[url]
+
+        return None
+
+
 class BaseStepTests(TestCase):
     '''
     BaseStepTests contains all the configuration information and helper
@@ -223,6 +280,8 @@ class BaseStepTests(TestCase):
         self.good_config_file = join(package_root, 'configuration.json')
         self.good_run_id = '211021_A00000_0000_SAMPLE'
         self.good_sample_sheet_path = cc_path('good-sample-sheet.csv')
+        self.another_good_sample_sheet_path = cc_path('another-good-sample-'
+                                                      'sheet.csv')
         self.good_mapping_file_path = cc_path('good-mapping-file.txt')
         self.good_prep_info_file_path = cc_path('good-sample-prep.tsv')
         self.good_transcript_sheet_path = cc_path('good-sample-sheet-'
@@ -236,6 +295,12 @@ class BaseStepTests(TestCase):
                                  self.output_file_path, self.qiita_id,
                                  Step.METAGENOMIC_TYPE,
                                  BaseStepTests.CONFIGURATION)
+
+        self.another_pipeline = Pipeline(None, self.good_run_id,
+                                         self.another_good_sample_sheet_path,
+                                         None, self.output_file_path,
+                                         self.qiita_id, Step.METAGENOMIC_TYPE,
+                                         BaseStepTests.CONFIGURATION)
 
         self.config = BaseStepTests.CONFIGURATION['configuration']
 
@@ -816,3 +881,54 @@ class BasicStepTests(BaseStepTests):
         tids = fake_client.tids_13059['samples']
         exp = set([tids[t][0] for t in tids])
         self.assertEqual(new_old_sample_names, exp)
+
+    def test_compare_samples_against_qiita_error_handling(self):
+        fake_client = AnotherFakeClient()
+
+        # In addition to the samples in AnotherFakeClient(),
+        # another-good-sample-sheet.csv has an unregistered BLANK:
+        # 'BLANK_UNREG'. _compare_samples_against_qiita() should detect
+        # that it is a 'new BLANK', and not include it in the value for
+        # 'samples_not_in_qiita.'
+
+        # another-good-sample-sheet.csv contains one sample with a sample-name
+        # corresponding to a registered tube-id, but with a leading zero:
+        # '034567890abc'. We want to show that _compare_samples_against_qiita()
+        # is able to resolve '034567890abc' to '34567890abc' and doesn't
+        # return it in 'samples_not_in_qiita'.
+
+        # another-good-sample-sheet.csv contains one sample that is truly
+        # unregistered with AnotherFakeQiita(): '4567890abcd'. We want to
+        # demonstrate that after checking for leading zeroes that the function
+        # decides this is still an unregistered sample and returns it in
+        # 'samples_not_in_qiita'.
+
+        # self.pipeline represents a metagenomic pathway.
+        step = Step(self.another_pipeline, self.qiita_id, None)
+
+        obs = step._compare_samples_against_qiita(fake_client)
+
+        exp = [{'samples_not_in_qiita': {'4567890abcd'},
+                'examples_in_qiita': ['1234567890a', '234567890ab',
+                                      '34567890abc', 'BLANK1.1BCD'],
+                'project_name': 'TestProject',
+                'tids': True}]
+
+        self.assertEqual(obs, exp)
+
+    def test_precheck(self):
+        fake_client = AnotherFakeClient()
+
+        # test that precheck() raises a PipelineError with the correct
+        # message, given the configuration of Step() and AnotherFakeClient().
+
+        step = Step(self.another_pipeline, self.qiita_id, None)
+
+        msg = ("<br/><b>Project 'TestProject'</b> has 1 samples not "
+               "registered in Qiita: \['4567890abcd'\]\nSome registered "   # noqa
+               "samples in Project 'TestProject' include: .{11}, "
+               ".{11}, .{11}, .{11}\nProject 'TestProject' is"
+               " using tube-ids. You may be using sample names in your file.")
+
+        with self.assertRaisesRegex(PipelineError, msg):
+            step.precheck(fake_client)

@@ -430,7 +430,10 @@ class Step:
         if result:
             cmds.append(result)
 
-        cmds.append(self._helper_process_blanks())
+        result = self._helper_process_blanks()
+
+        if result:
+            cmds.append(result)
 
         # if one or more tar-gzip files are found (which we expect there to
         # be), move them into the 'final_results' directory. However, if none
@@ -619,6 +622,7 @@ class Step:
         # use empty dict {} as an indication that get_tube_ids_from_qiita was
         # called but no tube-ids were found for any project.
         self.tube_id_map = tids_by_qiita_id
+        # should samples_in_qiita be none if tube_id_map is not?
         self.samples_in_qiita = sample_names_by_qiita_id
 
     def _compare_samples_against_qiita(self, qclient):
@@ -634,10 +638,10 @@ class Step:
             # file and confirm that they are all registered in Qiita.
             samples = set(self.pipeline.get_sample_names(project_name))
 
-            # strip any leading zeroes from the sample-ids. Note that
-            # if a sample-id has more than one leading zero, all of
-            # them will be removed.
-            samples = {sample.lstrip('0') for sample in samples}
+            # do not include BLANKs. If they are unregistered, we will add
+            # them downstream.
+            samples = {smpl for smpl in samples
+                       if not smpl.startswith('BLANK')}
 
             # just get a list of the tube-ids themselves, not what they map
             # to.
@@ -645,7 +649,16 @@ class Step:
                 # if map is not empty
                 tids = [self.tube_id_map[qiita_id][sample] for sample in
                         self.tube_id_map[qiita_id]]
+
                 not_in_qiita = samples - set(tids)
+
+                if not_in_qiita:
+                    # strip any leading zeroes from the sample-ids. Note that
+                    # if a sample-id has more than one leading zero, all of
+                    # them will be removed.
+                    not_in_qiita = set([x.lstrip('0') for x in samples]) - \
+                                   set(tids)
+
                 examples = tids[:5]
                 used_tids = True
             else:
@@ -782,13 +795,15 @@ class Step:
         if missing_counts:
             msgs = []
             for comparison in results:
-                not_in_qiita_count = len(comparison['samples_not_in_qiita'])
+                not_in_qiita = list(comparison['samples_not_in_qiita'])
+                not_in_qiita_count = len(not_in_qiita)
                 examples_in_qiita = ', '.join(comparison['examples_in_qiita'])
                 p_name = comparison['project_name']
                 uses_tids = comparison['tids']
 
-                msgs.append(f"Project '{p_name}' has {not_in_qiita_count} "
-                            "samples not registered in Qiita.")
+                msgs.append(
+                    f"<br/><b>Project '{p_name}'</b> has {not_in_qiita_count} "
+                    f"samples not registered in Qiita: {not_in_qiita[:5]}")
 
                 msgs.append(f"Some registered samples in Project '{p_name}'"
                             f" include: {examples_in_qiita}")
