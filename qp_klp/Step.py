@@ -656,8 +656,8 @@ class Step:
                     # strip any leading zeroes from the sample-ids. Note that
                     # if a sample-id has more than one leading zero, all of
                     # them will be removed.
-                    foo = set([x.lstrip('0') for x in samples])
-                    not_in_qiita = foo - set(tids)
+                    not_in_qiita = set([x.lstrip('0') for x in samples]) - \
+                                   set(tids)
 
                 examples = tids[:5]
                 used_tids = True
