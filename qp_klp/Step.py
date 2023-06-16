@@ -622,6 +622,7 @@ class Step:
         # use empty dict {} as an indication that get_tube_ids_from_qiita was
         # called but no tube-ids were found for any project.
         self.tube_id_map = tids_by_qiita_id
+        # should samples_in_qiita be none if tube_id_map is not?
         self.samples_in_qiita = sample_names_by_qiita_id
 
     def _compare_samples_against_qiita(self, qclient):
@@ -637,10 +638,6 @@ class Step:
             # file and confirm that they are all registered in Qiita.
             samples = set(self.pipeline.get_sample_names(project_name))
 
-            # strip any leading zeroes from the sample-ids. Note that
-            # if a sample-id has more than one leading zero, all of
-            # them will be removed.
-
             # do not include BLANKs. If they are unregistered, we will add
             # them downstream.
             samples = {smpl for smpl in samples
@@ -652,7 +649,16 @@ class Step:
                 # if map is not empty
                 tids = [self.tube_id_map[qiita_id][sample] for sample in
                         self.tube_id_map[qiita_id]]
+
                 not_in_qiita = samples - set(tids)
+
+                if not_in_qiita:
+                    # strip any leading zeroes from the sample-ids. Note that
+                    # if a sample-id has more than one leading zero, all of
+                    # them will be removed.
+                    foo = set([x.lstrip('0') for x in samples])
+                    not_in_qiita = foo - set(tids)
+
                 examples = tids[:5]
                 used_tids = True
             else:
