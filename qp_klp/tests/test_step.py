@@ -11,10 +11,12 @@ from sequence_processing_pipeline.Pipeline import Pipeline, PipelineError
 from os.path import join, abspath, exists, dirname
 from functools import partial
 from os import makedirs, chmod, access, W_OK
-from shutil import rmtree, copy
-from os import environ, remove, getcwd
+from shutil import rmtree, copy, which
+from os import environ, remove, getcwd, walk
 from json import dumps
 import pandas as pd
+import gzip
+from metapool import parse_prep
 
 
 class FakeClient():
@@ -282,6 +284,7 @@ class BaseStepTests(TestCase):
         self.good_sample_sheet_path = cc_path('good-sample-sheet.csv')
         self.another_good_sample_sheet_path = cc_path('another-good-sample-'
                                                       'sheet.csv')
+        self.sheet_w_replicates_path = cc_path('good_sheet_w_replicates.csv')
         self.good_mapping_file_path = cc_path('good-mapping-file.txt')
         self.good_prep_info_file_path = cc_path('good-sample-prep.tsv')
         self.good_transcript_sheet_path = cc_path('good-sample-sheet-'
@@ -301,6 +304,13 @@ class BaseStepTests(TestCase):
                                          None, self.output_file_path,
                                          self.qiita_id, Step.METAGENOMIC_TYPE,
                                          BaseStepTests.CONFIGURATION)
+
+        self.pipeline_replicates = Pipeline(None, self.good_run_id,
+                                            self.sheet_w_replicates_path, None,
+                                            self.output_file_path,
+                                            self.qiita_id,
+                                            Step.METAGENOMIC_TYPE,
+                                            BaseStepTests.CONFIGURATION)
 
         self.config = BaseStepTests.CONFIGURATION['configuration']
 
@@ -932,3 +942,168 @@ class BasicStepTests(BaseStepTests):
 
         with self.assertRaisesRegex(PipelineError, msg):
             step.precheck(fake_client)
+
+
+class ReplicateTests(BaseStepTests):
+    def setUp(self):
+        super().setUp()
+
+        self._create_test_input(4)
+
+        # Fake enough of a run so that GenPrepFileJob can generate
+        # prep-info files based on real input.
+
+        # seqpro path
+        self.seqpro_path = which('seqpro')
+
+        self.project_list = ['Feist_11661', 'NYU_BMS_Melanoma_13059']
+
+        # create Job working directories as needed.
+        data_dir = partial(join, 'qp_klp', 'tests', 'data')
+        self.output_dir = partial(data_dir, 'output_dir')
+        run_dir = partial(self.output_dir, 'GenPrepFileJob',
+                          '211021_A00000_0000_SAMPLE')
+
+        demultiplex_stats_path = data_dir('Demultiplex_Stats.csv')
+        fastp_stats_path = data_dir('sample_fastp.json')
+
+        convert_job_reports_dir = self.output_dir('ConvertJob', 'Reports')
+        qc_job_reports_dir = self.output_dir('QCJob', 'Feist_11661',
+                                             'fastp_reports_dir', 'json')
+
+        run_dir_stats_dir = run_dir('Stats')
+        json_dir_13059 = run_dir('NYU_BMS_Melanoma_13059', 'json')
+        fastq_dir_11661 = run_dir('Feist_11661', 'filtered_sequences')
+        fastq_dir_13059 = run_dir('NYU_BMS_Melanoma_13059',
+                                  'filtered_sequences')
+
+        create_these = [run_dir_stats_dir, convert_job_reports_dir,
+                        qc_job_reports_dir, json_dir_13059,
+                        fastq_dir_11661, fastq_dir_13059]
+
+        for some_dir in create_these:
+            makedirs(some_dir, exist_ok=True)
+
+        # Copy pre-made files containing numbers of reads for each sample
+        # into place.
+
+        copy(demultiplex_stats_path,
+             self.output_dir('ConvertJob', 'Reports', 'Demultiplex_Stats.csv'))
+
+        samples_11661 = ['BLANK_43_12H_A4', 'JBI_KHP_HGL_022_A16',
+                         'BLANK_43_12G_B2', 'JBI_KHP_HGL_023_B18',
+                         'RMA_KHP_rpoS_Mage_Q97N_A9', 'JBI_KHP_HGL_023_A18',
+                         'RMA_KHP_rpoS_Mage_Q97L_B8', 'JBI_KHP_HGL_022_B16',
+                         'JBI_KHP_HGL_022_A15', 'RMA_KHP_rpoS_Mage_Q97E_A12',
+                         'RMA_KHP_rpoS_Mage_Q97L_A8',
+                         'RMA_KHP_rpoS_Mage_Q97N_A10', 'JBI_KHP_HGL_021_B14',
+                         'BLANK_43_12G_A1', 'BLANK_43_12H_B4',
+                         'RMA_KHP_rpoS_Mage_Q97N_B10', 'JBI_KHP_HGL_024_A19',
+                         'RMA_KHP_rpoS_Mage_Q97D_B6',
+                         'RMA_KHP_rpoS_Mage_Q97D_A6', 'JBI_KHP_HGL_023_A17',
+                         'RMA_KHP_rpoS_Mage_Q97E_A11', 'BLANK_43_12G_A2',
+                         'RMA_KHP_rpoS_Mage_Q97D_A5', 'JBI_KHP_HGL_024_A20',
+                         'JBI_KHP_HGL_024_B20', 'RMA_KHP_rpoS_Mage_Q97L_A7',
+                         'JBI_KHP_HGL_021_A14', 'RMA_KHP_rpoS_Mage_Q97E_B12',
+                         'BLANK_43_12H_A3', 'JBI_KHP_HGL_021_A13']
+
+        samples_13059 = ['AP581451B02_A21', 'EP256645B01_A23',
+                         'EP112567B02_C1', 'EP337425B01_C3',
+                         'LP127890A01_C5', 'EP159692B04_C7',
+                         'EP987683A01_C9', 'AP959450A03_C11',
+                         'SP464350A04_C13', 'EP121011B01_C15',
+                         'AP581451B02_A22', 'EP256645B01_A24',
+                         'EP112567B02_C2', 'EP337425B01_C4',
+                         'LP127890A01_C6', 'EP159692B04_C8',
+                         'EP987683A01_C10', 'AP959450A03_C12',
+                         'SP464350A04_C14', 'EP121011B01_C16',
+                         'AP581451B02_B22', 'EP256645B01_B24',
+                         'EP112567B02_D2', 'EP337425B01_D4',
+                         'LP127890A01_D6', 'EP159692B04_D8',
+                         'EP987683A01_D10', 'AP959450A03_D12',
+                         'SP464350A04_D14', 'EP121011B01_D16']
+
+        for sample in samples_11661:
+            copy(fastp_stats_path, join(qc_job_reports_dir,
+                                        f'{sample}_S270_L001_R1_001.json'))
+
+        for sample in samples_13059:
+            copy(fastp_stats_path, join(json_dir_13059,
+                                        f'{sample}_S270_L001_R1_001.json'))
+
+        # create fake fastq files. Metapool checks to confirm that they are
+        # gzipped, hence we gzip them here.
+
+        for name in samples_11661:
+            for new_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
+                             f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
+                with gzip.open(join(fastq_dir_11661, new_file), 'wb') as f:
+                    f.write(b"This is run_dir_stats_dir file.")
+
+        for name in samples_13059:
+            for new_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
+                             f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
+                with gzip.open(join(fastq_dir_13059, new_file), 'wb') as f:
+                    f.write(b"This is run_dir_stats_dir file.")
+
+    def tearDown(self):
+        if exists(self.output_file_path):
+            rmtree(self.output_file_path)
+
+    def test_replicates(self):
+        # Create run_dir_stats_dir Step object and generate prep-files.
+        step = Step(self.pipeline_replicates, self.qiita_id, None)
+
+        # Fake an empty tube-id map so that _generate_prep_file() doesn't
+        # abort early.
+        step.tube_id_map = {}
+
+        step._generate_prep_file(self.config['seqpro'],
+                                 self.sheet_w_replicates_path,
+                                 self.seqpro_path,
+                                 self.project_list,
+                                 has_replicates=True)
+
+        prep_output_path = self.output_dir('GenPrepFileJob', 'PrepFiles')
+
+        # Confirm that the generated prep-info files are found in the
+        # correct location w/the correct names.
+
+        obs = []
+        for root, dirs, files in walk(prep_output_path):
+            for some_file in files:
+                obs.append(join(root, some_file))
+
+        # remove the dummy tsv files created by _create_test_input() from
+        # the set of observed results.
+        obs = set(obs) - {
+            join(prep_output_path, 'NYU_BMS_Melanoma_13059.1.tsv'),
+            join(prep_output_path, 'Gerwick_6123.1.tsv'),
+            join(prep_output_path, 'Feist_11661.1.tsv')}
+
+        # _generate_prep_file() should have created a prep-info file for each
+        # of the three replicates and two projects defined in the original
+        # sample-sheet, for a total of six files. When replicates are defined,
+        # prep_output_path should contain numerically named directories, one
+        # for each replicate, containing the prep-info files for that
+        # replicate.
+        exp = {join(prep_output_path, '1',
+                    '211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv'),
+               join(prep_output_path, '1',
+                    '211021_A00000_0000_SAMPLE.Feist_11661.1.tsv'),
+               join(prep_output_path, '3',
+                    '211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv'),
+               join(prep_output_path, '3',
+                    '211021_A00000_0000_SAMPLE.Feist_11661.1.tsv'),
+               join(prep_output_path, '2',
+                    '211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv'),
+               join(prep_output_path, '2',
+                    '211021_A00000_0000_SAMPLE.Feist_11661.1.tsv')}
+
+        self.assertEqual(obs, exp)
+
+        # verify each prep_info_file contains the expected number of rows and
+        # more importantly are not empty.
+        for prep_info_file in obs:
+            df = parse_prep(prep_info_file)
+            self.assertEqual(10, df.shape[0])

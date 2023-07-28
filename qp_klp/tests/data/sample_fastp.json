@@ -1,0 +1,26 @@
+{
+	"summary": {
+		"before_filtering": {
+			"total_reads":13612,
+			"total_bases":2055412,
+			"q20_bases":2022450,
+			"q30_bases":1963329,
+			"q20_rate":0.983963,
+			"q30_rate":0.9552,
+			"read1_mean_length":151,
+			"read2_mean_length":151,
+			"gc_content":0.451973
+		},
+		"after_filtering": {
+			"total_reads":13304,
+			"total_bases":2002508,
+			"q20_bases":1975005,
+			"q30_bases":1919191,
+			"q20_rate":0.986266,
+			"q30_rate":0.958394,
+			"read1_mean_length":150,
+			"read2_mean_length":150,
+			"gc_content":0.449418
+		}
+	}
+}

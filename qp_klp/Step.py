@@ -304,7 +304,7 @@ class Step:
         return fastqc_job
 
     def _generate_prep_file(self, config, input_file_path, seqpro_path,
-                            project_names):
+                            project_names, has_replicates=False):
         is_amplicon = self.pipeline.pipeline_type == Step.AMPLICON_TYPE
 
         gpf_job = GenPrepFileJob(
@@ -317,7 +317,8 @@ class Step:
             project_names,
             config['modules_to_load'],
             self.master_qiita_job_id,
-            is_amplicon=is_amplicon)
+            is_amplicon=is_amplicon,
+            has_replicates=has_replicates)
 
         gpf_job.run(callback=self.update_callback)
 
