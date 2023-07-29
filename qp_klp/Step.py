@@ -450,89 +450,93 @@ class Step:
 
         self.write_commands_to_output_path()
 
+    def _load_preps_into_qiita(self, qclient, prep_id, qiita_id, out_dir,
+                               project):
+        surl = f'{qclient._server_url}/study/description/{qiita_id}'
+        prep_url = (f'{qclient._server_url}/study/description/'
+                    f'{qiita_id}?prep_id={prep_id}')
+
+        bd = f'{out_dir}/QCJob/{project}'
+        if exists(f'{bd}/filtered_sequences'):
+            atype = 'per_sample_FASTQ'
+            af = [f for f in glob(f'{bd}/filtered_sequences/*.fastq.gz')]
+            files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
+            for f in af:
+                if '_R1_' in f:
+                    files['raw_forward_seqs'].append(f)
+                elif '_R2_' in f:
+                    files['raw_reverse_seqs'].append(f)
+                else:
+                    raise ValueError(f'Not recognized file: {f}')
+        elif exists(f'{bd}/trimmed_sequences'):
+            atype = 'per_sample_FASTQ'
+            af = [f for f in glob(f'{bd}/trimmed_sequences/*.fastq.gz')]
+            files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
+            for f in af:
+                if '_R1_' in f:
+                    files['raw_forward_seqs'].append(f)
+                elif '_R2_' in f:
+                    files['raw_reverse_seqs'].append(f)
+                else:
+                    raise ValueError(f'Not recognized file: {f}')
+        elif exists(f'{bd}/amplicon'):
+            atype = 'FASTQ'
+            af = [f for f in glob(f'{bd}/amplicon/*.fastq.gz')]
+
+            files = {'raw_barcodes': [], 'raw_forward_seqs': [],
+                     'raw_reverse_seqs': []}
+
+            for fastq_file in af:
+                if '_I1_' in fastq_file:
+                    files['raw_barcodes'].append(fastq_file)
+                elif '_R1_' in fastq_file:
+                    files['raw_forward_seqs'].append(fastq_file)
+                elif '_R2_' in fastq_file:
+                    files['raw_reverse_seqs'].append(fastq_file)
+                else:
+                    raise ValueError(f"Unrecognized file: {fastq_file}")
+
+            files['raw_barcodes'].sort()
+            files['raw_forward_seqs'].sort()
+            files['raw_reverse_seqs'].sort()
+        else:
+            raise PipelineError("QCJob output not in expected location")
+
+        # TODO: files set() needs to be modified to include only the files
+        #  needed to support each replicate for Metagenomics. Amplicon will
+        #  require all files as currently implemented.
+
+        for f_type in files:
+            if not files[f_type]:
+                # if one or more of the expected list of reads is empty,
+                # raise an Error.
+                raise ValueError(f"'{f_type}' is empty")
+
+        # ideally we would use the email of the user that started the SPP
+        # run but at this point there is no easy way to retrieve it
+        pdata = {'user_email': 'qiita.help@gmail.com',
+                 'prep_id': prep_id,
+                 'artifact_type': atype,
+                 'command_artifact_name': self.generated_artifact_name,
+                 'files': dumps(files)}
+
+        job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
+
+        return {'Project': project, 'Qiita Study ID': qiita_id,
+                'Qiita Prep ID': prep_id, 'Qiita URL': surl,
+                'Prep URL': prep_url, 'Linking JobID': job_id}
+
     def load_preps_into_qiita(self, qclient):
         out_dir = self.pipeline.output_path
 
         data = []
         for project, _, qiita_id in self.special_map:
-            if len(self.touched_studies_prep_info[qiita_id]) != 1:
-                raise ValueError(
-                    f"Too many preps for {qiita_id}: "
-                    f"{self.touched_studies_prep_info[qiita_id]}")
-
-            # this needs to change so we can get multiple prep-ids for a
-            # given qiita_id, not just one.
-
-            prep_id = self.touched_studies_prep_info[qiita_id][0]
-            surl = f'{qclient._server_url}/study/description/{qiita_id}'
-            prep_url = (f'{qclient._server_url}/study/description/'
-                        f'{qiita_id}?prep_id={prep_id}')
-
-            bd = f'{out_dir}/QCJob/{project}'
-            if exists(f'{bd}/filtered_sequences'):
-                atype = 'per_sample_FASTQ'
-                af = [f for f in glob(f'{bd}/filtered_sequences/*.fastq.gz')]
-                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
-                for f in af:
-                    if '_R1_' in f:
-                        files['raw_forward_seqs'].append(f)
-                    elif '_R2_' in f:
-                        files['raw_reverse_seqs'].append(f)
-                    else:
-                        raise ValueError(f'Not recognized file: {f}')
-            elif exists(f'{bd}/trimmed_sequences'):
-                atype = 'per_sample_FASTQ'
-                af = [f for f in glob(f'{bd}/trimmed_sequences/*.fastq.gz')]
-                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
-                for f in af:
-                    if '_R1_' in f:
-                        files['raw_forward_seqs'].append(f)
-                    elif '_R2_' in f:
-                        files['raw_reverse_seqs'].append(f)
-                    else:
-                        raise ValueError(f'Not recognized file: {f}')
-            elif exists(f'{bd}/amplicon'):
-                atype = 'FASTQ'
-                af = [f for f in glob(f'{bd}/amplicon/*.fastq.gz')]
-
-                files = {'raw_barcodes': [], 'raw_forward_seqs': [],
-                         'raw_reverse_seqs': []}
-
-                for fastq_file in af:
-                    if '_I1_' in fastq_file:
-                        files['raw_barcodes'].append(fastq_file)
-                    elif '_R1_' in fastq_file:
-                        files['raw_forward_seqs'].append(fastq_file)
-                    elif '_R2_' in fastq_file:
-                        files['raw_reverse_seqs'].append(fastq_file)
-                    else:
-                        raise ValueError(f"Unrecognized file: {fastq_file}")
-
-                files['raw_barcodes'].sort()
-                files['raw_forward_seqs'].sort()
-                files['raw_reverse_seqs'].sort()
-            else:
-                raise PipelineError("QCJob output not in expected location")
-
-            for f_type in files:
-                if not files[f_type]:
-                    # if one or more of the expected list of reads is empty,
-                    # raise an Error.
-                    raise ValueError(f"'{f_type}' is empty")
-
-            # ideally we would use the email of the user that started the SPP
-            # run but at this point there is no easy way to retrieve it
-            pdata = {'user_email': 'qiita.help@gmail.com',
-                     'prep_id': prep_id,
-                     'artifact_type': atype,
-                     'command_artifact_name': self.generated_artifact_name,
-                     'files': dumps(files)}
-
-            job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
-
-            data.append({'Project': project, 'Qiita Study ID': qiita_id,
-                         'Qiita Prep ID': prep_id, 'Qiita URL': surl,
-                         'Prep URL': prep_url, 'Linking JobID': job_id})
+            for prep_id in self.touched_studies_prep_info[qiita_id]:
+                data.append(self._load_preps_into_qiita(qclient,
+                                                        prep_id,
+                                                        qiita_id,
+                                                        out_dir,
+                                                        project))
 
         df = pd.DataFrame(data)
         with open(join(out_dir, 'touched_studies.html'), 'w') as f:
