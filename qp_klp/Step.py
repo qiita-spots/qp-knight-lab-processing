@@ -460,6 +460,9 @@ class Step:
                     f"Too many preps for {qiita_id}: "
                     f"{self.touched_studies_prep_info[qiita_id]}")
 
+            # this needs to change so we can get multiple prep-ids for a
+            # given qiita_id, not just one.
+
             prep_id = self.touched_studies_prep_info[qiita_id][0]
             surl = f'{qclient._server_url}/study/description/{qiita_id}'
             prep_url = (f'{qclient._server_url}/study/description/'

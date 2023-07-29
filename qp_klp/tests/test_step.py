@@ -12,11 +12,12 @@ from os.path import join, abspath, exists, dirname
 from functools import partial
 from os import makedirs, chmod, access, W_OK
 from shutil import rmtree, copy, which
-from os import environ, remove, getcwd, walk
+from os import environ, remove, getcwd
 from json import dumps
 import pandas as pd
 import gzip
 from metapool import parse_prep
+import re
 
 
 class FakeClient():
@@ -1051,6 +1052,8 @@ class ReplicateTests(BaseStepTests):
             rmtree(self.output_file_path)
 
     def test_replicates(self):
+        self.maxDiff = None
+
         # Create run_dir_stats_dir Step object and generate prep-files.
         step = Step(self.pipeline_replicates, self.qiita_id, None)
 
@@ -1058,28 +1061,24 @@ class ReplicateTests(BaseStepTests):
         # abort early.
         step.tube_id_map = {}
 
-        step._generate_prep_file(self.config['seqpro'],
-                                 self.sheet_w_replicates_path,
-                                 self.seqpro_path,
-                                 self.project_list,
-                                 has_replicates=True)
+        job = step._generate_prep_file(self.config['seqpro'],
+                                       self.sheet_w_replicates_path,
+                                       self.seqpro_path,
+                                       self.project_list,
+                                       has_replicates=True)
 
         prep_output_path = self.output_dir('GenPrepFileJob', 'PrepFiles')
 
         # Confirm that the generated prep-info files are found in the
-        # correct location w/the correct names.
+        # correct location w/the correct names. For testing purposes, remove
+        # the absolute path up to 'qp_klp' and test against relative paths
+        # found in exp.
 
-        obs = []
-        for root, dirs, files in walk(prep_output_path):
-            for some_file in files:
-                obs.append(join(root, some_file))
+        obs = job.prep_file_paths
 
-        # remove the dummy tsv files created by _create_test_input() from
-        # the set of observed results.
-        obs = set(obs) - {
-            join(prep_output_path, 'NYU_BMS_Melanoma_13059.1.tsv'),
-            join(prep_output_path, 'Gerwick_6123.1.tsv'),
-            join(prep_output_path, 'Feist_11661.1.tsv')}
+        for qiita_id in obs:
+            obs[qiita_id] = [re.sub(r"^.*?\/qp_klp\/", "qp_klp/", x) for x in
+                             obs[qiita_id]]
 
         # _generate_prep_file() should have created a prep-info file for each
         # of the three replicates and two projects defined in the original
@@ -1087,23 +1086,31 @@ class ReplicateTests(BaseStepTests):
         # prep_output_path should contain numerically named directories, one
         # for each replicate, containing the prep-info files for that
         # replicate.
-        exp = {join(prep_output_path, '1',
-                    '211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv'),
-               join(prep_output_path, '1',
-                    '211021_A00000_0000_SAMPLE.Feist_11661.1.tsv'),
-               join(prep_output_path, '3',
-                    '211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv'),
-               join(prep_output_path, '3',
-                    '211021_A00000_0000_SAMPLE.Feist_11661.1.tsv'),
-               join(prep_output_path, '2',
-                    '211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv'),
-               join(prep_output_path, '2',
-                    '211021_A00000_0000_SAMPLE.Feist_11661.1.tsv')}
 
-        self.assertEqual(obs, exp)
+        exp = {
+            "11661": [
+                join(prep_output_path, "1",
+                     "211021_A00000_0000_SAMPLE.Feist_11661.1.tsv"),
+                join(prep_output_path, "2",
+                     "211021_A00000_0000_SAMPLE.Feist_11661.1.tsv"),
+                join(prep_output_path, "3",
+                     "211021_A00000_0000_SAMPLE.Feist_11661.1.tsv")
+            ],
+            "13059": [
+                join(prep_output_path, "1",
+                     "211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv"),
+                join(prep_output_path, "2",
+                     "211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv"),
+                join(prep_output_path, "3",
+                     "211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv")
+            ]
+        }
+
+        self.assertDictEqual(obs, exp)
 
         # verify each prep_info_file contains the expected number of rows and
         # more importantly are not empty.
-        for prep_info_file in obs:
-            df = parse_prep(prep_info_file)
-            self.assertEqual(10, df.shape[0])
+        for qiita_id in obs:
+            for prep_info_file in obs[qiita_id]:
+                df = parse_prep(prep_info_file)
+                self.assertEqual(10, df.shape[0])
