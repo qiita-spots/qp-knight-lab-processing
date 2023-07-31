@@ -11,7 +11,7 @@ from sequence_processing_pipeline.Pipeline import Pipeline, PipelineError
 from os.path import join, abspath, exists, dirname
 from functools import partial
 from os import makedirs, chmod, access, W_OK
-from shutil import rmtree, copy, which
+from shutil import rmtree, copy, which, copytree
 from os import environ, remove, getcwd
 from json import dumps
 import pandas as pd
@@ -132,6 +132,10 @@ class FakeClient():
         for qdir in self.qdirs:
             makedirs(self.qdirs[qdir], exist_ok=True)
 
+        self.fake_id = 1000
+        self._server_url = "some.server.url"
+        self.saved_posts = {}
+
     def get(self, url):
         m = {'/api/v1/study/11661/samples': self.samples_in_11661,
              '/api/v1/study/11661/samples/categories=tube_id': self.tids_11661,
@@ -147,6 +151,17 @@ class FakeClient():
             return m[url]
 
         return None
+
+    def post(self, url, data=None):
+        if '/qiita_db/prep_template/' == url:
+            self.fake_id += 1
+            return {'prep': self.fake_id}
+        elif '/qiita_db/artifact/' == url:
+            self.saved_posts[str(self.fake_id)] = data
+            self.fake_id += 1
+            return {'job_id': self.fake_id}
+        else:
+            raise ValueError("Unsupported URL")
 
 
 class AnotherFakeClient():
@@ -974,13 +989,20 @@ class ReplicateTests(BaseStepTests):
 
         run_dir_stats_dir = run_dir('Stats')
         json_dir_13059 = run_dir('NYU_BMS_Melanoma_13059', 'json')
-        fastq_dir_11661 = run_dir('Feist_11661', 'filtered_sequences')
-        fastq_dir_13059 = run_dir('NYU_BMS_Melanoma_13059',
-                                  'filtered_sequences')
+        self.fastq_dir_11661 = run_dir('Feist_11661', 'filtered_sequences')
+        self.fastq_dir_13059 = run_dir('NYU_BMS_Melanoma_13059',
+                                       'filtered_sequences')
+
+        self.qc_fastq_dir_11661 = self.output_dir('QCJob', 'Feist_11661',
+                                                  'filtered_sequences')
+
+        self.qc_fastq_dir_13059 = self.output_dir('QCJob',
+                                                  'NYU_BMS_Melanoma_13059',
+                                                  'filtered_sequences')
 
         create_these = [run_dir_stats_dir, convert_job_reports_dir,
                         qc_job_reports_dir, json_dir_13059,
-                        fastq_dir_11661, fastq_dir_13059]
+                        self.fastq_dir_11661, self.fastq_dir_13059]
 
         for some_dir in create_these:
             makedirs(some_dir, exist_ok=True)
@@ -1036,15 +1058,15 @@ class ReplicateTests(BaseStepTests):
         # gzipped, hence we gzip them here.
 
         for name in samples_11661:
-            for new_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
-                             f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
-                with gzip.open(join(fastq_dir_11661, new_file), 'wb') as f:
+            for n_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
+                           f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
+                with gzip.open(join(self.fastq_dir_11661, n_file), 'wb') as f:
                     f.write(b"This is run_dir_stats_dir file.")
 
         for name in samples_13059:
-            for new_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
-                             f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
-                with gzip.open(join(fastq_dir_13059, new_file), 'wb') as f:
+            for n_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
+                           f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
+                with gzip.open(join(self.fastq_dir_13059, n_file), 'wb') as f:
                     f.write(b"This is run_dir_stats_dir file.")
 
     def tearDown(self):
@@ -1067,6 +1089,11 @@ class ReplicateTests(BaseStepTests):
                                        self.project_list,
                                        has_replicates=True)
 
+        # Metagenomic.generate_prep_file() and Amplicon.generate_prep_file()
+        # both perform self.prep_file_paths = job.prep_file_paths after the
+        # above completes. Recreate that behavior here.
+        step.prep_file_paths = job.prep_file_paths
+
         prep_output_path = self.output_dir('GenPrepFileJob', 'PrepFiles')
 
         # Confirm that the generated prep-info files are found in the
@@ -1074,7 +1101,7 @@ class ReplicateTests(BaseStepTests):
         # the absolute path up to 'qp_klp' and test against relative paths
         # found in exp.
 
-        obs = job.prep_file_paths
+        obs = step.prep_file_paths
 
         for qiita_id in obs:
             obs[qiita_id] = [re.sub(r"^.*?\/qp_klp\/", "qp_klp/", x) for x in
@@ -1114,3 +1141,42 @@ class ReplicateTests(BaseStepTests):
             for prep_info_file in obs[qiita_id]:
                 df = parse_prep(prep_info_file)
                 self.assertEqual(10, df.shape[0])
+
+        # Now, let's fake enough of the later steps to test the loading of
+        # each prep-info file into Qiita and ensure that each post is unique
+        # from a unique file.
+
+        fake_client = FakeClient()
+        step.update_prep_templates(fake_client)
+        step.generate_special_map(fake_client)
+
+        # Since load_preps_into_qiita() relies on the hierarchy of files in
+        # QCJob()'s output to do it's work, copy the faked fastq files made
+        # for GenPrepFileJob() into the right location in QCJob's output.
+        # (We are skipping a number of steps, hence the need to do this.
+        #  Ordinarily, the data would be created in QCJob() and migrated
+        #  through the pipeline to GenPrepFileJob(), not the other way around.)
+        copytree(self.fastq_dir_13059, self.qc_fastq_dir_13059)
+        copytree(self.fastq_dir_11661, self.qc_fastq_dir_11661)
+        step.load_preps_into_qiita(fake_client)
+
+        occurances = {
+            'RMA_KHP_rpoS_Mage_Q97L_A7_S270_L001_R1_001.trimmed.fastq.gz': 0,
+            'RMA_KHP_rpoS_Mage_Q97E_A12_S270_L001_R2_001.trimmed.fastq.gz': 0,
+            'JBI_KHP_HGL_022_B16_S270_L001_R2_001.trimmed.fastq.gz': 0,
+            'AP581451B02_A21_S270_L001_R2_001.trimmed.fastq.gz': 0,
+            'EP159692B04_C8_S270_L001_R1_001.trimmed.fastq.gz': 0,
+            'LP127890A01_D6_S270_L001_R1_001.trimmed.fastq.gz': 0}
+
+        # take advantage of the posted-files listing being in string format
+        # and test for the appearance of specific individual file names in
+        # each post. Each fastq file should only appear in one and only one
+        # post.
+        for prep_id in fake_client.saved_posts:
+            posted_files_listing = fake_client.saved_posts[prep_id]['files']
+            for fastq in occurances:
+                if fastq in posted_files_listing:
+                    occurances[fastq] += 1
+
+        for fastq in occurances:
+            self.assertEqual(occurances[fastq], 1)
