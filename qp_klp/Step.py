@@ -551,6 +551,8 @@ class Step:
             f.write(df.to_html(border=2, index=False, justify="left",
                                render_links=True, escape=False))
 
+        return df
+
     def write_commands_to_output_path(self):
         self.cmds_log_path = join(self.pipeline.output_path, 'cmds.log')
         with open(self.cmds_log_path, 'w') as f:

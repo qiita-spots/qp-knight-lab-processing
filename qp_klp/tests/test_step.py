@@ -1158,7 +1158,7 @@ class ReplicateTests(BaseStepTests):
         #  through the pipeline to GenPrepFileJob(), not the other way around.)
         copytree(self.fastq_dir_13059, self.qc_fastq_dir_13059)
         copytree(self.fastq_dir_11661, self.qc_fastq_dir_11661)
-        step.load_preps_into_qiita(fake_client)
+        results = step.load_preps_into_qiita(fake_client)
 
         occurances = {
             'RMA_KHP_rpoS_Mage_Q97L_A7_S270_L001_R1_001.trimmed.fastq.gz': 0,
@@ -1180,3 +1180,15 @@ class ReplicateTests(BaseStepTests):
 
         for fastq in occurances:
             self.assertEqual(occurances[fastq], 1)
+
+        # confirm that six preps were created by confirming that
+        # load_preps_into_qiita() returned six unique prep-ids, and six
+        # unique job-ids.
+        self.assertEqual(len(results['Linking JobID'].unique()), 6)
+        self.assertEqual(len(results['Qiita Prep ID'].unique()), 6)
+
+        # confirm that three of the preps belong to the Feist project, while
+        # the other three belong to NYU.
+        projects = ['Feist_11661', 'NYU_BMS_Melanoma_13059']
+        for project in projects:
+            self.assertEqual(results['Project'].value_counts()[project], 3)
