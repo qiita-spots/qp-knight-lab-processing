@@ -1160,7 +1160,7 @@ class ReplicateTests(BaseStepTests):
         copytree(self.fastq_dir_11661, self.qc_fastq_dir_11661)
         results = step.load_preps_into_qiita(fake_client)
 
-        occurances = {
+        obs = {
             'RMA_KHP_rpoS_Mage_Q97L_A7_S270_L001_R1_001.trimmed.fastq.gz': 0,
             'RMA_KHP_rpoS_Mage_Q97E_A12_S270_L001_R2_001.trimmed.fastq.gz': 0,
             'JBI_KHP_HGL_022_B16_S270_L001_R2_001.trimmed.fastq.gz': 0,
@@ -1174,12 +1174,19 @@ class ReplicateTests(BaseStepTests):
         # post.
         for prep_id in fake_client.saved_posts:
             posted_files_listing = fake_client.saved_posts[prep_id]['files']
-            for fastq in occurances:
+            for fastq in obs:
                 if fastq in posted_files_listing:
-                    occurances[fastq] += 1
+                    obs[fastq] += 1
 
-        for fastq in occurances:
-            self.assertEqual(occurances[fastq], 1)
+        exp = {
+            'RMA_KHP_rpoS_Mage_Q97L_A7_S270_L001_R1_001.trimmed.fastq.gz': 1,
+            'RMA_KHP_rpoS_Mage_Q97E_A12_S270_L001_R2_001.trimmed.fastq.gz': 1,
+            'JBI_KHP_HGL_022_B16_S270_L001_R2_001.trimmed.fastq.gz': 1,
+            'AP581451B02_A21_S270_L001_R2_001.trimmed.fastq.gz': 1,
+            'EP159692B04_C8_S270_L001_R1_001.trimmed.fastq.gz': 1,
+            'LP127890A01_D6_S270_L001_R1_001.trimmed.fastq.gz': 1}
+
+        self.assertDictEqual(obs, exp)
 
         # confirm that six preps were created by confirming that
         # load_preps_into_qiita() returned six unique prep-ids, and six

@@ -453,11 +453,11 @@ class Step:
         self.write_commands_to_output_path()
 
     def _get_files_amplicon(self, out_dir, project):
-        bd = f'{out_dir}/QCJob/{project}'
-        if not exists(f'{bd}/amplicon'):
+        bd = f'{out_dir}/QCJob/{project}/amplicon'
+        if not exists(bd):
             raise PipelineError("QCJob output not in expected location")
 
-        af = [f for f in glob(f'{bd}/amplicon/*.fastq.gz')]
+        af = [f for f in glob(f'{bd}/*.fastq.gz')]
 
         files = {'raw_barcodes': [], 'raw_forward_seqs': [],
                  'raw_reverse_seqs': []}
