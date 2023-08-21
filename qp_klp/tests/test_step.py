@@ -654,7 +654,8 @@ class BasicStepTests(BaseStepTests):
                         'sample_plate': 'Sample_Project_99999_1-4',
                         'index2': 'TGGTCCTT', 'index': 'GCAATTCG',
                         'sample_well': 'F1', 'i7_index_id': 'iTru7_305_11',
-                        'raw_reads_r1r2': '16435', 'quality_filtered_reads_r1r2': '11',
+                        'raw_reads_r1r2': '16435',
+                        'quality_filtered_reads_r1r2': '11',
                         'non_host_reads': '13'},
                '123.000': {'experiment_design_description': 'sample project',
                            'library_construction_protocol': ('Knight Lab Kapa'
