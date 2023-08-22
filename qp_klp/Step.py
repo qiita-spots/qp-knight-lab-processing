@@ -110,6 +110,7 @@ class Step:
         self.sample_state = None
         self.special_map = None
         self.touched_studies_prep_info = None
+        self.run_prefixes = {}
 
     @classmethod
     def generate_pipeline(cls, pipeline_type, input_file_path, lane_number,
@@ -174,26 +175,25 @@ class Step:
 
         self.special_map = special_map
 
-    def update_prep_templates(self, qclient, prep_file_paths, pipeline_type):
+    def update_prep_templates(self, qclient):
         '''
         Update prep-template info in Qiita. Get dict of prep-ids by study-id.
         :param qclient:
-        :param prep_file_paths:
         :return: A dict of lists of prep-ids, keyed by study-id.
         '''
         results = defaultdict(list)
 
-        for study_id in prep_file_paths:
-            for prep_file_path in prep_file_paths[study_id]:
+        for study_id in self.prep_file_paths:
+            for prep_file_path in self.prep_file_paths[study_id]:
                 metadata = Step.parse_prep_file(prep_file_path)
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         'data_type': None,
                         'job-id': self.master_qiita_job_id,
                         'name': self.generated_artifact_name}
-                if pipeline_type in Step.META_TYPES:
-                    data['data_type'] = pipeline_type
-                elif pipeline_type == Step.AMPLICON_TYPE:
+                if self.pipeline.pipeline_type in Step.META_TYPES:
+                    data['data_type'] = self.pipeline.pipeline_type
+                elif self.pipeline.pipeline_type == Step.AMPLICON_TYPE:
                     if 'target_gene' in metadata[list(metadata.keys())[0]]:
                         tg = metadata[list(metadata.keys())[0]]['target_gene']
                         for key in Step.AMPLICON_SUB_TYPES:
@@ -203,12 +203,14 @@ class Step:
                         raise ValueError("target_gene must be specified for "
                                          "amplicon type")
                 else:
-                    raise ValueError(f"'{pipeline_type}' is not a valid "
-                                     "pipeline type")
+                    raise ValueError(f"'{self.pipeline.pipeline_type}' is not "
+                                     " a valid pipeline type")
 
                 reply = qclient.post('/qiita_db/prep_template/', data=data)
                 prep_id = reply['prep']
                 results[study_id].append(prep_id)
+                self.run_prefixes[prep_id] = [metadata[sample]['run_prefix']
+                                              for sample in metadata]
 
         self.touched_studies_prep_info = results
         return results
@@ -304,7 +306,7 @@ class Step:
         return fastqc_job
 
     def _generate_prep_file(self, config, input_file_path, seqpro_path,
-                            project_names):
+                            project_names, has_replicates=False):
         is_amplicon = self.pipeline.pipeline_type == Step.AMPLICON_TYPE
 
         gpf_job = GenPrepFileJob(
@@ -317,7 +319,8 @@ class Step:
             project_names,
             config['modules_to_load'],
             self.master_qiita_job_id,
-            is_amplicon=is_amplicon)
+            is_amplicon=is_amplicon,
+            has_replicates=has_replicates)
 
         gpf_job.run(callback=self.update_callback)
 
@@ -449,91 +452,106 @@ class Step:
 
         self.write_commands_to_output_path()
 
+    def _get_files_amplicon(self, out_dir, project):
+        bd = f'{out_dir}/QCJob/{project}/amplicon'
+        if not exists(bd):
+            raise PipelineError("QCJob output not in expected location")
+
+        af = [f for f in glob(f'{bd}/*.fastq.gz')]
+
+        files = {'raw_barcodes': [], 'raw_forward_seqs': [],
+                 'raw_reverse_seqs': []}
+
+        for fastq_file in af:
+            if '_I1_' in fastq_file:
+                files['raw_barcodes'].append(fastq_file)
+            elif '_R1_' in fastq_file:
+                files['raw_forward_seqs'].append(fastq_file)
+            elif '_R2_' in fastq_file:
+                files['raw_reverse_seqs'].append(fastq_file)
+            else:
+                raise ValueError(f"Unrecognized file: {fastq_file}")
+
+        files['raw_barcodes'].sort()
+        files['raw_forward_seqs'].sort()
+        files['raw_reverse_seqs'].sort()
+
+        return files
+
+    def _get_files_meta(self, out_dir, project, prep_id):
+        bd = f'{out_dir}/QCJob/{project}'
+        if exists(f'{bd}/filtered_sequences'):
+            af = [f for f in glob(f'{bd}/filtered_sequences/*.fastq.gz')]
+        elif exists(f'{bd}/trimmed_sequences'):
+            af = [f for f in glob(f'{bd}/trimmed_sequences/*.fastq.gz')]
+        else:
+            raise PipelineError("QCJob output not in expected location")
+
+        subset = []
+        for run_prefix in self.run_prefixes[prep_id]:
+            subset += [fastq for fastq in af if run_prefix in fastq]
+
+        files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
+        for f in subset:
+            if '_R1_' in f:
+                files['raw_forward_seqs'].append(f)
+            elif '_R2_' in f:
+                files['raw_reverse_seqs'].append(f)
+            else:
+                raise ValueError(f'Not recognized file: {f}')
+
+        return files
+
+    def _load_preps_into_qiita(self, qclient, prep_id, qiita_id, out_dir,
+                               project):
+        surl = f'{qclient._server_url}/study/description/{qiita_id}'
+        prep_url = (f'{qclient._server_url}/study/description/'
+                    f'{qiita_id}?prep_id={prep_id}')
+
+        if self.pipeline.pipeline_type == Step.AMPLICON_TYPE:
+            files = self._get_files_amplicon(out_dir, project)
+        else:
+            atype = 'per_sample_FASTQ'
+            files = self._get_files_meta(out_dir, project, prep_id)
+
+        for f_type in files:
+            if not files[f_type]:
+                # if one or more of the expected list of reads is empty,
+                # raise an Error.
+                raise ValueError(f"'{f_type}' is empty")
+
+        # ideally we would use the email of the user that started the SPP
+        # run but at this point there is no easy way to retrieve it
+        pdata = {'user_email': 'qiita.help@gmail.com',
+                 'prep_id': prep_id,
+                 'artifact_type': atype,
+                 'command_artifact_name': self.generated_artifact_name,
+                 'files': dumps(files)}
+
+        job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
+
+        return {'Project': project, 'Qiita Study ID': qiita_id,
+                'Qiita Prep ID': prep_id, 'Qiita URL': surl,
+                'Prep URL': prep_url, 'Linking JobID': job_id}
+
     def load_preps_into_qiita(self, qclient):
         out_dir = self.pipeline.output_path
 
         data = []
         for project, _, qiita_id in self.special_map:
-            if len(self.touched_studies_prep_info[qiita_id]) != 1:
-                raise ValueError(
-                    f"Too many preps for {qiita_id}: "
-                    f"{self.touched_studies_prep_info[qiita_id]}")
-
-            prep_id = self.touched_studies_prep_info[qiita_id][0]
-            surl = f'{qclient._server_url}/study/description/{qiita_id}'
-            prep_url = (f'{qclient._server_url}/study/description/'
-                        f'{qiita_id}?prep_id={prep_id}')
-
-            bd = f'{out_dir}/QCJob/{project}'
-            if exists(f'{bd}/filtered_sequences'):
-                atype = 'per_sample_FASTQ'
-                af = [f for f in glob(f'{bd}/filtered_sequences/*.fastq.gz')]
-                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
-                for f in af:
-                    if '_R1_' in f:
-                        files['raw_forward_seqs'].append(f)
-                    elif '_R2_' in f:
-                        files['raw_reverse_seqs'].append(f)
-                    else:
-                        raise ValueError(f'Not recognized file: {f}')
-            elif exists(f'{bd}/trimmed_sequences'):
-                atype = 'per_sample_FASTQ'
-                af = [f for f in glob(f'{bd}/trimmed_sequences/*.fastq.gz')]
-                files = {'raw_forward_seqs': [], 'raw_reverse_seqs': []}
-                for f in af:
-                    if '_R1_' in f:
-                        files['raw_forward_seqs'].append(f)
-                    elif '_R2_' in f:
-                        files['raw_reverse_seqs'].append(f)
-                    else:
-                        raise ValueError(f'Not recognized file: {f}')
-            elif exists(f'{bd}/amplicon'):
-                atype = 'FASTQ'
-                af = [f for f in glob(f'{bd}/amplicon/*.fastq.gz')]
-
-                files = {'raw_barcodes': [], 'raw_forward_seqs': [],
-                         'raw_reverse_seqs': []}
-
-                for fastq_file in af:
-                    if '_I1_' in fastq_file:
-                        files['raw_barcodes'].append(fastq_file)
-                    elif '_R1_' in fastq_file:
-                        files['raw_forward_seqs'].append(fastq_file)
-                    elif '_R2_' in fastq_file:
-                        files['raw_reverse_seqs'].append(fastq_file)
-                    else:
-                        raise ValueError(f"Unrecognized file: {fastq_file}")
-
-                files['raw_barcodes'].sort()
-                files['raw_forward_seqs'].sort()
-                files['raw_reverse_seqs'].sort()
-            else:
-                raise PipelineError("QCJob output not in expected location")
-
-            for f_type in files:
-                if not files[f_type]:
-                    # if one or more of the expected list of reads is empty,
-                    # raise an Error.
-                    raise ValueError(f"'{f_type}' is empty")
-
-            # ideally we would use the email of the user that started the SPP
-            # run but at this point there is no easy way to retrieve it
-            pdata = {'user_email': 'qiita.help@gmail.com',
-                     'prep_id': prep_id,
-                     'artifact_type': atype,
-                     'command_artifact_name': self.generated_artifact_name,
-                     'files': dumps(files)}
-
-            job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
-
-            data.append({'Project': project, 'Qiita Study ID': qiita_id,
-                         'Qiita Prep ID': prep_id, 'Qiita URL': surl,
-                         'Prep URL': prep_url, 'Linking JobID': job_id})
+            for prep_id in self.touched_studies_prep_info[qiita_id]:
+                data.append(self._load_preps_into_qiita(qclient,
+                                                        prep_id,
+                                                        qiita_id,
+                                                        out_dir,
+                                                        project))
 
         df = pd.DataFrame(data)
         with open(join(out_dir, 'touched_studies.html'), 'w') as f:
             f.write(df.to_html(border=2, index=False, justify="left",
                                render_links=True, escape=False))
+
+        return df
 
     def write_commands_to_output_path(self):
         self.cmds_log_path = join(self.pipeline.output_path, 'cmds.log')
@@ -845,10 +863,8 @@ class Step:
             self.update_blanks_in_qiita(qclient)
 
         increment_status()  # status encompasses multiple operations
-        prep_file_paths = self.get_prep_file_paths()
-        ptype = self.pipeline.pipeline_type
         if update:
-            self.update_prep_templates(qclient, prep_file_paths, ptype)
+            self.update_prep_templates(qclient)
 
         self.load_preps_into_qiita(qclient)
 

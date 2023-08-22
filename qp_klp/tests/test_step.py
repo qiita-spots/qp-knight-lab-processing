@@ -11,10 +11,13 @@ from sequence_processing_pipeline.Pipeline import Pipeline, PipelineError
 from os.path import join, abspath, exists, dirname
 from functools import partial
 from os import makedirs, chmod, access, W_OK
-from shutil import rmtree, copy
+from shutil import rmtree, copy, which, copytree
 from os import environ, remove, getcwd
 from json import dumps
 import pandas as pd
+import gzip
+from metapool import parse_prep
+import re
 
 
 class FakeClient():
@@ -129,6 +132,10 @@ class FakeClient():
         for qdir in self.qdirs:
             makedirs(self.qdirs[qdir], exist_ok=True)
 
+        self.fake_id = 1000
+        self._server_url = "some.server.url"
+        self.saved_posts = {}
+
     def get(self, url):
         m = {'/api/v1/study/11661/samples': self.samples_in_11661,
              '/api/v1/study/11661/samples/categories=tube_id': self.tids_11661,
@@ -144,6 +151,17 @@ class FakeClient():
             return m[url]
 
         return None
+
+    def post(self, url, data=None):
+        if '/qiita_db/prep_template/' == url:
+            self.fake_id += 1
+            return {'prep': self.fake_id}
+        elif '/qiita_db/artifact/' == url:
+            self.saved_posts[str(self.fake_id)] = data
+            self.fake_id += 1
+            return {'job_id': self.fake_id}
+        else:
+            raise ValueError("Unsupported URL")
 
 
 class AnotherFakeClient():
@@ -282,6 +300,7 @@ class BaseStepTests(TestCase):
         self.good_sample_sheet_path = cc_path('good-sample-sheet.csv')
         self.another_good_sample_sheet_path = cc_path('another-good-sample-'
                                                       'sheet.csv')
+        self.sheet_w_replicates_path = cc_path('good_sheet_w_replicates.csv')
         self.good_mapping_file_path = cc_path('good-mapping-file.txt')
         self.good_prep_info_file_path = cc_path('good-sample-prep.tsv')
         self.good_transcript_sheet_path = cc_path('good-sample-sheet-'
@@ -301,6 +320,13 @@ class BaseStepTests(TestCase):
                                          None, self.output_file_path,
                                          self.qiita_id, Step.METAGENOMIC_TYPE,
                                          BaseStepTests.CONFIGURATION)
+
+        self.pipeline_replicates = Pipeline(None, self.good_run_id,
+                                            self.sheet_w_replicates_path, None,
+                                            self.output_file_path,
+                                            self.qiita_id,
+                                            Step.METAGENOMIC_TYPE,
+                                            BaseStepTests.CONFIGURATION)
 
         self.config = BaseStepTests.CONFIGURATION['configuration']
 
@@ -933,3 +959,244 @@ class BasicStepTests(BaseStepTests):
 
         with self.assertRaisesRegex(PipelineError, msg):
             step.precheck(fake_client)
+
+
+class ReplicateTests(BaseStepTests):
+    def setUp(self):
+        super().setUp()
+
+        self._create_test_input(4)
+
+        # Fake enough of a run so that GenPrepFileJob can generate
+        # prep-info files based on real input.
+
+        # seqpro path
+        self.seqpro_path = which('seqpro')
+
+        self.project_list = ['Feist_11661', 'NYU_BMS_Melanoma_13059']
+
+        # create Job working directories as needed.
+        data_dir = partial(join, 'qp_klp', 'tests', 'data')
+        self.output_dir = partial(data_dir, 'output_dir')
+        run_dir = partial(self.output_dir, 'GenPrepFileJob',
+                          '211021_A00000_0000_SAMPLE')
+
+        demultiplex_stats_path = data_dir('Demultiplex_Stats.csv')
+        fastp_stats_path = data_dir('sample_fastp.json')
+
+        convert_job_reports_dir = self.output_dir('ConvertJob', 'Reports')
+        qc_job_reports_dir = self.output_dir('QCJob', 'Feist_11661',
+                                             'fastp_reports_dir', 'json')
+
+        run_dir_stats_dir = run_dir('Stats')
+        json_dir_13059 = run_dir('NYU_BMS_Melanoma_13059', 'json')
+        self.fastq_dir_11661 = run_dir('Feist_11661', 'filtered_sequences')
+        self.fastq_dir_13059 = run_dir('NYU_BMS_Melanoma_13059',
+                                       'filtered_sequences')
+
+        self.qc_fastq_dir_11661 = self.output_dir('QCJob', 'Feist_11661',
+                                                  'filtered_sequences')
+
+        self.qc_fastq_dir_13059 = self.output_dir('QCJob',
+                                                  'NYU_BMS_Melanoma_13059',
+                                                  'filtered_sequences')
+
+        create_these = [run_dir_stats_dir, convert_job_reports_dir,
+                        qc_job_reports_dir, json_dir_13059,
+                        self.fastq_dir_11661, self.fastq_dir_13059]
+
+        for some_dir in create_these:
+            makedirs(some_dir, exist_ok=True)
+
+        # Copy pre-made files containing numbers of reads for each sample
+        # into place.
+
+        copy(demultiplex_stats_path,
+             self.output_dir('ConvertJob', 'Reports', 'Demultiplex_Stats.csv'))
+
+        samples_11661 = ['BLANK_43_12H_A4', 'JBI_KHP_HGL_022_A16',
+                         'BLANK_43_12G_B2', 'JBI_KHP_HGL_023_B18',
+                         'RMA_KHP_rpoS_Mage_Q97N_A9', 'JBI_KHP_HGL_023_A18',
+                         'RMA_KHP_rpoS_Mage_Q97L_B8', 'JBI_KHP_HGL_022_B16',
+                         'JBI_KHP_HGL_022_A15', 'RMA_KHP_rpoS_Mage_Q97E_A12',
+                         'RMA_KHP_rpoS_Mage_Q97L_A8',
+                         'RMA_KHP_rpoS_Mage_Q97N_A10', 'JBI_KHP_HGL_021_B14',
+                         'BLANK_43_12G_A1', 'BLANK_43_12H_B4',
+                         'RMA_KHP_rpoS_Mage_Q97N_B10', 'JBI_KHP_HGL_024_A19',
+                         'RMA_KHP_rpoS_Mage_Q97D_B6',
+                         'RMA_KHP_rpoS_Mage_Q97D_A6', 'JBI_KHP_HGL_023_A17',
+                         'RMA_KHP_rpoS_Mage_Q97E_A11', 'BLANK_43_12G_A2',
+                         'RMA_KHP_rpoS_Mage_Q97D_A5', 'JBI_KHP_HGL_024_A20',
+                         'JBI_KHP_HGL_024_B20', 'RMA_KHP_rpoS_Mage_Q97L_A7',
+                         'JBI_KHP_HGL_021_A14', 'RMA_KHP_rpoS_Mage_Q97E_B12',
+                         'BLANK_43_12H_A3', 'JBI_KHP_HGL_021_A13']
+
+        samples_13059 = ['AP581451B02_A21', 'EP256645B01_A23',
+                         'EP112567B02_C1', 'EP337425B01_C3',
+                         'LP127890A01_C5', 'EP159692B04_C7',
+                         'EP987683A01_C9', 'AP959450A03_C11',
+                         'SP464350A04_C13', 'EP121011B01_C15',
+                         'AP581451B02_A22', 'EP256645B01_A24',
+                         'EP112567B02_C2', 'EP337425B01_C4',
+                         'LP127890A01_C6', 'EP159692B04_C8',
+                         'EP987683A01_C10', 'AP959450A03_C12',
+                         'SP464350A04_C14', 'EP121011B01_C16',
+                         'AP581451B02_B22', 'EP256645B01_B24',
+                         'EP112567B02_D2', 'EP337425B01_D4',
+                         'LP127890A01_D6', 'EP159692B04_D8',
+                         'EP987683A01_D10', 'AP959450A03_D12',
+                         'SP464350A04_D14', 'EP121011B01_D16']
+
+        for sample in samples_11661:
+            copy(fastp_stats_path, join(qc_job_reports_dir,
+                                        f'{sample}_S270_L001_R1_001.json'))
+
+        for sample in samples_13059:
+            copy(fastp_stats_path, join(json_dir_13059,
+                                        f'{sample}_S270_L001_R1_001.json'))
+
+        # create fake fastq files. Metapool checks to confirm that they are
+        # gzipped, hence we gzip them here.
+
+        for name in samples_11661:
+            for n_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
+                           f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
+                with gzip.open(join(self.fastq_dir_11661, n_file), 'wb') as f:
+                    f.write(b"This is run_dir_stats_dir file.")
+
+        for name in samples_13059:
+            for n_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
+                           f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
+                with gzip.open(join(self.fastq_dir_13059, n_file), 'wb') as f:
+                    f.write(b"This is run_dir_stats_dir file.")
+
+    def tearDown(self):
+        if exists(self.output_file_path):
+            rmtree(self.output_file_path)
+
+    def test_replicates(self):
+        self.maxDiff = None
+
+        # Create run_dir_stats_dir Step object and generate prep-files.
+        step = Step(self.pipeline_replicates, self.qiita_id, None)
+
+        # Fake an empty tube-id map so that _generate_prep_file() doesn't
+        # abort early.
+        step.tube_id_map = {}
+
+        job = step._generate_prep_file(self.config['seqpro'],
+                                       self.sheet_w_replicates_path,
+                                       self.seqpro_path,
+                                       self.project_list,
+                                       has_replicates=True)
+
+        # Metagenomic.generate_prep_file() and Amplicon.generate_prep_file()
+        # both perform self.prep_file_paths = job.prep_file_paths after the
+        # above completes. Recreate that behavior here.
+        step.prep_file_paths = job.prep_file_paths
+
+        prep_output_path = self.output_dir('GenPrepFileJob', 'PrepFiles')
+
+        # Confirm that the generated prep-info files are found in the
+        # correct location w/the correct names. For testing purposes, remove
+        # the absolute path up to 'qp_klp' and test against relative paths
+        # found in exp.
+
+        obs = step.prep_file_paths
+
+        for qiita_id in obs:
+            obs[qiita_id] = [re.sub(r"^.*?\/qp_klp\/", "qp_klp/", x) for x in
+                             obs[qiita_id]]
+
+        # _generate_prep_file() should have created a prep-info file for each
+        # of the three replicates and two projects defined in the original
+        # sample-sheet, for a total of six files. When replicates are defined,
+        # prep_output_path should contain numerically named directories, one
+        # for each replicate, containing the prep-info files for that
+        # replicate.
+
+        exp = {
+            "11661": [
+                join(prep_output_path, "1",
+                     "211021_A00000_0000_SAMPLE.Feist_11661.1.tsv"),
+                join(prep_output_path, "2",
+                     "211021_A00000_0000_SAMPLE.Feist_11661.1.tsv"),
+                join(prep_output_path, "3",
+                     "211021_A00000_0000_SAMPLE.Feist_11661.1.tsv")
+            ],
+            "13059": [
+                join(prep_output_path, "1",
+                     "211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv"),
+                join(prep_output_path, "2",
+                     "211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv"),
+                join(prep_output_path, "3",
+                     "211021_A00000_0000_SAMPLE.NYU_BMS_Melanoma_13059.1.tsv")
+            ]
+        }
+
+        self.assertDictEqual(obs, exp)
+
+        # verify each prep_info_file contains the expected number of rows and
+        # more importantly are not empty.
+        for qiita_id in obs:
+            for prep_info_file in obs[qiita_id]:
+                df = parse_prep(prep_info_file)
+                self.assertEqual(10, df.shape[0])
+
+        # Now, let's fake enough of the later steps to test the loading of
+        # each prep-info file into Qiita and ensure that each post is unique
+        # from a unique file.
+
+        fake_client = FakeClient()
+        step.update_prep_templates(fake_client)
+        step.generate_special_map(fake_client)
+
+        # Since load_preps_into_qiita() relies on the hierarchy of files in
+        # QCJob()'s output to do it's work, copy the faked fastq files made
+        # for GenPrepFileJob() into the right location in QCJob's output.
+        # (We are skipping a number of steps, hence the need to do this.
+        #  Ordinarily, the data would be created in QCJob() and migrated
+        #  through the pipeline to GenPrepFileJob(), not the other way around.)
+        copytree(self.fastq_dir_13059, self.qc_fastq_dir_13059)
+        copytree(self.fastq_dir_11661, self.qc_fastq_dir_11661)
+        results = step.load_preps_into_qiita(fake_client)
+
+        obs = {
+            'RMA_KHP_rpoS_Mage_Q97L_A7_S270_L001_R1_001.trimmed.fastq.gz': 0,
+            'RMA_KHP_rpoS_Mage_Q97E_A12_S270_L001_R2_001.trimmed.fastq.gz': 0,
+            'JBI_KHP_HGL_022_B16_S270_L001_R2_001.trimmed.fastq.gz': 0,
+            'AP581451B02_A21_S270_L001_R2_001.trimmed.fastq.gz': 0,
+            'EP159692B04_C8_S270_L001_R1_001.trimmed.fastq.gz': 0,
+            'LP127890A01_D6_S270_L001_R1_001.trimmed.fastq.gz': 0}
+
+        # take advantage of the posted-files listing being in string format
+        # and test for the appearance of specific individual file names in
+        # each post. Each fastq file should only appear in one and only one
+        # post.
+        for prep_id in fake_client.saved_posts:
+            posted_files_listing = fake_client.saved_posts[prep_id]['files']
+            for fastq in obs:
+                if fastq in posted_files_listing:
+                    obs[fastq] += 1
+
+        exp = {
+            'RMA_KHP_rpoS_Mage_Q97L_A7_S270_L001_R1_001.trimmed.fastq.gz': 1,
+            'RMA_KHP_rpoS_Mage_Q97E_A12_S270_L001_R2_001.trimmed.fastq.gz': 1,
+            'JBI_KHP_HGL_022_B16_S270_L001_R2_001.trimmed.fastq.gz': 1,
+            'AP581451B02_A21_S270_L001_R2_001.trimmed.fastq.gz': 1,
+            'EP159692B04_C8_S270_L001_R1_001.trimmed.fastq.gz': 1,
+            'LP127890A01_D6_S270_L001_R1_001.trimmed.fastq.gz': 1}
+
+        self.assertDictEqual(obs, exp)
+
+        # confirm that six preps were created by confirming that
+        # load_preps_into_qiita() returned six unique prep-ids, and six
+        # unique job-ids.
+        self.assertEqual(len(results['Linking JobID'].unique()), 6)
+        self.assertEqual(len(results['Qiita Prep ID'].unique()), 6)
+
+        # confirm that three of the preps belong to the Feist project, while
+        # the other three belong to NYU.
+        projects = ['Feist_11661', 'NYU_BMS_Melanoma_13059']
+        for project in projects:
+            self.assertEqual(results['Project'].value_counts()[project], 3)
