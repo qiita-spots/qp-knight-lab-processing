@@ -615,8 +615,8 @@ class BasicStepTests(BaseStepTests):
                              'index2': 'TCTGAGAG', 'index': 'CATCTACG',
                              'sample_well': 'A3',
                              'i7_index_id': 'iTru7_114_05',
-                             'raw_reads': '10749',
-                             'quality_filtered_reads': '1',
+                             'raw_reads_r1r2': '10749',
+                             'quality_filtered_reads_r1r2': '1',
                              'non_host_reads': '4'},
                '363192073': {'experiment_design_description': 'sample project',
                              'library_construction_protocol': ('Knight Lab Ka'
@@ -637,8 +637,8 @@ class BasicStepTests(BaseStepTests):
                              'index2': 'TGGTCCTT', 'index': 'GCAATTCG',
                              'sample_well': 'F1',
                              'i7_index_id': 'iTru7_305_11',
-                             'raw_reads': '16435',
-                             'quality_filtered_reads': '2',
+                             'raw_reads_r1r2': '16435',
+                             'quality_filtered_reads_r1r2': '2',
                              'non_host_reads': '5'},
                '363193755': {'experiment_design_description': 'sample project',
                              'library_construction_protocol': ('Knight Lab Ka'
@@ -659,8 +659,8 @@ class BasicStepTests(BaseStepTests):
                              'index2': 'GGTGTCTT', 'index': 'GATTGCTC',
                              'sample_well': 'M1',
                              'i7_index_id': 'iTru7_114_03',
-                             'raw_reads': '14303',
-                             'quality_filtered_reads': '3',
+                             'raw_reads_r1r2': '14303',
+                             'quality_filtered_reads_r1r2': '3',
                              'non_host_reads': '6'},
                '1e-3': {'experiment_design_description': 'sample project',
                         'library_construction_protocol': ('Knight Lab Kapa '
@@ -680,7 +680,8 @@ class BasicStepTests(BaseStepTests):
                         'sample_plate': 'Sample_Project_99999_1-4',
                         'index2': 'TGGTCCTT', 'index': 'GCAATTCG',
                         'sample_well': 'F1', 'i7_index_id': 'iTru7_305_11',
-                        'raw_reads': '16435', 'quality_filtered_reads': '11',
+                        'raw_reads_r1r2': '16435',
+                        'quality_filtered_reads_r1r2': '11',
                         'non_host_reads': '13'},
                '123.000': {'experiment_design_description': 'sample project',
                            'library_construction_protocol': ('Knight Lab Kapa'
@@ -700,8 +701,8 @@ class BasicStepTests(BaseStepTests):
                            'sample_plate': 'Sample_Project_99999_1-4',
                            'index2': 'GGTGTCTT', 'index': 'GATTGCTC',
                            'sample_well': 'M1', 'i7_index_id': 'iTru7_114_03',
-                           'raw_reads': '14303',
-                           'quality_filtered_reads': '12',
+                           'raw_reads_r1r2': '14303',
+                           'quality_filtered_reads_r1r2': '12',
                            'non_host_reads': '14'}}
 
         self.assertDictEqual(obs, exp)

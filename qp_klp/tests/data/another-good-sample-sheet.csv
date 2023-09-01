@@ -17,7 +17,7 @@ Chemistry,Default,,,,,,,,,
 ReverseComplement,0,,,,,,,,,
 ,,,,,,,,,,
 [Data],,,,,,,,,,
-Lane,Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,Well_description
+Lane,Sample_ID,Sample_Name,Sample_Plate,well_id_384,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,Well_description
 1,AAAAA_AAAAAA,1234567890a,TestProject_99999_P40,A1,iTru7_107_07,CCGACTAT,iTru5_01_A,ACCGACAA,TestProject_99999,text_description
 1,BBBBB_BBBBBB,234567890ab,TestProject_99999_P40,C1,iTru7_107_08,CCGACTAT,iTru5_02_A,CTTCGCAA,TestProject_99999,text_description
 1,CCCCC_CCCCCC,034567890abc,TestProject_99999_P40,E1,iTru7_107_09,GCCTTGTT,iTru5_03_A,AACACCAC,TestProject_99999,a registered tube-id, with a leading zero
