@@ -1087,8 +1087,7 @@ class ReplicateTests(BaseStepTests):
         job = step._generate_prep_file(self.config['seqpro'],
                                        self.sheet_w_replicates_path,
                                        self.seqpro_path,
-                                       self.project_list,
-                                       has_replicates=True)
+                                       self.project_list)
 
         # Metagenomic.generate_prep_file() and Amplicon.generate_prep_file()
         # both perform self.prep_file_paths = job.prep_file_paths after the
