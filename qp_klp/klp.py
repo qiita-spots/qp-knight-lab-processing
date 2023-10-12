@@ -125,7 +125,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # headers, then treat this as a mapping file, even if it's an invalid
         # one.
         pipeline_type = Step.AMPLICON_TYPE
-        lane_number = -1
+        lane_number = 1
     else:
         # file doesn't look like a sample-sheet, or a valid mapping file.
         return False, None, ("Your uploaded file doesn't appear to be a sample"

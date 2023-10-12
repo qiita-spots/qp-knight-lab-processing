@@ -3,7 +3,7 @@ from collections import defaultdict
 from json import dumps
 from metapool import KLSampleSheet
 from os import makedirs, walk, listdir
-from os.path import join, exists, split
+from os.path import join, exists, split, basename, dirname
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
@@ -13,7 +13,6 @@ from sequence_processing_pipeline.QCJob import QCJob
 from subprocess import Popen, PIPE
 import pandas as pd
 from glob import glob
-import re
 from shutil import copyfile
 
 
@@ -102,7 +101,10 @@ class Step:
         self.project_names = None
         self.cmds = None
         self.cmds_log_path = None
+        # set by child classes for use in parent class
         self.prep_file_paths = None
+        # set by child classes for use in parent class
+        self.has_replicates = None
         self.sifs = None
         self.tube_id_map = None
         self.samples_in_qiita = None
@@ -159,15 +161,14 @@ class Step:
 
     def generate_artifact_name(self, prep_file_path):
         a_name = f'{self.pipeline.run_id}_{self.lane_number}'
-        pf_path, pf_file_name = split(prep_file_path)
-        result = re.match(r'^replicate_sheet_(\d)\....$',
-                          pf_file_name)
+        repl_num = basename(dirname(prep_file_path))
 
-        if result:
+        if self.has_replicates is True:
             # this is a replicate sheet file.
             # append a replication number to each name to
             # make it unique from other replicates.
-            return ('%s_r%s' % (a_name, result[1]), True)
+            # return ('%s_r%s' % (a_name, result[1]), True)
+            return ('%s_r%s' % (a_name, repl_num), True)
         else:
             # this is a normal pre-prep or sample-sheet.
             return (a_name, False)
@@ -537,33 +538,27 @@ class Step:
                 'Prep URL': prep_url, 'Linking JobID': job_id}
 
     def _copy_files(self, files):
-        results = []
-
         # increment the prep_copy_index before generating a new set of copies.
         self.prep_copy_index += 1
+        new_files = {}
+        for key in files:
+            new_files[key] = []
+            for some_path in files[key]:
+                path_name, file_name = split(some_path)
+                path_name = join(path_name, f'copy{self.prep_copy_index}')
+                self.foo("path_name: %s" % path_name)
+                makedirs(path_name, exist_ok=True)
+                if exists(path_name):
+                    self.foo("%s exists" % path_name)
+                else:
+                    self.foo("%s doesn't exist" % path_name)
 
-        for some_path in files:
-            # create a sub-folder called 'copyN' in the original file's
-            # location and place a copy of the original file there. We do this
-            # instead of making a copy of the entire directory outright,
-            # because often we won't want to copy all of the files, or files
-            # that aren't fastq.gz files. However, we do need an isolated
-            # 'working directory' that qtp-sequencing plugin can create the
-            # 'qtp-sequencing-validate-data.csv' file in for each prep.
-            path_name, file_name = split(some_path)
-            path_name = join(path_name, f'copy{self.prep_copy_index}')
-            makedirs(path_name, exist_ok=True)
-            results.append(join(path_name, file_name))
+                new_files[key].append(join(path_name, file_name))
 
-        # create a copy of the original file in the same location w/the
-        # appropriate name. Every time this method is called, each set of
-        # copies will be named accordingly. This makes it safe to generate new
-        # sets of copies while other processes may still be working on a
-        # previous set.
-        for src, dst in zip(files, results):
-            copyfile(src, dst)
-
-        return results
+        for key in files:
+            for src, dst in zip(files[key], new_files[key]):
+                copyfile(src, dst)
+        return new_files
 
     def load_preps_into_qiita(self, qclient):
         atype = 'per_sample_FASTQ'
