@@ -535,6 +535,7 @@ class Step:
 
         return {'Project': project, 'Qiita Study ID': qiita_id,
                 'Qiita Prep ID': prep_id, 'Qiita URL': surl,
+                'Artifact Name': artifact_name,
                 'Prep URL': prep_url, 'Linking JobID': job_id}
 
     def _copy_files(self, files):
@@ -589,10 +590,13 @@ class Step:
                 else:
                     # for meta*omics, generate the subset of files used by
                     # this prep only.
-                    working_set = []
-                    for run_prefix in self.run_prefixes[prep_id]:
-                        working_set += [fastq for fastq in fastq_files
-                                        if run_prefix in fastq]
+                    working_set = {}
+                    for key in fastq_files:
+                        working_set[key] = []
+                        for run_prefix in self.run_prefixes[prep_id]:
+                            working_set[key] += [fastq for fastq in
+                                                 fastq_files[key] if
+                                                 run_prefix in fastq]
 
                     if is_repl:
                         working_set = self._copy_files(working_set)
