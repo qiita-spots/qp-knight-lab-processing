@@ -29,12 +29,12 @@ class StatusUpdate():
         self.step_count = len(msgs)
         self.msgs = msgs
 
-    def update_job_status(self, status, id):
+    def update_job_status(self, status, jid):
         # internal function implements a callback function for Pipeline.run().
         # :param id: PBS/Torque/or some other informative and current job id.
         # :param status: status message
         self.qclient.update_job_step(self.job_id,
-                                     self.msg + f" ({id}: {status})")
+                                     self.msg + f" ({jid}: {status})")
 
     def update_current_message(self, include_step=True):
         # internal function that sets current_message to the new value before
@@ -125,7 +125,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # headers, then treat this as a mapping file, even if it's an invalid
         # one.
         pipeline_type = Step.AMPLICON_TYPE
-        lane_number = -1
+        lane_number = 1
     else:
         # file doesn't look like a sample-sheet, or a valid mapping file.
         return False, None, ("Your uploaded file doesn't appear to be a sample"

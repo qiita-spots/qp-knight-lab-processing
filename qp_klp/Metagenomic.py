@@ -53,3 +53,4 @@ class Metagenomic(Step):
                                           self.project_names)
 
         self.prep_file_paths = job.prep_file_paths
+        self.has_replicates = job.has_replicates
