@@ -547,13 +547,7 @@ class Step:
             for some_path in files[key]:
                 path_name, file_name = split(some_path)
                 path_name = join(path_name, f'copy{self.prep_copy_index}')
-                self.foo("path_name: %s" % path_name)
                 makedirs(path_name, exist_ok=True)
-                if exists(path_name):
-                    self.foo("%s exists" % path_name)
-                else:
-                    self.foo("%s doesn't exist" % path_name)
-
                 new_files[key].append(join(path_name, file_name))
 
         for key in files:
