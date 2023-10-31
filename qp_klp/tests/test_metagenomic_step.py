@@ -9,6 +9,10 @@ from qp_klp.tests.test_step import BaseStepTests
 from qp_klp.Metagenomic import Metagenomic
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os import makedirs
+from os.path import join, split, exists, basename, dirname
+from random import randrange
+from glob import glob
+from shutil import copyfile
 
 
 class MetagenomicTests(BaseStepTests):
@@ -52,8 +56,68 @@ class MetagenomicTests(BaseStepTests):
         step = Metagenomic(self.pipeline, self.qiita_id, None)
         step.convert_bcl_to_fastq()
 
+    def _generate_fake_fastq_files(self, output_path, needs_filtering, max_fastq_size_in_mb):
+        if not exists(output_path):
+            raise ValueError("%s doesn't exist" % output_path)
+
+        makedirs(output_path, exist_ok=True)
+
+        for i in range(1, 15):
+            forward_read_fp = join(output_path, "SAMPLE%d_L001_R1_001.fastq.gz" % i)
+            reverse_read_fp = join(output_path, "SAMPLE%d_L001_R2_001.fastq.gz" % i)
+
+            # where 1048576 equals 1MB in bytes
+            file_size = randrange(1048576, max_fastq_size_in_mb * 1048576)
+
+            with open(forward_read_fp, 'w') as f:
+                # assume 'A' is one byte in size on disk.
+                f.write("A" * file_size)
+
+            # for convenience, let reverse read be equal in size to forward read.
+            with open(reverse_read_fp, 'w') as f:
+                f.write("A" * file_size)
+
     def test_metagenomic_quality_control(self):
         self._create_test_input(2)
 
+        # dp = '/Users/ccowart/NEW_QC/qp-knight-lab-processing/qp_klp/tests/data/output_dir/ConvertJob'
+        dp = 'qp_klp/tests/data/output_dir/ConvertJob'
+
+        d = {'NYU_BMS_Melanoma_13059': {'needs_filtering': False, 'samples': []},
+             'Feist_11661': {'needs_filtering': False, 'samples': []},
+             'Gerwick_6123': {'needs_filtering': True, 'samples': []}}
+
+        for project_name in d:
+            self._generate_fake_fastq_files(join(dp, project_name), d[project_name]['needs_filtering'], 10)
+
         step = Metagenomic(self.pipeline, self.qiita_id, None)
+
+        # dp2 = '/Users/ccowart/NEW_QC/qp-knight-lab-processing/qp_klp/tests/data/output_dir/NuQCJob'
+        dp2 = 'qp_klp/tests/data/output_dir/NuQCJob'
+
+        for project_name in d:
+            # after initialization of step object but before run() is called,
+            # copy the raw files and rename them into output files to simulate
+            # the job script running in SLURM.
+            src = join(dp, project_name)
+            sub_dir = 'filtered_sequences' if d[project_name]['needs_filtering'] else 'trimmed_sequences'
+            dst = join(dp2, project_name, sub_dir)
+
+            makedirs(dst, exist_ok=True)
+           
+            # TODO: Figure out why other samples are being generated in
+            # '../qp_klp/tests/data/output_dir/ConvertJob/NYU_BMS_Melanoma_13059/EP337425B01_SXXX_L001_R2_001.fastq.gz
+            foo = glob(src + '/SAMPLE*.fastq.gz')
+            for fp in foo:
+                _, file_name = split(fp)
+                file_name = file_name.replace('.fastq.gz', '.trimmed.fastq.gz')
+                file_path = join(dst, file_name)
+                copyfile(fp, file_path)
+
+        # execute the quality_control() method, which will call NuQC's run() method in turn.
         step.quality_control()
+
+
+
+
+

@@ -292,7 +292,6 @@ class Step:
                            config['minimap_databases'],
                            config['queue'],
                            config['nodes'],
-                           config['nprocs'],
                            config['wallclock_time_in_minutes'],
                            config['job_total_memory_limit'],
                            config['fastp_executable_path'],
