@@ -42,7 +42,8 @@ class Metagenomic(Step):
         self.project_names = job.project_names
 
     def get_data_type(self, prep_file_path):
-        # prep_file_path is unused. It's kept for compatability with Amplicon and Step.
+        # prep_file_path is unused. It's kept for compatability with Amplicon
+        # and Step.
         return self.pipeline.pipeline_type
 
     def generate_prep_file(self):

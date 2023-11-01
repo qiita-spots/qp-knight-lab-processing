@@ -520,7 +520,6 @@ class Step:
 
         return files
 
-
     def _load_prep_into_qiita(self, qclient, prep_id, artifact_name,
                               qiita_id, project, fastq_files, atype):
         surl = f'{qclient._server_url}/study/description/{qiita_id}'
@@ -613,7 +612,7 @@ class Step:
         return df
 
     def _load_preps_into_qiita2(self, qclient, prep_id, qiita_id, out_dir,
-                               project):
+                                project):
         surl = f'{qclient._server_url}/study/description/{qiita_id}'
         prep_url = (f'{qclient._server_url}/study/description/'
                     f'{qiita_id}?prep_id={prep_id}')

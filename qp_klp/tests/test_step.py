@@ -276,7 +276,9 @@ class BaseStepTests(TestCase):
                 "nprocs": 16,
                 "queue": "qiita",
                 "wallclock_time_in_minutes": 60,
-                "minimap_databases": "/panfs/cguccion/23_06_25_Pangenome_Assembley/downloaded_fastqs/fastq_files/pangenome_individual_mmi",
+                "minimap_databases": ("/23_06_25_Pangenome_Assembley/download"
+                                      "ed_fastqs/fastq_files/pangenome_indivi"
+                                      "dual_mmi"),
                 "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
                                     " minimap2_2.18"],
                 "fastp_executable_path": "fastp",
@@ -285,7 +287,9 @@ class BaseStepTests(TestCase):
                 "job_total_memory_limit": "20gb",
                 "job_pool_size": 30,
                 "job_max_array_length": 1000,
-                "known_adapters_path": "/Users/ccowart/NEW_QC/qp-knight-lab-processing/fastp_known_adapters_formatted.fna"
+                "known_adapters_path": ("/Users/ccowart/NEW_QC/qp-knight-lab"
+                                        "-processing/fastp_known_adapters_fo"
+                                        "rmatted.fna")
             },
             "seqpro": {
                 "seqpro_path": "seqpro",
