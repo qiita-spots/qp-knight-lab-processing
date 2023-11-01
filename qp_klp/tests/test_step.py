@@ -287,9 +287,7 @@ class BaseStepTests(TestCase):
                 "job_total_memory_limit": "20gb",
                 "job_pool_size": 30,
                 "job_max_array_length": 1000,
-                "known_adapters_path": ("/Users/ccowart/NEW_QC/qp-knight-lab"
-                                        "-processing/fastp_known_adapters_fo"
-                                        "rmatted.fna")
+                "known_adapters_path": ("fastp_known_adapters_formatted.fna")
             },
             "seqpro": {
                 "seqpro_path": "seqpro",
@@ -409,7 +407,7 @@ class BaseStepTests(TestCase):
                                            "|09:53:41|0:0'")
 
         if stage >= 2:
-            fake_path = join(self.output_file_path, 'QCJob', 'logs')
+            fake_path = join(self.output_file_path, 'NuQCJob', 'logs')
             makedirs(fake_path, exist_ok=True)
 
             exp = {'Feist_11661': ['CDPH-SAL_Salmonella_Typhi_MDL-143',
@@ -444,19 +442,19 @@ class BaseStepTests(TestCase):
                 with open(join(fake_path, name), 'w') as f:
                     f.write("This is a file.")
 
-            fake_path = join(self.output_file_path, 'QCJob',
+            fake_path = join(self.output_file_path, 'NuQCJob',
                              'NYU_BMS_Melanoma_13059', 'fastp_reports_dir')
             makedirs(fake_path, exist_ok=True)
             with open(join(fake_path, 'a_file'), 'w') as f:
                 f.write("This is a file.")
 
-            fake_path = join(self.output_file_path, 'QCJob',
+            fake_path = join(self.output_file_path, 'NuQCJob',
                              'Feist_11661', 'fastp_reports_dir')
             makedirs(fake_path, exist_ok=True)
             with open(join(fake_path, 'a_file'), 'w') as f:
                 f.write("This is a file.")
 
-            fake_path = join(self.output_file_path, 'QCJob',
+            fake_path = join(self.output_file_path, 'NuQCJob',
                              'Gerwick_6123', 'fastp_reports_dir')
             makedirs(fake_path, exist_ok=True)
             with open(join(fake_path, 'a_file'), 'w') as f:
@@ -539,23 +537,28 @@ class BasicStepTests(BaseStepTests):
     def test_quality_control(self):
         self._create_test_input(2)
 
-        fake_path = join(self.output_file_path, 'QCJob', 'logs')
+        fake_path = join(self.output_file_path, 'NuQCJob', 'logs')
         makedirs(fake_path, exist_ok=True)
 
-        exp = {'Feist_11661': ['CDPH-SAL_Salmonella_Typhi_MDL-143',
-                               'CDPH-SAL_Salmonella_Typhi_MDL-144',
-                               'CDPH-SAL_Salmonella_Typhi_MDL-145',
-                               'CDPH-SAL_Salmonella_Typhi_MDL-146',
-                               'CDPH-SAL_Salmonella_Typhi_MDL-147'],
-               'Gerwick_6123': ['3A', '4A', '5B', '6A', '7A'],
-               'NYU_BMS_Melanoma_13059': ['AP581451B02', 'EP256645B01',
-                                          'EP112567B02', 'EP337425B01',
-                                          'LP127890A01']}
+        exp = {'Feist_11661': (['CDPH-SAL_Salmonella_Typhi_MDL-143',
+                                'CDPH-SAL_Salmonella_Typhi_MDL-144',
+                                'CDPH-SAL_Salmonella_Typhi_MDL-145',
+                                'CDPH-SAL_Salmonella_Typhi_MDL-146',
+                                'CDPH-SAL_Salmonella_Typhi_MDL-147'], False),
+               'Gerwick_6123': (['3A', '4A', '5B', '6A', '7A'], True),
+               'NYU_BMS_Melanoma_13059': (['AP581451B02', 'EP256645B01',
+                                           'EP112567B02', 'EP337425B01',
+                                           'LP127890A01'], False)}
         for project in exp:
             fake_path = join(self.output_file_path, 'ConvertJob', project)
+            fake_path2 = join(self.output_file_path, 'NuQCJob', project)
             makedirs(fake_path, exist_ok=True)
+            if exp[project][1]:
+                makedirs(join(fake_path2, 'filtered_sequences'), exist_ok=True)
+            else:
+                makedirs(join(fake_path2, 'trimmed_sequences'), exist_ok=True)
 
-            for sample in exp[project]:
+            for sample in exp[project][0]:
                 r1 = join(fake_path, f'{sample}_SXXX_L001_R1_001.fastq.gz')
                 r2 = join(fake_path, f'{sample}_SXXX_L001_R2_001.fastq.gz')
 
@@ -564,7 +567,8 @@ class BasicStepTests(BaseStepTests):
                         f.write("This is a file.")
 
         step = Step(self.pipeline, self.qiita_id, None)
-        step._quality_control(self.config['qc'], self.good_sample_sheet_path)
+        step._quality_control(self.config['nu-qc'],
+                              self.good_sample_sheet_path)
 
     def test_generate_pipeline(self):
         config_file_path = self._create_config_file()
@@ -862,7 +866,7 @@ class BasicStepTests(BaseStepTests):
              'tar zcvf reports-ConvertJob.tgz ConvertJob/Reports '
              'ConvertJob/logs'),
             (f'cd {self.output_file_path}; '
-             'tar zcvf logs-QCJob.tgz QCJob/logs'),
+             'tar zcvf logs-NuQCJob.tgz NuQCJob/logs'),
             (f'cd {self.output_file_path}; '
              'tar zcvf logs-FastQCJob.tgz FastQCJob/logs'),
             (f'cd {self.output_file_path}; '
@@ -874,9 +878,10 @@ class BasicStepTests(BaseStepTests):
             (f'cd {self.output_file_path}; '
              'mv failed_samples.html final_results'),
             (f'cd {self.output_file_path}; '
-             'tar zcvf reports-QCJob.tgz QCJob/Feist_11661/fastp_reports_dir '
-             'QCJob/Gerwick_6123/fastp_reports_dir '
-             'QCJob/NYU_BMS_Melanoma_13059/fastp_reports_dir'),
+             'tar zcvf reports-NuQCJob.tgz NuQCJob/Feist_11661/'
+             'fastp_reports_dir '
+             'NuQCJob/Gerwick_6123/fastp_reports_dir '
+             'NuQCJob/NYU_BMS_Melanoma_13059/fastp_reports_dir'),
             (f'cd {self.output_file_path}; '
              'tar zcvf sample-files.tgz 211021_A00000_0000_SAMPLE_Feist_11661'
              '_blanks.tsv 211021_A00000_0000_SAMPLE_Gerwick_6123_blanks.tsv '
@@ -1005,7 +1010,7 @@ class ReplicateTests(BaseStepTests):
         fastp_stats_path = data_dir('sample_fastp.json')
 
         convert_job_reports_dir = self.output_dir('ConvertJob', 'Reports')
-        qc_job_reports_dir = self.output_dir('QCJob', 'Feist_11661',
+        qc_job_reports_dir = self.output_dir('NuQCJob', 'Feist_11661',
                                              'fastp_reports_dir', 'json')
 
         run_dir_stats_dir = run_dir('Stats')
@@ -1014,10 +1019,10 @@ class ReplicateTests(BaseStepTests):
         self.fastq_dir_13059 = run_dir('NYU_BMS_Melanoma_13059',
                                        'filtered_sequences')
 
-        self.qc_fastq_dir_11661 = self.output_dir('QCJob', 'Feist_11661',
+        self.qc_fastq_dir_11661 = self.output_dir('NuQCJob', 'Feist_11661',
                                                   'filtered_sequences')
 
-        self.qc_fastq_dir_13059 = self.output_dir('QCJob',
+        self.qc_fastq_dir_13059 = self.output_dir('NuQCJob',
                                                   'NYU_BMS_Melanoma_13059',
                                                   'filtered_sequences')
 
@@ -1171,10 +1176,10 @@ class ReplicateTests(BaseStepTests):
         step.generate_special_map(fake_client)
 
         # Since load_preps_into_qiita() relies on the hierarchy of files in
-        # QCJob()'s output to do it's work, copy the faked fastq files made
-        # for GenPrepFileJob() into the right location in QCJob's output.
+        # NuQCJob()'s output to do it's work, copy the faked fastq files made
+        # for GenPrepFileJob() into the right location in NuQCJob's output.
         # (We are skipping a number of steps, hence the need to do this.
-        #  Ordinarily, the data would be created in QCJob() and migrated
+        #  Ordinarily, the data would be created in NuQCJob() and migrated
         #  through the pipeline to GenPrepFileJob(), not the other way around.)
         copytree(self.fastq_dir_13059, self.qc_fastq_dir_13059)
         copytree(self.fastq_dir_11661, self.qc_fastq_dir_11661)

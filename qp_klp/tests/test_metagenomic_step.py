@@ -126,9 +126,6 @@ class MetagenomicTests(BaseStepTests):
 
         step = Metagenomic(self.pipeline, self.qiita_id, None)
 
-        for item in small_ones:
-            print("SMALL ONE: %s" % item)
-
         for project_name in metadata:
             # after initialization of step object but before run() is called,
             # copy the raw files and rename them into QC'ed files.
@@ -216,8 +213,7 @@ class MetagenomicTests(BaseStepTests):
                "/id_map",
                "", "    fastp \\", "        -l 45 \\", "        -i ${r1} \\",
                "        -I ${r2} \\", "        -w 7 \\",
-               "        --adapter_fasta REMOVED/qp-knight-lab-"
-               "processing/fastp_known_adapters_formatted.fna \\",
+               "        --adapter_fasta fastp_known_adapters_formatted.fna \\",
                "        --html /dev/null \\", "        --json /dev/null \\",
                "        --stdout | \\",
                "            sed -r \"1~4s/^@(.*)/@${i}${delimiter}\\1/\"",
@@ -260,11 +256,6 @@ class MetagenomicTests(BaseStepTests):
                            r"/data/output_dir/NuQCJob$")
             m = p.match(obs[49])
             obs[49] = obs[49].replace(m.group(1), 'REMOVED')
-
-            p = re.compile(r"^.*--adapter_fasta (.*)/qp-knight-lab-processing"
-                           r"/fastp_known_adapters_formatted.fna \\")
-            m = p.match(obs[93])
-            obs[93] = obs[93].replace(m.group(1), 'REMOVED')
 
             for obs_line, exp_line in zip(obs, exp):
                 self.assertEqual(obs_line, exp_line)
