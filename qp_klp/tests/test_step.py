@@ -260,7 +260,8 @@ class BaseStepTests(TestCase):
                 "nprocs": 16,
                 "queue": "qiita",
                 "wallclock_time_in_minutes": 60,
-                "minimap_databases": ["/databases/minimap2/human-phix-db.mmi"],
+                "minimap2_databases": ["/databases/minimap2/"
+                                       "human-phix-db.mmi"],
                 "kraken2_database": "/databases/minimap2/hp_kraken-db.mmi",
                 "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
                                     " minimap2_2.18"],
@@ -276,9 +277,9 @@ class BaseStepTests(TestCase):
                 "nprocs": 16,
                 "queue": "qiita",
                 "wallclock_time_in_minutes": 60,
-                "minimap_databases": ("/23_06_25_Pangenome_Assembley/download"
-                                      "ed_fastqs/fastq_files/pangenome_indivi"
-                                      "dual_mmi"),
+                "minimap2_databases": ("/23_06_25_Pangenome_Assembley/download"
+                                       "ed_fastqs/fastq_files/pangenome_indivi"
+                                       "dual_mmi"),
                 "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
                                     " minimap2_2.18"],
                 "fastp_executable_path": "fastp",
