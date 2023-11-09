@@ -285,7 +285,7 @@ class BaseStepTests(TestCase):
                 "fastp_executable_path": "fastp",
                 "minimap2_executable_path": "minimap2",
                 "samtools_executable_path": "samtools",
-                "job_total_memory_limit": "20gb",
+                "job_total_memory_limit": "20",
                 "job_pool_size": 30,
                 "job_max_array_length": 1000,
                 "known_adapters_path": ("fastp_known_adapters_formatted.fna")

@@ -289,7 +289,7 @@ class Step:
         nuqc_job = NuQCJob(join(self.pipeline.output_path, 'ConvertJob'),
                            self.pipeline.output_path,
                            input_file_path,
-                           config['minimap_databases'],
+                           config['minimap2_databases'],
                            config['queue'],
                            config['nodes'],
                            config['wallclock_time_in_minutes'],
