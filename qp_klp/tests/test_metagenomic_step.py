@@ -219,10 +219,9 @@ class MetagenomicTests(BaseStepTests):
                "    r2_name=$(basename ${r2} .fastq.gz)", "",
                "    # for now just make sure each file is saved and we can "
                "read the data inside",
-               "    # to sort them out later.", "",
-               "    s_name=$(basename \"${r1}\" | sed -r 's/\\.fastq\\.gz//')",
-               "    html_name=$(echo \"$s_name.html\")",
-               "    json_name=$(echo \"$s_name.json\")",
+               "    # to sort them out later.",
+               "    html_name=$(echo \"$r1_name.html\")",
+               "    json_name=$(echo \"$r1_name.json\")",
                "",
                "    echo \"${i}	${r1_name}	${r2_name}	${base}\" >> ${TMPDIR}"
                "/id_map",
@@ -293,18 +292,18 @@ class MetagenomicTests(BaseStepTests):
             p = re.compile(r"^\s+\-\-html (.*)/qp-knight-lab-processing/"
                            r"qp_klp/tests/data/output_dir/NuQCJob/fastp_"
                            r"reports_dir/html/\${html_name} \\$")
-            m = p.match(obs[107])
-            obs[107] = obs[107].replace(m[1], 'REMOVED')
+            m = p.match(obs[105])
+            obs[105] = obs[105].replace(m[1], 'REMOVED')
 
             p = re.compile(r"^\s+\-\-json (.*)/qp-knight-lab-processing/"
                            r"qp_klp/tests/data/output_dir/NuQCJob/fastp_"
                            r"reports_dir/json/\${json_name} \\$")
-            m = p.match(obs[108])
-            obs[108] = obs[108].replace(m[1], 'REMOVED')
+            m = p.match(obs[106])
+            obs[106] = obs[106].replace(m[1], 'REMOVED')
 
             p = re.compile(r"^\s+(.*/bin)/demux \\")
-            m = p.match(obs[127])
-            obs[127] = obs[127].replace(m[1], 'REMOVED')
+            m = p.match(obs[125])
+            obs[125] = obs[125].replace(m[1], 'REMOVED')
 
             for obs_line, exp_line in zip(obs, exp):
                 self.assertEqual(obs_line, exp_line)
