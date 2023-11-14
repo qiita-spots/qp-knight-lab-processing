@@ -187,9 +187,7 @@ class MetagenomicTests(BaseStepTests):
                "### output_path = output_path passed to Job objects + "
                "'NuQCJob'",
                "### e.g.: working-directory/ConvertJob, working-directory/"
-               "QCJob...",
-               "cd REMOVED/qp-knight-lab-processing/qp_klp/tests"
-               "/data/output_dir/NuQCJob/tmp", "",
+               "QCJob...", "cd ${TMPDIR}", "",
                "### set a temp directory, make a new unique one under it and",
                "### make sure we clean up as we're dumping to shm",
                "### DO NOT do this casually. Only do a clean up like this if",
@@ -272,11 +270,6 @@ class MetagenomicTests(BaseStepTests):
 
             # remove part of the absolute path so that comparison test is
             # valid across multiple installations.
-            p = re.compile(r"^cd (.*)/qp-knight-lab-processing/qp_klp/tests"
-                           r"/data/output_dir/NuQCJob/tmp$")
-            m = p.match(obs[51])
-            obs[51] = obs[51].replace(m[1], 'REMOVED')
-
             p = re.compile(r"mkdir -p (.*)/qp-knight-lab-processing/qp_klp/"
                            r"tests/data/output_dir/NuQCJob/fastp_reports_dir/"
                            r"html")
