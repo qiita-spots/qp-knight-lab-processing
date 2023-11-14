@@ -84,7 +84,7 @@ jobs:
           pip --quiet install -U pip
 
           pip --quiet install https://github.com/qiita-spots/qtp-job-output-folder/archive/refs/heads/main.zip
-          pip install . --use-pep517
+          pip install -e . --use-pep517
           pip --quiet install coveralls
 
           export QP_KLP_CONFIG_FP=`pwd`/configuration.json
