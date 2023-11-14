@@ -623,8 +623,8 @@ class Step:
             atype = 'per_sample_FASTQ'
             files = self._get_files_meta(out_dir, project, prep_id)
 
-        for f_type in files:
-            if not files[f_type]:
+        for f_type, size in files.items():
+            if size == 0:
                 # if one or more of the expected list of reads is empty,
                 # raise an Error.
                 raise ValueError(f"'{f_type}' is empty")
