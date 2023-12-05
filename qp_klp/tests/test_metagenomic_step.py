@@ -187,7 +187,8 @@ class MetagenomicTests(BaseStepTests):
                "### output_path = output_path passed to Job objects + "
                "'NuQCJob'",
                "### e.g.: working-directory/ConvertJob, working-directory/"
-               "QCJob...", "cd ${TMPDIR}", "",
+               "QCJob...",
+               "cd ${TMPDIR}", "",
                "### set a temp directory, make a new unique one under it and",
                "### make sure we clean up as we're dumping to shm",
                "### DO NOT do this casually. Only do a clean up like this if",
@@ -216,11 +217,9 @@ class MetagenomicTests(BaseStepTests):
                "    r1_name=$(basename ${r1} .fastq.gz)",
                "    r2_name=$(basename ${r2} .fastq.gz)", "",
                "    # for now just make sure each file is saved and we can "
-               "read the data inside",
-               "    # to sort them out later.",
+               "read the data inside", "    # to sort them out later.",
                "    html_name=$(echo \"$r1_name.html\")",
-               "    json_name=$(echo \"$r1_name.json\")",
-               "",
+               "    json_name=$(echo \"$r1_name.json\")", "",
                "    echo \"${i}	${r1_name}	${r2_name}	${base}\" >> ${TMPDIR}"
                "/id_map",
                "", "    fastp \\", "        -l 45 \\", "        -i ${r1} \\",
@@ -273,6 +272,7 @@ class MetagenomicTests(BaseStepTests):
             p = re.compile(r"mkdir -p (.*)/qp-knight-lab-processing/qp_klp/"
                            r"tests/data/output_dir/NuQCJob/fastp_reports_dir/"
                            r"html")
+
             m = p.match(obs[63])
             obs[63] = obs[63].replace(m[1], 'REMOVED')
 
