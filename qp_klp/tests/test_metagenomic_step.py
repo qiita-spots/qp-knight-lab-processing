@@ -169,7 +169,13 @@ class MetagenomicTests(BaseStepTests):
                "#SBATCH -J 077c4da8-74eb-4184-8860-0207f53623be_NuQCJob",
                "#SBATCH -p qiita", "### wall-time-limit in minutes",
                "#SBATCH --time 60", "#SBATCH --mem 20G",
-               "#SBATCH -N 1", "#SBATCH -c 4", "",
+               "#SBATCH -N 1",
+               ('### Note cores_per_task maps to fastp & minimap2 thread '
+                'counts'),
+               '### as well as sbatch -c. demux threads remains fixed at 1.',
+               ('### Note -c set to 4 and thread counts set to 7 during '
+                'testing.'),
+               "#SBATCH -c 4", "",
                "if [[ -z \"${SLURM_ARRAY_TASK_ID}\" ]]; then",
                "    echo \"Not operating within an array\"", "    exit 1",
                "fi", "", "if [[ \"${SLURM_ARRAY_TASK_MIN}\" -ne 1 ]]; then",
@@ -178,8 +184,7 @@ class MetagenomicTests(BaseStepTests):
                "    exit 1", "fi", "", "if [[ -z ${PREFIX} ]]; then",
                "    echo \"PREFIX is not set\"", "    exit 1", "fi", "",
                "if [[ -z ${OUTPUT} ]]; then", "    echo \"OUTPUT is not set\"",
-               "    exit 1", "fi", "", "if [[ -z ${TMPDIR} ]]; then",
-               "    echo \"TMPDIR is not set\"", "    exit 1", "fi", "",
+               "    exit 1", "fi", "",
                "echo \"MMI is ${MMI}\"", "",
                "conda activate human-depletion", "", "set -x", "set -e", "",
                "date", "hostname",
@@ -188,13 +193,16 @@ class MetagenomicTests(BaseStepTests):
                "'NuQCJob'",
                "### e.g.: working-directory/ConvertJob, working-directory/"
                "QCJob...",
-               "cd ${TMPDIR}", "",
+               ("cd REMOVED/qp-knight-lab-processing/qp_klp/tests/data/"
+                "output_dir/NuQCJob"), "",
                "### set a temp directory, make a new unique one under it and",
                "### make sure we clean up as we're dumping to shm",
                "### DO NOT do this casually. Only do a clean up like this if",
                "### you know for sure TMPDIR is what you want.", "",
-               "mkdir -p ${TMPDIR}", "export TMPDIR=${TMPDIR}",
-               "export TMPDIR=$(mktemp -d)", "echo $TMPDIR", "",
+               ("export TMPDIR=REMOVED/qp-knight-lab-processing/qp_klp/tests"
+                "/data/output_dir/NuQCJob/tmp/"),
+               "# don't use mktemp -d to create a random temp dir.",
+               "# the one passed is unique already.", "echo $TMPDIR", "",
                ("mkdir -p REMOVED/qp-knight-lab-processing/qp_klp/tests/data"
                 "/output_dir/NuQCJob/fastp_reports_dir/html"),
                ("mkdir -p REMOVED/qp-knight-lab-processing/qp_klp/tests/data"
@@ -203,7 +211,7 @@ class MetagenomicTests(BaseStepTests):
                "function cleanup {", "  echo \"Removing $TMPDIR\"",
                "  rm -fr $TMPDIR", "  unset TMPDIR", "}", "trap cleanup EXIT",
                "",
-               "export FILES=$(pwd)/$(printf \"%s-%d\" ${PREFIX} ${SLURM_ARRAY"
+               "export FILES=$(printf \"%s-%d\" ${PREFIX} ${SLURM_ARRAY"
                "_TASK_ID})",
                "if [[ ! -f ${FILES} ]]; then", "    logger ${FILES} not found",
                "    exit 1", "fi", "", "delimiter=::MUX::",
@@ -217,13 +225,14 @@ class MetagenomicTests(BaseStepTests):
                "    r1_name=$(basename ${r1} .fastq.gz)",
                "    r2_name=$(basename ${r2} .fastq.gz)", "",
                "    # for now just make sure each file is saved and we can "
-               "read the data inside", "    # to sort them out later.",
-               "    html_name=$(echo \"$r1_name.html\")",
-               "    json_name=$(echo \"$r1_name.json\")", "",
+               "read the data inside", "    # to sort them out later.", "",
+               "    s_name=$(basename \"${r1}\" | sed -r 's/\\.fastq\\.gz//')",
+               "    html_name=$(echo \"$s_name.html\")",
+               "    json_name=$(echo \"$s_name.json\")", "",
                "    echo \"${i}	${r1_name}	${r2_name}	${base}\" >> ${TMPDIR}"
                "/id_map",
-               "", "    fastp \\", "        -l 45 \\", "        -i ${r1} \\",
-               "        -I ${r2} \\", "        -w 7 \\",
+               "", "    fastp \\", "        -l 100 \\", "        -i ${r1} \\",
+               "        -I ${r2} \\", "        -w 4 \\",
                "        --adapter_fasta fastp_known_adapters_formatted.fna \\",
                ("        --html REMOVED/qp-knight-lab-processing/qp_klp/tests"
                 "/data/output_dir/NuQCJob/fastp_reports_dir/html/"
@@ -236,7 +245,7 @@ class MetagenomicTests(BaseStepTests):
                "done > ${TMPDIR}/seqs.fastq", "",
                "function minimap2_runner () {",
                "    mmi=$1", "", "    echo \"$(date) :: $(basename ${mmi})\"",
-               "    minimap2 -2 -ax sr -t 7 ${mmi} ${TMPDIR}/seqs.fastq | \\",
+               "    minimap2 -2 -ax sr -t 4 ${mmi} ${TMPDIR}/seqs.fastq | \\",
                "        samtools fastq -@ 1 -f 12 -F 256 > ${TMPDIR}/seqs_new."
                "fastq",
                "    mv ${TMPDIR}/seqs_new.fastq ${TMPDIR}/seqs.fastq", "}", "",
@@ -269,34 +278,36 @@ class MetagenomicTests(BaseStepTests):
 
             # remove part of the absolute path so that comparison test is
             # valid across multiple installations.
-            p = re.compile(r"mkdir -p (.*)/qp-knight-lab-processing/qp_klp/"
+
+            patterns = [
+                re.compile(r"cd (.*)/qp-knight-lab-processing/qp_klp/"),
+
+                re.compile(r"export TMPDIR=(.*)/qp-knight-lab-processing"
+                           r"/qp_klp/"),
+
+                re.compile(r"mkdir -p (.*)/qp-knight-lab-processing/qp_klp/"
                            r"tests/data/output_dir/NuQCJob/fastp_reports_dir/"
-                           r"html")
+                           r"html"),
 
-            m = p.match(obs[63])
-            obs[63] = obs[63].replace(m[1], 'REMOVED')
-
-            p = re.compile(r"mkdir -p (.*)/qp-knight-lab-processing/qp_klp/"
+                re.compile(r"mkdir -p (.*)/qp-knight-lab-processing/qp_klp/"
                            r"tests/data/output_dir/NuQCJob/fastp_reports_dir/"
-                           r"json")
-            m = p.match(obs[64])
-            obs[64] = obs[64].replace(m[1], 'REMOVED')
+                           r"json"),
 
-            p = re.compile(r"^\s+\-\-html (.*)/qp-knight-lab-processing/"
+                re.compile(r"^\s+\-\-html (.*)/qp-knight-lab-processing/"
                            r"qp_klp/tests/data/output_dir/NuQCJob/fastp_"
-                           r"reports_dir/html/\${html_name} \\$")
-            m = p.match(obs[105])
-            obs[105] = obs[105].replace(m[1], 'REMOVED')
+                           r"reports_dir/html/\${html_name} \\$"),
 
-            p = re.compile(r"^\s+\-\-json (.*)/qp-knight-lab-processing/"
+                re.compile(r"^\s+\-\-json (.*)/qp-knight-lab-processing/"
                            r"qp_klp/tests/data/output_dir/NuQCJob/fastp_"
-                           r"reports_dir/json/\${json_name} \\$")
-            m = p.match(obs[106])
-            obs[106] = obs[106].replace(m[1], 'REMOVED')
+                           r"reports_dir/json/\${json_name} \\$"),
 
-            p = re.compile(r"^\s+(.*/bin)/demux \\")
-            m = p.match(obs[125])
-            obs[125] = obs[125].replace(m[1], 'REMOVED')
+                re.compile(r"^\s+(.*/bin)/demux \\")]
+
+            for pattern in patterns:
+                for i in range(0, len(obs)):
+                    m = pattern.match((obs[i]))
+                    if m:
+                        obs[i] = obs[i].replace(m[1], 'REMOVED')
 
             for obs_line, exp_line in zip(obs, exp):
                 self.assertEqual(obs_line, exp_line)

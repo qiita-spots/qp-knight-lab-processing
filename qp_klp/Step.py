@@ -285,6 +285,7 @@ class Step:
 
         return convert_job
 
+    # CHARLIE
     def _quality_control(self, config, input_file_path):
         nuqc_job = NuQCJob(join(self.pipeline.output_path, 'ConvertJob'),
                            self.pipeline.output_path,
@@ -299,9 +300,11 @@ class Step:
                            config['samtools_executable_path'],
                            config['modules_to_load'],
                            self.master_qiita_job_id,
-                           self.job_pool_size,
                            config['job_max_array_length'],
-                           config['known_adapters_path'])
+                           config['known_adapters_path'],
+                           bucket_size=config['bucket_size'],
+                           length_limit=config['length_limit'],
+                           cores_per_task=config['cores_per_task'])
 
         nuqc_job.run(callback=self.update_callback)
 

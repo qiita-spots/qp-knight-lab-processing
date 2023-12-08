@@ -269,12 +269,10 @@ class BaseStepTests(TestCase):
                 "minimap2_executable_path": "minimap2",
                 "samtools_executable_path": "samtools",
                 "job_total_memory_limit": "20gb",
-                "job_pool_size": 30,
                 "job_max_array_length": 1000
             },
             "nu-qc": {
                 "nodes": 1,
-                "nprocs": 16,
                 "queue": "qiita",
                 "wallclock_time_in_minutes": 60,
                 "minimap2_databases": ("/23_06_25_Pangenome_Assembley/download"
@@ -286,9 +284,11 @@ class BaseStepTests(TestCase):
                 "minimap2_executable_path": "minimap2",
                 "samtools_executable_path": "samtools",
                 "job_total_memory_limit": "20",
-                "job_pool_size": 30,
                 "job_max_array_length": 1000,
-                "known_adapters_path": ("fastp_known_adapters_formatted.fna")
+                "known_adapters_path": ("fastp_known_adapters_formatted.fna"),
+                "bucket_size": 8,
+                "length_limit": 100,
+                "cores_per_task": 4
             },
             "seqpro": {
                 "seqpro_path": "seqpro",
