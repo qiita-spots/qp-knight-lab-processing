@@ -614,58 +614,6 @@ class Step:
 
         return df
 
-    def _load_preps_into_qiita2(self, qclient, prep_id, qiita_id, out_dir,
-                                project):
-        surl = f'{qclient._server_url}/study/description/{qiita_id}'
-        prep_url = (f'{qclient._server_url}/study/description/'
-                    f'{qiita_id}?prep_id={prep_id}')
-
-        if self.pipeline.pipeline_type == Step.AMPLICON_TYPE:
-            files = self._get_files_amplicon(out_dir, project)
-        else:
-            atype = 'per_sample_FASTQ'
-            files = self._get_files_meta(out_dir, project, prep_id)
-
-        for f_type in files:
-            if not files[f_type]:
-                # if one or more of the expected list of reads is empty,
-                # raise an Error.
-                raise ValueError(f"'{f_type}' is empty")
-
-        # ideally we would use the email of the user that started the SPP
-        # run but at this point there is no easy way to retrieve it
-        pdata = {'user_email': 'qiita.help@gmail.com',
-                 'prep_id': prep_id,
-                 'artifact_type': atype,
-                 'command_artifact_name': self.generated_artifact_name,
-                 'files': dumps(files)}
-
-        job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
-
-        return {'Project': project, 'Qiita Study ID': qiita_id,
-                'Qiita Prep ID': prep_id, 'Qiita URL': surl,
-                'Prep URL': prep_url, 'Linking JobID': job_id}
-
-    def load_preps_into_qiita2(self, qclient):
-        out_dir = self.pipeline.output_path
-
-        data = []
-        for project, _, qiita_id in self.special_map:
-            for prep_id in self.touched_studies_prep_info[qiita_id]:
-                data.append(self._load_preps_into_qiita(qclient,
-                                                        prep_id,
-                                                        qiita_id,
-                                                        out_dir,
-                                                        project))
-
-        df = pd.DataFrame(data)
-        opath = join(self.pipeline.output_path, 'touched_studies.html')
-        with open(opath, 'w') as f:
-            f.write(df.to_html(border=2, index=False, justify="left",
-                               render_links=True, escape=False))
-
-        return df
-
     def write_commands_to_output_path(self):
         self.cmds_log_path = join(self.pipeline.output_path, 'cmds.log')
         with open(self.cmds_log_path, 'w') as f:
