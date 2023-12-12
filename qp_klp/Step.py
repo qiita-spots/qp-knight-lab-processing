@@ -285,7 +285,6 @@ class Step:
 
         return convert_job
 
-    # CHARLIE
     def _quality_control(self, config, input_file_path):
         nuqc_job = NuQCJob(join(self.pipeline.output_path, 'ConvertJob'),
                            self.pipeline.output_path,
