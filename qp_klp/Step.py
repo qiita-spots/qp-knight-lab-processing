@@ -9,7 +9,7 @@ from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.Pipeline import Pipeline
-from sequence_processing_pipeline.QCJob import QCJob
+from sequence_processing_pipeline.NuQCJob import NuQCJob
 from subprocess import Popen, PIPE
 import pandas as pd
 from glob import glob
@@ -85,6 +85,8 @@ class Step:
 
         self.pipeline = pipeline
         self.lane_number = lane_number
+        self.generated_artifact_name = \
+            f'{self.pipeline.run_id}_{self.lane_number}'
         self.master_qiita_job_id = master_qiita_job_id
 
         if status_update_callback is not None:
@@ -192,6 +194,9 @@ class Step:
 
         self.special_map = special_map
 
+    def get_data_type(self, prep_file_path):
+        raise ValueError("get_data_type() not implemented for base-class.")
+
     def update_prep_templates(self, qclient):
         '''
         Update prep-template info in Qiita. Get dict of prep-ids by study-id.
@@ -281,27 +286,28 @@ class Step:
         return convert_job
 
     def _quality_control(self, config, input_file_path):
-        qc_job = QCJob(join(self.pipeline.output_path, 'ConvertJob'),
-                       self.pipeline.output_path,
-                       input_file_path,
-                       config['minimap_databases'],
-                       config['kraken2_database'],
-                       config['queue'],
-                       config['nodes'],
-                       config['nprocs'],
-                       config['wallclock_time_in_minutes'],
-                       config['job_total_memory_limit'],
-                       config['fastp_executable_path'],
-                       config['minimap2_executable_path'],
-                       config['samtools_executable_path'],
-                       config['modules_to_load'],
-                       self.master_qiita_job_id,
-                       self.job_pool_size,
-                       config['job_max_array_length'])
+        nuqc_job = NuQCJob(join(self.pipeline.output_path, 'ConvertJob'),
+                           self.pipeline.output_path,
+                           input_file_path,
+                           config['minimap2_databases'],
+                           config['queue'],
+                           config['nodes'],
+                           config['wallclock_time_in_minutes'],
+                           config['job_total_memory_limit'],
+                           config['fastp_executable_path'],
+                           config['minimap2_executable_path'],
+                           config['samtools_executable_path'],
+                           config['modules_to_load'],
+                           self.master_qiita_job_id,
+                           config['job_max_array_length'],
+                           config['known_adapters_path'],
+                           bucket_size=config['bucket_size'],
+                           length_limit=config['length_limit'],
+                           cores_per_task=config['cores_per_task'])
 
-        qc_job.run(callback=self.update_callback)
+        nuqc_job.run(callback=self.update_callback)
 
-        return qc_job
+        return nuqc_job
 
     def _generate_reports(self):
         config = self.pipeline.configuration['fastqc']
@@ -309,7 +315,7 @@ class Step:
         fastqc_job = FastQCJob(self.pipeline.run_dir,
                                self.pipeline.output_path,
                                join(self.pipeline.output_path, 'ConvertJob'),
-                               join(self.pipeline.output_path, 'QCJob'),
+                               join(self.pipeline.output_path, 'NuQCJob'),
                                config['nprocs'],
                                config['nthreads'],
                                config['fastqc_executable_path'],
@@ -335,7 +341,7 @@ class Step:
         gpf_job = GenPrepFileJob(
             self.pipeline.run_dir,
             join(self.pipeline.output_path, 'ConvertJob'),
-            join(self.pipeline.output_path, 'QCJob'),
+            join(self.pipeline.output_path, 'NuQCJob'),
             self.pipeline.output_path,
             input_file_path,
             seqpro_path,
@@ -360,13 +366,13 @@ class Step:
             for dir_name in dirs:
                 if dir_name == 'fastp_reports_dir':
                     # generate the full path for this directory before
-                    # truncating everything up to the QCJob directory.
-                    full_path = join(root, dir_name).split('QCJob/')
-                    report_dirs.append(join('QCJob', full_path[1]))
+                    # truncating everything up to the NuQCJob directory.
+                    full_path = join(root, dir_name).split('NuQCJob/')
+                    report_dirs.append(join('NuQCJob', full_path[1]))
 
         if report_dirs:
             report_dirs.sort()
-            return 'tar zcvf reports-QCJob.tgz ' + ' '.join(report_dirs)
+            return 'tar zcvf reports-NuQCJob.tgz ' + ' '.join(report_dirs)
         else:
             # It is okay to return an empty list of commands if reports_dirs
             # is empty. Some pipelines do not generate fastp reports.
@@ -388,7 +394,7 @@ class Step:
         REPORT_PREFIX = 'reports'
         PREP_PREFIX = 'prep-files'
         CONVERT_JOB = 'ConvertJob'
-        QC_JOB = 'QCJob'
+        QC_JOB = 'NuQCJob'
         FASTQC_JOB = 'FastQCJob'
         PREPFILE_JOB = 'GenPrepFileJob'
         TAR_EXT = 'tgz'
@@ -400,7 +406,7 @@ class Step:
                     f'{REPORT_PREFIX}-{CONVERT_JOB}.{TAR_EXT}',
                     'OUTPUT_FIRST'),
 
-                   (['QCJob/logs'], TAR_CMD,
+                   (['NuQCJob/logs'], TAR_CMD,
                     f'{LOG_PREFIX}-{QC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
 
                    (['FastQCJob/logs'], TAR_CMD,
@@ -478,12 +484,12 @@ class Step:
         af = None
         sub_folders = ['amplicon', 'filtered_sequences', 'trimmed_sequences']
         for sub_folder in sub_folders:
-            sf = f'{out_dir}/QCJob/{project}/{sub_folder}'
+            sf = f'{out_dir}/NuQCJob/{project}/{sub_folder}'
             if exists(sf):
                 af = [f for f in glob(f'{sf}/*.fastq.gz')]
                 break
         if af is None or not af:
-            raise PipelineError("QCJob output not in expected location")
+            raise PipelineError("NuQCJob output not in expected location")
 
         files = {'raw_barcodes': [], 'raw_forward_seqs': [],
                  'raw_reverse_seqs': []}

@@ -31,15 +31,20 @@ class Metagenomic(Step):
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'ConvertJob')
 
     def quality_control(self):
-        config = self.pipeline.configuration['qc']
+        config = self.pipeline.configuration['nu-qc']
         job = super()._quality_control(config, self.pipeline.sample_sheet.path)
-        self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'QCJob')
+        self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'NuQCJob')
 
     def generate_reports(self):
         job = super()._generate_reports()
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'FastQCJob')
 
         self.project_names = job.project_names
+
+    def get_data_type(self, prep_file_path):
+        # prep_file_path is unused. It's kept for compatability with Amplicon
+        # and Step.
+        return self.pipeline.pipeline_type
 
     def generate_prep_file(self):
         config = self.pipeline.configuration['seqpro']

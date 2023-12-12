@@ -32,15 +32,15 @@ class Amplicon(Step):
         # Quality control for Amplicon runs occurs downstream.
         # Do not perform QC at this time.
 
-        # Simulate QCJob's output directory for use as input into FastQCJob.
+        # Simulate NuQCJob's output directory for use as input into FastQCJob.
         projects = self.pipeline.get_project_info()
         projects = [x['project_name'] for x in projects]
 
         for project_name in projects:
-            # copy the files from ConvertJob output to faked QCJob output
-            # folder: $WKDIR/$RUN_ID/QCJob/$PROJ_NAME/amplicon
+            # copy the files from ConvertJob output to faked NuQCJob output
+            # folder: $WKDIR/$RUN_ID/NuQCJob/$PROJ_NAME/amplicon
             output_folder = join(self.pipeline.output_path,
-                                 'QCJob',
+                                 'NuQCJob',
                                  project_name,
                                  # for legacy purposes, output folders are
                                  # either 'trimmed_sequences', 'amplicon', or
@@ -91,7 +91,7 @@ class Amplicon(Step):
         super()._generate_reports()
         return None  # amplicon doesn't need project names
 
-    def _get_data_type(self, prep_file_path):
+    def get_data_type(self, prep_file_path):
         metadata = Step.parse_prep_file(prep_file_path, convert_to_dict=False)
 
         if 'target_gene' in metadata.columns:
