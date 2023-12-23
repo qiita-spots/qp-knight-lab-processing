@@ -1,7 +1,7 @@
 from itertools import chain
 from collections import defaultdict
 from json import dumps
-from metapool import KLSampleSheet
+from metapool import load_sample_sheet
 from os import makedirs, walk, listdir
 from os.path import join, exists, split, basename, dirname
 from sequence_processing_pipeline.ConvertJob import ConvertJob
@@ -135,7 +135,7 @@ class Step:
     @classmethod
     def update_sample_sheet(cls, sample_sheet_path, lane_number):
         # use KLSampleSheet functionality to add/overwrite lane number.
-        sheet = KLSampleSheet(sample_sheet_path)
+        sheet = load_sample_sheet(sample_sheet_path)
         for sample in sheet:
             sample['Lane'] = f'{lane_number}'
 
