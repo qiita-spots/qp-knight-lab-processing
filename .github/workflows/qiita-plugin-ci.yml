@@ -85,13 +85,6 @@ jobs:
 
           pip --quiet install https://github.com/qiita-spots/qtp-job-output-folder/archive/refs/heads/main.zip
 
-          # manually install sequence_processing_pipeline before installing qp-klp plugin
-          wget https://github.com/biocore/mg-scripts/archive/master.zip
-          unzip master.zip
-          cd mg-scripts-master
-          pip install .
-          cd ..
-
           # pip --quiet install .
           pip install .
           pip --quiet install coveralls
