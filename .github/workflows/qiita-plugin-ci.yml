@@ -64,7 +64,7 @@ jobs:
           conda config --add channels conda-forge
           conda create -q --yes -n qiita python=3.9 libgfortran numpy nginx cython redis
           conda activate qiita
-          pip install sphinx sphinx-bootstrap-theme nose-timer Click
+          pip install sphinx sphinx-bootstrap-theme nose-timer Click --no-binary :all:
 
       - name: Qiita install
         shell: bash -l {0}
