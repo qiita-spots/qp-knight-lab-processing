@@ -25,14 +25,15 @@ class Metagenomic(Step):
         # improved performance over bcl2fastq. The name and path of the
         # executable, the resource requirements to instantiate a SLURM job
         # with, etc. are stored in configuration['bcl-convert''].
-        config = self.pipeline.config_profile['profile']['configuration']['bcl-convert']
-        job = super()._convert_bcl_to_fastq(config,
+        config = self.pipeline.config_profile['profile']['configuration']
+        job = super()._convert_bcl_to_fastq(config['bcl-convert'],
                                             self.pipeline.sample_sheet.path)
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'ConvertJob')
 
     def quality_control(self):
-        config = self.pipeline.config_profile['profile']['configuration']['nu-qc']
-        job = super()._quality_control(config, self.pipeline.sample_sheet.path)
+        config = self.pipeline.config_profile['profile']['configuration']
+        job = super()._quality_control(config['nu-qc'],
+                                       self.pipeline.sample_sheet.path)
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'NuQCJob')
 
     def generate_reports(self):
@@ -47,14 +48,14 @@ class Metagenomic(Step):
         return self.pipeline.pipeline_type
 
     def generate_prep_file(self):
-        config = self.pipeline.config_profile['profile']['configuration']['seqpro']
+        config = self.pipeline.config_profile['profile']['configuration']
 
         if self.project_names is None:
             raise ValueError("reports not yet generated")
 
-        job = super()._generate_prep_file(config,
+        job = super()._generate_prep_file(config['seqpro'],
                                           self.pipeline.sample_sheet.path,
-                                          config['seqpro_path'],
+                                          config['seqpro']['seqpro_path'],
                                           self.project_names)
 
         self.prep_file_paths = job.prep_file_paths

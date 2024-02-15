@@ -310,24 +310,24 @@ class Step:
         return nuqc_job
 
     def _generate_reports(self):
-        config = self.pipeline.config_profile['profile']['configuration']['fastqc']
+        config = self.pipeline.config_profile['profile']['configuration']
         is_amplicon = self.pipeline.pipeline_type == Step.AMPLICON_TYPE
         fastqc_job = FastQCJob(self.pipeline.run_dir,
                                self.pipeline.output_path,
                                join(self.pipeline.output_path, 'ConvertJob'),
                                join(self.pipeline.output_path, 'NuQCJob'),
-                               config['nprocs'],
-                               config['nthreads'],
-                               config['fastqc_executable_path'],
-                               config['modules_to_load'],
+                               config['fastqc']['nprocs'],
+                               config['fastqc']['nthreads'],
+                               config['fastqc']['fastqc_executable_path'],
+                               config['fastqc']['modules_to_load'],
                                self.master_qiita_job_id,
-                               config['queue'],
-                               config['nodes'],
-                               config['wallclock_time_in_minutes'],
-                               config['job_total_memory_limit'],
+                               config['fastqc']['queue'],
+                               config['fastqc']['nodes'],
+                               config['fastqc']['wallclock_time_in_minutes'],
+                               config['fastqc']['job_total_memory_limit'],
                                self.job_pool_size,
-                               config['multiqc_config_file_path'],
-                               config['job_max_array_length'],
+                               config['fastqc']['multiqc_config_file_path'],
+                               config['fastqc']['job_max_array_length'],
                                is_amplicon)
 
         fastqc_job.run(callback=self.update_callback)

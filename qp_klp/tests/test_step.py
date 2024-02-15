@@ -13,9 +13,7 @@ from functools import partial
 from os import makedirs, chmod, access, W_OK
 from shutil import rmtree, copy, which, copytree
 from os import environ, remove, getcwd
-from json import dumps
 import pandas as pd
-import gzip
 from metapool import parse_prep
 import re
 
@@ -250,24 +248,24 @@ class BaseStepTests(TestCase):
         self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
         makedirs(self.output_file_path, exist_ok=True)
 
-        self.pipeline = Pipeline('qp_klp/tests/data/configuration.json', self.good_run_id,
+        self.pipeline = Pipeline(self.master_config_path,
+                                 self.good_run_id,
                                  self.good_sample_sheet_path, None,
                                  self.output_file_path, self.qiita_id,
                                  Step.METAGENOMIC_TYPE)
 
-        self.another_pipeline = Pipeline('qp_klp/tests/data/configuration.json', self.good_run_id,
+        self.another_pipeline = Pipeline(self.master_config_path,
+                                         self.good_run_id,
                                          self.another_good_sample_sheet_path,
                                          None, self.output_file_path,
                                          self.qiita_id, Step.METAGENOMIC_TYPE)
 
-        self.pipeline_replicates = Pipeline('qp_klp/tests/data/configuration.json', self.good_run_id,
+        self.pipeline_replicates = Pipeline(self.master_config_path,
+                                            self.good_run_id,
                                             self.sheet_w_replicates_path, None,
                                             self.output_file_path,
                                             self.qiita_id,
                                             Step.METAGENOMIC_TYPE)
-
-        # self.config = BaseStepTests.CONFIGURATION['configuration']
-        self.config = None
 
         self.fake_bin_path = self._get_searchable_path()
 
@@ -1023,7 +1021,6 @@ class ReplicateTests(BaseStepTests):
         step.tube_id_map = {}
 
         config = self.pipeline.config_profile['profile']['configuration']
-
 
         job = step._generate_prep_file(config['seqpro'],
                                        self.sheet_w_replicates_path,
