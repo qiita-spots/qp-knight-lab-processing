@@ -88,7 +88,7 @@ jobs:
           # manually install sequence_processing_pipeline before installing qp-klp plugin
           wget https://github.com/biocore/mg-scripts/archive/master.zip
           unzip master.zip
-          cd master
+          cd mg-scripts-master
           pip install .
           cd ..
 
