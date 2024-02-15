@@ -25,13 +25,13 @@ class Metagenomic(Step):
         # improved performance over bcl2fastq. The name and path of the
         # executable, the resource requirements to instantiate a SLURM job
         # with, etc. are stored in configuration['bcl-convert''].
-        config = self.pipeline.configuration['bcl-convert']
+        config = self.pipeline.config_profile['profile']['configuration']['bcl-convert']
         job = super()._convert_bcl_to_fastq(config,
                                             self.pipeline.sample_sheet.path)
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'ConvertJob')
 
     def quality_control(self):
-        config = self.pipeline.configuration['nu-qc']
+        config = self.pipeline.config_profile['profile']['configuration']['nu-qc']
         job = super()._quality_control(config, self.pipeline.sample_sheet.path)
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'NuQCJob')
 
@@ -47,7 +47,7 @@ class Metagenomic(Step):
         return self.pipeline.pipeline_type
 
     def generate_prep_file(self):
-        config = self.pipeline.configuration['seqpro']
+        config = self.pipeline.config_profile['profile']['configuration']['seqpro']
 
         if self.project_names is None:
             raise ValueError("reports not yet generated")

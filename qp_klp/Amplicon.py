@@ -25,7 +25,7 @@ class Amplicon(Step):
         # demultiplexing that otherwise occurs at this stage. The name and
         # path of the executable, the resource requirements to instantiate a
         # SLURM job with, etc. are stored in configuration['bcl2fastq'].
-        config = self.pipeline.configuration['bcl2fastq']
+        config = self.pipeline.config_profile['profile']['configuration']['bcl2fastq']
         super()._convert_bcl_to_fastq(config, self.pipeline.sample_sheet)
 
     def quality_control(self):
@@ -114,7 +114,7 @@ class Amplicon(Step):
                              "generated prep-files")
 
     def generate_prep_file(self):
-        config = self.pipeline.configuration['seqpro']
+        config = self.pipeline.config_profile['profile']['configuration']['seqpro']
         seqpro_path = config['seqpro_path'].replace('seqpro', 'seqpro_mf')
         project_names = [x['project_name'] for x in
                          self.pipeline.get_project_info()]

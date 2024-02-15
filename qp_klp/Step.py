@@ -310,7 +310,7 @@ class Step:
         return nuqc_job
 
     def _generate_reports(self):
-        config = self.pipeline.configuration['fastqc']
+        config = self.pipeline.config_profile['profile']['configuration']['fastqc']
         is_amplicon = self.pipeline.pipeline_type == Step.AMPLICON_TYPE
         fastqc_job = FastQCJob(self.pipeline.run_dir,
                                self.pipeline.output_path,
