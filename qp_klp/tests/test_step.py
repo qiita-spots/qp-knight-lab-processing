@@ -1027,8 +1027,6 @@ class ReplicateTests(BaseStepTests):
                                        self.seqpro_path,
                                        self.project_list)
 
-        self.assertTrue(False)
-
         # Metagenomic.generate_prep_file() and Amplicon.generate_prep_file()
         # both perform self.prep_file_paths = job.prep_file_paths after the
         # above completes. Recreate that behavior here.
