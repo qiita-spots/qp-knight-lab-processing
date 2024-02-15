@@ -199,8 +199,8 @@ class MetagenomicTests(BaseStepTests):
 
                 re.compile(r"^\s+(.*/bin)/demux \\"),
 
-                re.compile(r"    (.*)/mg-scripts/sequence_processing_pipeline/"
-                           r"scripts/splitter "),
+                re.compile(r"    (.*)/sequence_processing_pipeline/scripts"
+                           r"/splitter "),
             ]
 
             for pattern in patterns:

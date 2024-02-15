@@ -193,8 +193,8 @@ function minimap2-runner () {
     rm ${seqs_mmpe_r2} &
     # no need to block
 
-    REMOVED/mg-scripts/sequence_processing_pipeline/scripts/splitter ${seqs_mmpese} ${seqs_mmpese_r1} ${delimiter} ${r1_tag} &
-    REMOVED/mg-scripts/sequence_processing_pipeline/scripts/splitter ${seqs_mmpese} ${seqs_mmpese_r2} ${delimiter} ${r2_tag} &
+    REMOVED/sequence_processing_pipeline/scripts/splitter ${seqs_mmpese} ${seqs_mmpese_r1} ${delimiter} ${r1_tag} &
+    REMOVED/sequence_processing_pipeline/scripts/splitter ${seqs_mmpese} ${seqs_mmpese_r2} ${delimiter} ${r2_tag} &
     wait
 
     rm ${seqs_mmpese} &
