@@ -13,9 +13,7 @@ from functools import partial
 from os import makedirs, chmod, access, W_OK
 from shutil import rmtree, copy, which, copytree
 from os import environ, remove, getcwd
-from json import dumps
 import pandas as pd
-import gzip
 from metapool import parse_prep
 import re
 
@@ -229,87 +227,6 @@ class BaseStepTests(TestCase):
     every child and will consequently be run multiple times. Hence, general
     functionality is instead tested by BasicStepSteps class.
     '''
-    CONFIGURATION = {
-        "configuration": {
-            "pipeline": {
-                "archive_path": ("sequence_processing_pipeline/tests/data/"
-                                 "sequencing/knight_lab_completed_runs"),
-                "search_paths": ["/tmp", "qp_klp/tests/data"],
-                "amplicon_search_paths": ["/tmp", "qp_klp/tests/data"]
-            },
-            "bcl2fastq": {
-                "nodes": 1,
-                "nprocs": 16,
-                "queue": "qiita",
-                "wallclock_time_in_minutes": 2160,
-                "modules_to_load": ["bcl2fastq_2.20.0.422"],
-                "executable_path": "bcl2fastq",
-                "per_process_memory_limit": "10gb"
-            },
-            "bcl-convert": {
-                "nodes": 1,
-                "nprocs": 16,
-                "queue": "qiita",
-                "wallclock_time_in_minutes": 2160,
-                "modules_to_load": ["bclconvert_3.7.5"],
-                "executable_path": "bcl-convert",
-                "per_process_memory_limit": "10gb"
-            },
-            "qc": {
-                "nodes": 1,
-                "nprocs": 16,
-                "queue": "qiita",
-                "wallclock_time_in_minutes": 60,
-                "minimap2_databases": ["/databases/minimap2/"
-                                       "human-phix-db.mmi"],
-                "kraken2_database": "/databases/minimap2/hp_kraken-db.mmi",
-                "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
-                                    " minimap2_2.18"],
-                "fastp_executable_path": "fastp",
-                "minimap2_executable_path": "minimap2",
-                "samtools_executable_path": "samtools",
-                "job_total_memory_limit": "20gb",
-                "job_max_array_length": 1000
-            },
-            "nu-qc": {
-                "nodes": 1,
-                "queue": "qiita",
-                "wallclock_time_in_minutes": 60,
-                "minimap2_databases": ("/23_06_25_Pangenome_Assembley/download"
-                                       "ed_fastqs/fastq_files/pangenome_indivi"
-                                       "dual_mmi"),
-                "modules_to_load": ["fastp_0.20.1", "samtools_1.12",
-                                    " minimap2_2.18"],
-                "fastp_executable_path": "fastp",
-                "minimap2_executable_path": "minimap2",
-                "samtools_executable_path": "samtools",
-                "job_total_memory_limit": "20",
-                "job_max_array_length": 1000,
-                "known_adapters_path": ("fastp_known_adapters_formatted.fna"),
-                "bucket_size": 8,
-                "length_limit": 100,
-                "cores_per_task": 4
-            },
-            "seqpro": {
-                "seqpro_path": "seqpro",
-                "modules_to_load": []
-            },
-            "fastqc": {
-                "nodes": 1,
-                "nprocs": 16,
-                "queue": "qiita",
-                "nthreads": 16,
-                "wallclock_time_in_minutes": 60,
-                "modules_to_load": ["fastqc_0.11.5"],
-                "fastqc_executable_path": "fastqc",
-                "multiqc_executable_path": "multiqc",
-                "multiqc_config_file_path": ("multiqc-bclconvert-config.yaml"),
-                "job_total_memory_limit": "20gb",
-                "job_pool_size": 30,
-                "job_max_array_length": 1000
-            }
-        }
-    }
 
     def setUp(self):
         package_root = abspath('./qp_klp')
@@ -325,29 +242,30 @@ class BaseStepTests(TestCase):
         self.good_transcript_sheet_path = cc_path('good-sample-sheet-'
                                                   'transcriptomics.csv')
         self.output_file_path = cc_path('output_dir')
+        self.process_shell_script = cc_path('process_all_fastq_files.sh')
+        self.master_config_path = cc_path('configuration.json')
+        self.dummy_fastq_file = cc_path('dummy.fastq.gz')
         self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
         makedirs(self.output_file_path, exist_ok=True)
 
-        self.pipeline = Pipeline(None, self.good_run_id,
+        self.pipeline = Pipeline(self.master_config_path,
+                                 self.good_run_id,
                                  self.good_sample_sheet_path, None,
                                  self.output_file_path, self.qiita_id,
-                                 Step.METAGENOMIC_TYPE,
-                                 BaseStepTests.CONFIGURATION)
+                                 Step.METAGENOMIC_TYPE)
 
-        self.another_pipeline = Pipeline(None, self.good_run_id,
+        self.another_pipeline = Pipeline(self.master_config_path,
+                                         self.good_run_id,
                                          self.another_good_sample_sheet_path,
                                          None, self.output_file_path,
-                                         self.qiita_id, Step.METAGENOMIC_TYPE,
-                                         BaseStepTests.CONFIGURATION)
+                                         self.qiita_id, Step.METAGENOMIC_TYPE)
 
-        self.pipeline_replicates = Pipeline(None, self.good_run_id,
+        self.pipeline_replicates = Pipeline(self.master_config_path,
+                                            self.good_run_id,
                                             self.sheet_w_replicates_path, None,
                                             self.output_file_path,
                                             self.qiita_id,
-                                            Step.METAGENOMIC_TYPE,
-                                            BaseStepTests.CONFIGURATION)
-
-        self.config = BaseStepTests.CONFIGURATION['configuration']
+                                            Step.METAGENOMIC_TYPE)
 
         self.fake_bin_path = self._get_searchable_path()
 
@@ -361,13 +279,6 @@ class BaseStepTests(TestCase):
                 remove(fake_bin)
         if exists('tmp.config'):
             remove('tmp.config')
-
-    def _create_config_file(self):
-        tmp_path = join('.', 'tmp.config')
-        with open(tmp_path, 'w') as f:
-            f.write(dumps(BaseStepTests.CONFIGURATION, indent=2))
-
-        return tmp_path
 
     def _get_searchable_path(self):
         searchable_paths = []
@@ -532,7 +443,8 @@ class BasicStepTests(BaseStepTests):
         fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
         makedirs(fake_path, exist_ok=True)
 
-        step._convert_bcl_to_fastq(self.config['bcl-convert'],
+        config = self.pipeline.config_profile['profile']['configuration']
+        step._convert_bcl_to_fastq(config['bcl-convert'],
                                    self.good_sample_sheet_path)
 
     def test_quality_control(self):
@@ -568,16 +480,15 @@ class BasicStepTests(BaseStepTests):
                         f.write("This is a file.")
 
         step = Step(self.pipeline, self.qiita_id, None)
-        step._quality_control(self.config['nu-qc'],
+        config = self.pipeline.config_profile['profile']['configuration']
+        step._quality_control(config['nu-qc'],
                               self.good_sample_sheet_path)
 
     def test_generate_pipeline(self):
-        config_file_path = self._create_config_file()
-
         pipeline = Step.generate_pipeline(Step.METAGENOMIC_TYPE,
                                           self.good_sample_sheet_path,
                                           1,
-                                          config_file_path,
+                                          self.master_config_path,
                                           self.good_run_id,
                                           self.output_file_path,
                                           self.qiita_id)
@@ -587,7 +498,7 @@ class BasicStepTests(BaseStepTests):
         pipeline = Step.generate_pipeline(Step.AMPLICON_TYPE,
                                           self.good_mapping_file_path,
                                           1,
-                                          config_file_path,
+                                          self.master_config_path,
                                           self.good_run_id,
                                           self.output_file_path,
                                           self.qiita_id)
@@ -597,7 +508,7 @@ class BasicStepTests(BaseStepTests):
         pipeline = Step.generate_pipeline(Step.METATRANSCRIPTOMIC_TYPE,
                                           self.good_transcript_sheet_path,
                                           1,
-                                          config_file_path,
+                                          self.master_config_path,
                                           self.good_run_id,
                                           self.output_file_path,
                                           self.qiita_id)
@@ -1082,19 +993,18 @@ class ReplicateTests(BaseStepTests):
                                         f'{sample}_S270_L001_R1_001.json'))
 
         # create fake fastq files. Metapool checks to confirm that they are
-        # gzipped, hence we gzip them here.
+        # gzipped, hence we copy a small dummy fastq.gz file w/countable
+        # sequences here.
 
         for name in samples_11661:
             for n_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
                            f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
-                with gzip.open(join(self.fastq_dir_11661, n_file), 'wb') as f:
-                    f.write(b"This is run_dir_stats_dir file.")
+                copy(self.dummy_fastq_file, join(self.fastq_dir_11661, n_file))
 
         for name in samples_13059:
             for n_file in [f"{name}_S270_L001_R1_001.trimmed.fastq.gz",
                            f"{name}_S270_L001_R2_001.trimmed.fastq.gz"]:
-                with gzip.open(join(self.fastq_dir_13059, n_file), 'wb') as f:
-                    f.write(b"This is run_dir_stats_dir file.")
+                copy(self.dummy_fastq_file, join(self.fastq_dir_13059, n_file))
 
     def tearDown(self):
         if exists(self.output_file_path):
@@ -1110,7 +1020,9 @@ class ReplicateTests(BaseStepTests):
         # abort early.
         step.tube_id_map = {}
 
-        job = step._generate_prep_file(self.config['seqpro'],
+        config = self.pipeline.config_profile['profile']['configuration']
+
+        job = step._generate_prep_file(config['seqpro'],
                                        self.sheet_w_replicates_path,
                                        self.seqpro_path,
                                        self.project_list)
