@@ -87,7 +87,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # the lane number, and the sample-sheet as input parameters.
         some_path = join(out_dir, 'ConvertJob', 'ConvertJob.sh')
         result = ConvertJob.parse_job_script(some_path)
-        run_identifier = split(result['out_directory'])[-1]
+        run_identifier = split(result['run_directory'])[-1]
         user_input_file = result['sample_sheet_path']
         sheet = load_sample_sheet(user_input_file)
         # on Amplicon runs, lane_number is always 1, and this will be
