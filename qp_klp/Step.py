@@ -76,7 +76,7 @@ class Step:
 
     def __init__(self, pipeline, master_qiita_job_id,
                  status_update_callback=None,
-                 lane_number=None):
+                 lane_number=None, is_restart=False):
         if pipeline is None:
             raise ValueError("A pipeline object is needed to initialize Step")
 
@@ -88,6 +88,8 @@ class Step:
         self.generated_artifact_name = \
             f'{self.pipeline.run_id}_{self.lane_number}'
         self.master_qiita_job_id = master_qiita_job_id
+
+        self.is_restart = is_restart
 
         if status_update_callback is not None:
             self.update_callback = status_update_callback.update_job_status
@@ -893,7 +895,8 @@ class Step:
             if msgs:
                 raise PipelineError('\n'.join(msgs))
 
-    def execute_pipeline(self, qclient, increment_status, update=True):
+    def execute_pipeline(self, qclient, increment_status, update=True,
+                         skip_steps=[]):
         '''
         Executes steps of pipeline in proper sequence.
         :param qclient: Qiita client library or equivalent.
@@ -901,20 +904,33 @@ class Step:
         :param update: Set False to prevent updates to Qiita.
         :return: None
         '''
+        # this is performed even in the event of a restart.
         self.generate_special_map(qclient)
 
-        increment_status()
-        self.convert_bcl_to_fastq()
+        # even if a job is being skipped, it's being skipped because it was
+        # determined that it already completed successfully. Hence,
+        # increment the status because we are still iterating through them.
 
         increment_status()
-        self.quality_control()
+        if "ConvertJob" not in skip_steps:
+            self.convert_bcl_to_fastq()
 
         increment_status()
-        self.generate_reports()
+        if "QCJob" not in skip_steps:
+            self.quality_control()
 
         increment_status()
-        self.generate_prep_file()
+        if "FastQCJob" not in skip_steps:
+            self.generate_reports()
 
+        increment_status()
+        if "GenPrepFileJob" not in skip_steps:
+            self.generate_prep_file()
+
+        # for now, simply re-run any line below as if it was a new job, even
+        # for a restart. functionality is idempotent, except for the
+        # registration of new preps in Qiita. These will simply be removed
+        # manually.
         increment_status()
         self.sifs = self.generate_sifs(qclient)
 
