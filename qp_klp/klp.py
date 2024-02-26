@@ -101,6 +101,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         if sheet.Header['Assay'] == 'TruSeq HT' and \
            sheet.Header['Chemistry'] == 'Amplicon':
             raise ValueError("Restarting Amplicon jobs currently unsupported")
+
+        # add a note for the wetlab that this job was restarted.
+        with open(join(out_dir, 'notes.txt'), 'w') as f:
+            f.write("This job was restarted.\n"
+                    "failed_samples.html may contain incorrect data.\n")
     else:
         # available fields for parameters are:
         #   run_identifier, sample_sheet, content_type, filename, lane_number
