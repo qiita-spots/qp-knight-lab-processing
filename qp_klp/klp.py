@@ -12,9 +12,11 @@ from qp_klp.Amplicon import Amplicon
 from qp_klp.Metagenomic import Metagenomic
 from qp_klp.Step import Step
 from os import makedirs
-from os.path import join
+from os.path import join, split, exists
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
+from sequence_processing_pipeline.ConvertJob import ConvertJob
+from metapool import load_sample_sheet
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
@@ -70,11 +72,46 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     bool, list, str
         The results of the job
     """
-    # available fields for parameters are:
-    #   run_identifier, sample_sheet, content_type, filename, lane_number
-    run_identifier = parameters.pop('run_identifier')
-    user_input_file = parameters.pop('sample_sheet')
-    lane_number = parameters.pop('lane_number')
+    # Assume that for a job to be considered a restart, there must be work
+    # performed worth re-starting for. Since the working directory for each
+    # step is created only if the previous steps were successful, testing
+    # for the presence of them ensures that n-1 steps exist and were
+    # successful.
+
+    # at minimum, ConvertJob needs to have been successful.
+    is_restart = True if exists(join(out_dir, 'NuQCJob')) else False
+
+    if is_restart:
+        # Assume ConvertJob directory exists and parse the job-script found
+        # there. If this is a restart, we won't be given the run-identifier,
+        # the lane number, and the sample-sheet as input parameters.
+        some_path = join(out_dir, 'ConvertJob', 'ConvertJob.sh')
+        result = ConvertJob.parse_job_script(some_path)
+        run_identifier = split(result['out_directory'])[-1]
+        user_input_file = result['sample_sheet_path']
+        sheet = load_sample_sheet(user_input_file)
+        # on Amplicon runs, lane_number is always 1, and this will be
+        # properly reflected in the dummy sample-sheet as well.
+        lane_number = sheet.get_lane_number()
+
+        # check if sample-sheet is a dummy-sample-sheet. If this is an
+        # Amplicon run, then Assay type will be 'TruSeq HT' and Chemistry
+        # will be 'Amplicon'. For now, raise Error on restarting an
+        # Amplicon run so we don't have to search for the pre-prep file.
+        if sheet.Header['Assay'] == 'TruSeq HT' and \
+           sheet.Header['Chemistry'] == 'Amplicon':
+            raise ValueError("Restarting Amplicon jobs currently unsupported")
+
+        # add a note for the wetlab that this job was restarted.
+        with open(join(out_dir, 'notes.txt'), 'w') as f:
+            f.write("This job was restarted.\n"
+                    "failed_samples.html may contain incorrect data.\n")
+    else:
+        # available fields for parameters are:
+        #   run_identifier, sample_sheet, content_type, filename, lane_number
+        run_identifier = parameters.pop('run_identifier')
+        user_input_file = parameters.pop('sample_sheet')
+        lane_number = parameters.pop('lane_number')
 
     if {'body', 'content_type', 'filename'} != set(user_input_file):
         return False, None, ("This doesn't appear to be a valid sample sheet "
@@ -86,19 +123,14 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     # replace any whitespace in the filename with underscores
     uif_path = out_path(user_input_file['filename'].replace(' ', '_'))
 
-    # save raw data to file
-    with open(uif_path, 'w') as f:
-        f.write(user_input_file['body'])
+    if is_restart:
+        pass
+    else:
+        # save raw data to file
+        with open(uif_path, 'w') as f:
+            f.write(user_input_file['body'])
 
     if Pipeline.is_sample_sheet(uif_path):
-        # if file follows basic sample-sheet format, then it is most likely
-        # a sample-sheet, even if it's an invalid one.
-
-        # a valid sample-sheet is going to have one and only one occurrence of
-        # 'Assay,Metagenomic' or 'Assay,Metatranscriptomic'. Anything else is
-        # an error.
-
-        # works best from file
         with open(uif_path, 'r') as f:
             assay = [x for x in f.readlines() if 'Assay' in x]
 
@@ -141,6 +173,21 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     status_line = StatusUpdate(qclient, job_id, msgs)
     status_line.update_current_message()
 
+    skip_steps = []
+    if is_restart:
+        # figure out what actually needs to be skipped if restarting:
+        if exists(join(out_dir, 'NuQCJob')):
+            skip_steps.append('ConvertJob')
+
+        if exists(join(out_dir, 'FastQCJob')):
+            skip_steps.append('NuQCJob')
+
+        if exists(join(out_dir, 'GenPrepFileJob')):
+            skip_steps.append('FastQCJob')
+
+        if exists(join(out_dir, 'cmds.log')):
+            skip_steps.append('GenPrepFileJob')
+
     try:
         pipeline = Step.generate_pipeline(pipeline_type,
                                           uif_path,
@@ -157,10 +204,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     try:
         if pipeline.pipeline_type in Step.META_TYPES:
             step = Metagenomic(
-                pipeline, job_id, status_line, lane_number)
+                pipeline, job_id, status_line, lane_number,
+                is_restart=is_restart)
         else:
             step = Amplicon(
-                pipeline, job_id, status_line, lane_number)
+                pipeline, job_id, status_line, lane_number,
+                is_restart=is_restart)
 
         status_line.update_current_message()
 
@@ -170,7 +219,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # files into uploads directory. Useful for testing.
         step.execute_pipeline(qclient,
                               status_line.update_current_message,
-                              update=True)
+                              update=True,
+                              skip_steps=skip_steps)
 
         status_line.update_current_message()
 
