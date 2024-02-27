@@ -12,16 +12,11 @@
 
 echo "---------------"
 echo "Run details:"
-echo "$SLURM_JOB_NAME $SLURM_JOB_ID $SLURMD_NODENAME"
+echo "$SLURM_JOB_NAME $SLURM_JOB_ID $SLURMD_NODENAME $SLURM_ARRAY_TASK_ID"
 echo "---------------"
 
 if [[ -z "${SLURM_ARRAY_TASK_ID}" ]]; then
     echo "Not operating within an array"
-    exit 1
-fi
-
-if [[ "${SLURM_ARRAY_TASK_MIN}" -ne 1 ]]; then
-    echo "Min array ID is not 1"
     exit 1
 fi
 if [[ -z ${MMI} ]]; then
@@ -56,11 +51,7 @@ fi
 # DO NOT do this casually. Only do a clean up like this if
 # you know for sure TMPDIR is what you want.
 
-# we might got back to this TMPDIR once the slurm scheduler controls it
-#    TMPDIR=/dev/shm
-# right now, let's use ${OUTPUT}, note that each worker will create a new tmp
-# folder two lines below
-TMPDIR=${OUTPUT}
+TMPDIR=/dev/shm
 export TMPDIR=${TMPDIR}
 export TMPDIR=$(mktemp -d)
 echo $TMPDIR
