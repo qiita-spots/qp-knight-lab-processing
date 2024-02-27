@@ -79,7 +79,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     # successful.
 
     # at minimum, ConvertJob needs to have been successful.
-    is_restart = True if exists(join(out_dir, 'NuQCJob')) else False
+    out_path = partial(join, out_dir)
+    is_restart = True if exists(out_path('NuQCJob')) else False
 
     if is_restart:
         # Assume ConvertJob directory exists and parse the job-script found
@@ -87,9 +88,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # the lane number, and the sample-sheet as input parameters.
         some_path = join(out_dir, 'ConvertJob', 'ConvertJob.sh')
         result = ConvertJob.parse_job_script(some_path)
-        run_identifier = split(result['out_directory'])[-1]
-        user_input_file = result['sample_sheet_path']
-        sheet = load_sample_sheet(user_input_file)
+        run_identifier = split(result['run_directory'])[-1]
+        uif_path = result['sample_sheet_path']
+        sheet = load_sample_sheet(uif_path)
         # on Amplicon runs, lane_number is always 1, and this will be
         # properly reflected in the dummy sample-sheet as well.
         lane_number = sheet.get_lane_number()
@@ -113,22 +114,16 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         user_input_file = parameters.pop('sample_sheet')
         lane_number = parameters.pop('lane_number')
 
-    if {'body', 'content_type', 'filename'} != set(user_input_file):
-        return False, None, ("This doesn't appear to be a valid sample sheet "
-                             "or mapping file; please review.")
-
-    out_path = partial(join, out_dir)
-    final_results_path = out_path('final_results')
-    makedirs(final_results_path, exist_ok=True)
-    # replace any whitespace in the filename with underscores
-    uif_path = out_path(user_input_file['filename'].replace(' ', '_'))
-
-    if is_restart:
-        pass
-    else:
+        if {'body', 'content_type', 'filename'} != set(user_input_file):
+            return False, None, ("This doesn't appear to be a valid sample "
+                                 "sheet or mapping file; please review.")
+        uif_path = out_path(user_input_file['filename'].replace(' ', '_'))
         # save raw data to file
         with open(uif_path, 'w') as f:
             f.write(user_input_file['body'])
+
+    final_results_path = out_path('final_results')
+    makedirs(final_results_path, exist_ok=True)
 
     if Pipeline.is_sample_sheet(uif_path):
         with open(uif_path, 'r') as f:

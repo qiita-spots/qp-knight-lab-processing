@@ -916,7 +916,7 @@ class Step:
             self.convert_bcl_to_fastq()
 
         increment_status()
-        if "QCJob" not in skip_steps:
+        if "NuQCJob" not in skip_steps:
             self.quality_control()
 
         increment_status()
