@@ -12,7 +12,7 @@
 
 echo "---------------"
 echo "Run details:"
-echo "$SLURM_JOB_NAME $SLURM_JOB_ID $SLURMD_NODENAME"
+echo "$SLURM_JOB_NAME $SLURM_JOB_ID $SLURMD_NODENAME $SLURM_ARRAY_TASK_ID"
 echo "---------------"
 
 if [[ -z "${SLURM_ARRAY_TASK_ID}" ]]; then
