@@ -42,8 +42,6 @@ class Metagenomic(Step):
         job = super()._generate_reports()
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'FastQCJob')
 
-        self.project_names = job.project_names
-
     def get_data_type(self, prep_file_path):
         # prep_file_path is unused. It's kept for compatability with Amplicon
         # and Step.
@@ -52,13 +50,9 @@ class Metagenomic(Step):
     def generate_prep_file(self):
         config = self.pipeline.config_profile['profile']['configuration']
 
-        if self.project_names is None:
-            raise ValueError("reports not yet generated")
-
         job = super()._generate_prep_file(config['seqpro'],
                                           self.pipeline.sample_sheet.path,
-                                          config['seqpro']['seqpro_path'],
-                                          self.project_names)
+                                          config['seqpro']['seqpro_path'])
 
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates
