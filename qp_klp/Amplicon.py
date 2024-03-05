@@ -119,13 +119,10 @@ class Amplicon(Step):
         config = self.pipeline.config_profile['profile']['configuration']
         seqpro_path = config['seqpro']['seqpro_path'].replace('seqpro',
                                                               'seqpro_mf')
-        project_names = [x['project_name'] for x in
-                         self.pipeline.get_project_info()]
 
         job = super()._generate_prep_file(config['seqpro'],
                                           self.pipeline.mapping_file_path,
-                                          seqpro_path,
-                                          project_names)
+                                          seqpro_path)
 
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates
