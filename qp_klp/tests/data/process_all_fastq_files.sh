@@ -9,6 +9,8 @@
 ### as well as sbatch -c. demux threads remains fixed at 1.
 ### Note -c set to 4 and thread counts set to 7 during testing.
 #SBATCH -c 2
+#SBATCH --gres=node_jobs:4
+
 
 echo "---------------"
 echo "Run details:"
@@ -253,4 +255,3 @@ echo "$(date) :: demux start"
 demux-runner
 echo "$(date) :: demux stop"
 
-touch ${OUTPUT}/${SLURM_JOB_NAME}.${SLURM_JOB_ID}.completed

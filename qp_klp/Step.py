@@ -797,17 +797,16 @@ class Step:
 
             # prep files are named in the form:
             # 20220423_FS10001773_12_BRB11603-0615.Matrix_Tube_LBM_14332.1.tsv
-            # search on project_name vs qiita_id since it's slightly more
-            # unique.
+            fqp_name = "%s_%s" % (project_name, qiita_id)
             matching_files = [prep_file for prep_file in prep_file_paths if
-                              project_name in prep_file]
+                              fqp_name in prep_file]
 
             if len(matching_files) == 0:
                 continue
 
             if len(matching_files) > 1:
                 raise ValueError("More than one match found for project "
-                                 f"'{project_name}': {str(matching_files)}")
+                                 f"'{fqp_name}': {str(matching_files)}")
 
             Step._replace_with_tube_ids(matching_files[0],
                                         self.tube_id_map[qiita_id])
