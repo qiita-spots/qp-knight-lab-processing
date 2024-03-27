@@ -3,6 +3,17 @@
     "instrument_type": "MiSeq",
     "assay_type": "Metagenomic",
     "configuration": {
+      "bcl-convert": {
+        "nodes": 1,
+        "nprocs": 16,
+        "queue": "qiita",
+        "wallclock_time_in_minutes": 216,
+        "modules_to_load": [
+          "bclconvert_3.7.5"
+        ],
+        "executable_path": "bcl-convert",
+        "per_process_memory_limit": "10gb"
+      },
       "bcl2fastq": {
         "nodes": 2,
         "nprocs": 62,

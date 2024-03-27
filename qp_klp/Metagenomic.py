@@ -42,6 +42,10 @@ class Metagenomic(Step):
         job = super()._generate_reports()
         self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'FastQCJob')
 
+        # as generate_reports is the final step that updates self.fsr,
+        # we can generate the final human-readable report following this step.
+        self.fsr.generate_report()
+
     def get_data_type(self, prep_file_path):
         # prep_file_path is unused. It's kept for compatability with Amplicon
         # and Step.

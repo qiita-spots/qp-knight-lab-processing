@@ -1,18 +1,8 @@
 {
   "profile": {
-    "instrument_type": "default",
+    "instrument_type": "MiSeq",
+    "assay_type": "Metatranscriptomic",
     "configuration": {
-      "bcl2fastq": {
-        "nodes": 1,
-        "nprocs": 16,
-        "queue": "qiita",
-        "wallclock_time_in_minutes": 216,
-        "modules_to_load": [
-          "bcl2fastq_2.20.0.422"
-        ],
-        "executable_path": "bcl2fastq",
-        "per_process_memory_limit": "10gb"
-      },
       "bcl-convert": {
         "nodes": 1,
         "nprocs": 16,
@@ -24,32 +14,22 @@
         "executable_path": "bcl-convert",
         "per_process_memory_limit": "10gb"
       },
-      "qc": {
-        "nodes": 1,
-        "nprocs": 16,
+      "bcl2fastq": {
+        "nodes": 2,
+        "nprocs": 62,
         "queue": "qiita",
-        "wallclock_time_in_minutes": 60,
-        "minimap2_databases": [
-          "/databases/minimap2/human-phix-db.mmi"
-        ],
-        "kraken2_database": "/databases/minimap2/hp_kraken-db.mmi",
+        "wallclock_time_in_minutes": 1022,
         "modules_to_load": [
-          "fastp_0.20.1",
-          "samtools_1.12",
-          "minimap2_2.18"
+          "bcl2fastq_2.20.0.222"
         ],
-        "fastp_executable_path": "fastp",
-        "minimap2_executable_path": "minimap2",
-        "samtools_executable_path": "samtools",
-        "job_total_memory_limit": "20gb",
-        "job_pool_size": 30,
-        "job_max_array_length": 1000
+        "executable_path": "bcl2fastq",
+        "per_process_memory_limit": "100gb"
       },
       "nu-qc": {
-        "nodes": 1,
-        "cpus_per_task": 8,
+        "nodes": 2,
+        "cpus_per_task": 32,
         "queue": "qiita",
-        "wallclock_time_in_minutes": 240,
+        "wallclock_time_in_minutes": 2028,
         "minimap2_databases": "/scratch/databases/minimap2",
         "modules_to_load": [
           "fastp_0.20.1",
@@ -64,18 +44,18 @@
         "known_adapters_path": "fastp_known_adapters_formatted.fna",
         "bucket_size": 8,
         "length_limit": 100,
-        "cores_per_task": 4
+        "cores_per_task": 2
       },
       "seqpro": {
         "seqpro_path": "seqpro",
         "modules_to_load": []
       },
       "fastqc": {
-        "nodes": 1,
-        "nprocs": 16,
+        "nodes": 2,
+        "nprocs": 62,
         "queue": "qiita",
-        "nthreads": 16,
-        "wallclock_time_in_minutes": 60,
+        "nthreads": 62,
+        "wallclock_time_in_minutes": 220,
         "modules_to_load": [
           "fastqc_0.11.5"
         ],
@@ -83,8 +63,8 @@
         "multiqc_executable_path": "multiqc",
         "multiqc_config_file_path": "sequence_processing_pipeline/multiqc-bclconvert-config.yaml",
         "job_total_memory_limit": "20gb",
-        "job_pool_size": 30,
-        "job_max_array_length": 1000
+        "job_pool_size": 120,
+        "job_max_array_length": 2000
       }
     }
   }
