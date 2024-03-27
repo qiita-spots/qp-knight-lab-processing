@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import TestCase
-from qp_klp.Step import Step
+from qp_klp.Step import Step, FailedSamplesRecord
 from sequence_processing_pipeline.Pipeline import Pipeline, PipelineError
 from os.path import join, abspath, exists, dirname
 from functools import partial
@@ -16,6 +16,8 @@ from os import environ, remove, getcwd
 import pandas as pd
 from metapool import parse_prep
 import re
+from copy import deepcopy
+from tempfile import TemporaryDirectory
 
 
 class FakeClient():
@@ -1136,3 +1138,61 @@ class ReplicateTests(BaseStepTests):
         projects = ['Feist_11661', 'NYU_BMS_Melanoma_13059']
         for project in projects:
             self.assertEqual(results['Project'].value_counts()[project], 3)
+
+
+class FailedSamplesRecordTests(TestCase):
+    def setUp(self):
+        class MockSample():
+            def __init__(self, sample_id, project_name):
+                self.Sample_ID = sample_id
+                self.Sample_Project = project_name
+
+        self.samples = [MockSample('A', 'ProjectOne'),
+                        MockSample('B', 'ProjectTwo'),
+                        MockSample('C', 'ProjectThree'),
+                        MockSample('D', 'ProjectFour')]
+
+        self.output = TemporaryDirectory()
+
+    def test_failed_samples_record(self):
+        fsr = FailedSamplesRecord(self.output.name, self.samples)
+
+        # assert that a state file doesn't already exist and attempt to load()
+        # it. State should remain unchanged.
+        exp = deepcopy(fsr.sample_state)
+        self.assertFalse(exists(fsr.output_path))
+        fsr.load()
+        self.assertEqual(fsr.sample_state, exp)
+
+        # confirm that dump() creates the appropriate file.
+        self.assertFalse(exists(fsr.output_path))
+        fsr.dump()
+        self.assertTrue(exists(fsr.output_path))
+
+        # load the dumped() file, and confirm that nothing changed since
+        # the state wasn't update()d.
+        fsr.load()
+        self.assertEqual(fsr.sample_state, exp)
+
+        # assert samples A and C failed at the ConvertJob stage, assert
+        # state changed. dump() state and load() it. Confirm state on disk
+        # reflects changes.
+        fsr.update(['A', 'C'], 'ConvertJob')
+        self.assertNotEqual(fsr.sample_state, exp)
+        fsr.dump()
+        fsr.load()
+        exp = {'A': 'ConvertJob', 'B': None, 'C': 'ConvertJob', 'D': None}
+        self.assertEqual(fsr.sample_state, exp)
+
+        # B should be failed at FastQCJob but A and C should still be
+        # failed at ConvertJob
+        fsr.update(['A', 'B', 'C'], "FastQCJob")
+        exp = {'A': 'ConvertJob', 'B': 'FastQCJob',
+               'C': 'ConvertJob', 'D': None}
+        self.assertEqual(fsr.sample_state, exp)
+
+        # confirm html file exists. Assume pandas DataFrame.to_html() works
+        # as intended.
+        self.assertFalse(exists(fsr.report_path))
+        fsr.generate_report()
+        self.assertTrue(exists(fsr.report_path))

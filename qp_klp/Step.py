@@ -1,6 +1,6 @@
 from itertools import chain
 from collections import defaultdict
-from json import dumps
+from json import dumps, load
 from metapool import load_sample_sheet
 from os import makedirs, walk, listdir
 from os.path import join, exists, split, basename, dirname
@@ -22,38 +22,63 @@ class FailedSamplesRecord:
         # each Job is run, and we want to organize that output by project, we
         # need to keep a running state of failed samples, and reuse the method
         # to reorganize the running-results and write them out to disk.
-
-        self.output_path = join(output_dir, 'failed_samples.html')
+        self.output_path = join(output_dir, 'failed_samples.json')
+        self.report_path = join(output_dir, 'failed_samples.html')
 
         # create an initial dictionary with sample-ids as keys and their
         # associated project-name and status as values. Afterwards, we'll
         # filter out the sample-ids w/no status (meaning they were
         # successfully processed) before writing the failed entries out to
         # file.
-        self.sample_state = {x.Sample_ID: [x.Sample_Project, None] for x in
-                             samples}
+        self.sample_state = {x.Sample_ID: None for x in samples}
+        self.project_map = {x.Sample_ID: x.Sample_Project for x in samples}
+
+    def dump(self):
+        output = {'sample_state': self.sample_state,
+                  'project_map': self.project_map}
+
+        with open(self.output_path, 'w') as f:
+            f.write(dumps(output, indent=2, sort_keys=True))
+
+    def load(self):
+        # if recorded state exists, overwrite initial state.
+        if exists(self.output_path):
+            with open(self.output_path, 'r') as f:
+                state = load(f)
+
+            self.sample_state = state['sample_state']
+            self.project_map = state['project_map']
+
+    def update(self, failed_ids, job_name):
+        # as a rule, if a failed_id were to appear in more than one
+        # audit(), preserve the earliest failure, rather than the
+        # latest one.
+        for failed_id in failed_ids:
+            if self.sample_state[failed_id] is None:
+                self.sample_state[failed_id] = job_name
 
     def write(self, failed_ids, job_name):
-        for failed_id in failed_ids:
-            # as a rule, if a failed_id were to appear in more than one
-            # audit(), preserve the earliest failure, rather than the
-            # latest one.
-            if self.sample_state[failed_id][1] is None:
-                self.sample_state[failed_id][1] = job_name
+        # a convenience method to support legacy behavior.
+        # specifically, reload recorded state, if it exists.
+        # then update state before recording to file.
+        self.load()
+        self.update(failed_ids, job_name)
+        self.dump()
 
+    def generate_report(self):
         # filter out the sample-ids w/out a failure status
         filtered_fails = {x: self.sample_state[x] for x in self.sample_state if
-                          self.sample_state[x][1] is not None}
+                          self.sample_state[x] is not None}
 
         data = []
         for sample_id in filtered_fails:
-            project_name = filtered_fails[sample_id][0]
-            failed_at = filtered_fails[sample_id][1]
-            data.append({'Project': project_name, 'Sample ID': sample_id,
-                         'Failed at': failed_at})
+            data.append({'Project': filtered_fails[sample_id],
+                         'Sample ID': sample_id,
+                         'Failed at': self.project_map[sample_id]
+                         })
         df = pd.DataFrame(data)
 
-        with open(self.output_path, 'w') as f:
+        with open(self.report_path, 'w') as f:
             f.write(df.to_html(border=2, index=False, justify="left",
                                render_links=True, escape=False))
 
@@ -797,17 +822,16 @@ class Step:
 
             # prep files are named in the form:
             # 20220423_FS10001773_12_BRB11603-0615.Matrix_Tube_LBM_14332.1.tsv
-            # search on project_name vs qiita_id since it's slightly more
-            # unique.
+            fqp_name = "%s_%s" % (project_name, qiita_id)
             matching_files = [prep_file for prep_file in prep_file_paths if
-                              project_name in prep_file]
+                              fqp_name in prep_file]
 
             if len(matching_files) == 0:
                 continue
 
             if len(matching_files) > 1:
                 raise ValueError("More than one match found for project "
-                                 f"'{project_name}': {str(matching_files)}")
+                                 f"'{fqp_name}': {str(matching_files)}")
 
             Step._replace_with_tube_ids(matching_files[0],
                                         self.tube_id_map[qiita_id])
