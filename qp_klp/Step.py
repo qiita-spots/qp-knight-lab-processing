@@ -505,7 +505,7 @@ class Step:
 
         self.write_commands_to_output_path()
 
-    def _get_fastq_files(self, out_dir, project):
+    def _get_postqc_fastq_files(self, out_dir, project):
         af = None
         sub_folders = ['amplicon', 'filtered_sequences', 'trimmed_sequences']
         for sub_folder in sub_folders:
@@ -520,7 +520,7 @@ class Step:
                  'raw_reverse_seqs': []}
 
         for fastq_file in af:
-            if '_I1_' in fastq_file:
+            if '_I1_' in fastq_file or '_I2_' in fastq_file:
                 files['raw_barcodes'].append(fastq_file)
             elif '_R1_' in fastq_file:
                 files['raw_forward_seqs'].append(fastq_file)
@@ -593,7 +593,7 @@ class Step:
 
         data = []
         for project, _, qiita_id in self.special_map:
-            fastq_files = self._get_fastq_files(
+            fastq_files = self._get_postqc_fastq_files(
                 self.pipeline.output_path, project)
 
             for vals in self.touched_studies_prep_info[qiita_id]:

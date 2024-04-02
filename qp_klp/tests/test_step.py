@@ -269,6 +269,13 @@ class BaseStepTests(TestCase):
                                             self.qiita_id,
                                             Step.METAGENOMIC_TYPE)
 
+        self.amplicon_pipeline = Pipeline(self.master_config_path,
+                                          self.good_run_id, None,
+                                          self.good_mapping_file_path,
+                                          self.output_file_path,
+                                          self.qiita_id,
+                                          Step.AMPLICON_TYPE)
+
         self.fake_bin_path = self._get_searchable_path()
 
         self.delete_these = []
@@ -418,6 +425,68 @@ class BaseStepTests(TestCase):
             fake_path = join(self.output_file_path, 'failed_samples.html')
             with open(fake_path, 'w') as f:
                 f.write("This is a file")
+
+        if stage >= 5:
+            for project in exp:
+                # currently unused for testing but pre-defined here in case
+                # the need arises.
+                # html_log_path = join(self.output_file_path, 'NuQCJob',
+                #                      project, 'fastp_reports_dir', 'html')
+                # json_log_path = join(self.output_file_path, 'NuQCJob',
+                #                      'project', 'fastp_reports_dir', 'json')
+                trimmed_files_path = join(self.output_file_path, 'NuQCJob',
+                                          project, 'filtered_sequences')
+                empty_files_path = join(self.output_file_path, 'NuQCJob',
+                                        project, 'zero_files')
+                adapter_trimmed_files_path = join(self.output_file_path,
+                                                  'NuQCJob',
+                                                  'only-adapter-filtered',
+                                                  project)
+
+                fake_paths = [trimmed_files_path, empty_files_path,
+                              adapter_trimmed_files_path]
+
+                for fake_path in fake_paths:
+                    makedirs(fake_path, exist_ok=True)
+
+                empty_files = {
+                    'Feist_11661': [
+                        'CDPH-SAL_Salmonella_Typhi_MDL-150',
+                        'CDPH-SAL_Salmonella_Typhi_MDL-151'
+                        ],
+                    'Gerwick_6123': ['8A', '9A', '10A'],
+                    'NYU_BMS_Melanoma_13059': ['XX581451B02', 'XY256645B01',
+                                               'XZ112567B02'
+                                               ]}
+
+                f_list = []
+                for sample in exp[project]:
+                    f_list += [
+                        join(trimmed_files_path,
+                             f'{sample}_SXXX_L001_R1_001.trimmed.fastq.gz'),
+                        join(trimmed_files_path,
+                             f'{sample}_SXXX_L001_R2_001.trimmed.fastq.gz'),
+                        join(trimmed_files_path,
+                             f'{sample}_SXXX_L001_I1_001.trimmed.fastq.gz'),
+                        join(trimmed_files_path,
+                             f'{sample}_SXXX_L001_I2_001.trimmed.fastq.gz'),
+                        join(adapter_trimmed_files_path,
+                             f'{sample}_SXXX_L001_R1_001.fastq.gz'),
+                        join(adapter_trimmed_files_path,
+                             f'{sample}_SXXX_L001_R2_001.fastq.gz')
+                    ]
+
+                for sample in empty_files[project]:
+                    f_list += [
+                        join(trimmed_files_path,
+                             f'{sample}_SXXX_L001_R1_001.trimmed.fastq.gz'),
+                        join(trimmed_files_path,
+                             f'{sample}_SXXX_L001_R2_001.trimmed.fastq.gz')
+                    ]
+
+                for file_path in f_list:
+                    with open(file_path, 'w') as f:
+                        f.write("This is a file.")
 
 
 class BasicStepTests(BaseStepTests):
@@ -898,6 +967,101 @@ class BasicStepTests(BaseStepTests):
 
         with self.assertRaisesRegex(PipelineError, msg):
             step.precheck(fake_client)
+
+    def test_conditional_fastqc_finder(self):
+        self._create_test_input(5)
+
+        # For a metagenomic pipeline, we expect indexed files to be removed
+        # from the results. We also expect only trimmed files from Feist_11661
+        # retrieved, and none from other projects, adapter-trimmed-only files,
+        # or zero-length files.
+        step = Step(self.pipeline_replicates, self.qiita_id, None)
+        results = step._get_postqc_fastq_files(self.output_file_path,
+                                               'Feist_11661')
+
+        exp = {
+            "raw_forward_seqs": [
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-143_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-144_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-145_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-146_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-147_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-150_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-151_SXXX_L001_R1_001.trimmed.fastq.gz"
+            ],
+            "raw_reverse_seqs": [
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-143_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-144_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-145_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-146_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-147_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-150_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-151_SXXX_L001_R2_001.trimmed.fastq.gz"
+            ]
+        }
+
+        # metagenomic runs shouldn't return a set of data like exp above.
+        # It shouldn't include I1 and I2 files.
+        self.assertEqual(set(results.keys()), {'raw_forward_seqs',
+                                               'raw_reverse_seqs'})
+        for key in results.keys():
+            # remove base output_file_path from the results.
+            obs = [x.replace(self.output_file_path, '')
+                   for x in results[key]]
+            self.assertEqual(set(obs), set(exp[key]))
+
+        # Hack an amplicon pipeline. reuse project-names, sample-names and
+        # qiita-ids. Expected results should be just as they are for
+        # metagenomic pipelines, except the index files are included.
+        step = Step(self.amplicon_pipeline, self.qiita_id, None)
+
+        exp['raw_barcodes'] = [
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-143_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-143_SXXX_L001_I2_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-144_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-144_SXXX_L001_I2_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-145_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-145_SXXX_L001_I2_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-146_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-146_SXXX_L001_I2_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-147_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-147_SXXX_L001_I2_001.trimmed.fastq.gz"
+        ]
+
+        results = step._get_postqc_fastq_files(self.output_file_path,
+                                               'Feist_11661')
+
+        self.assertEqual(set(results.keys()), {'raw_barcodes',
+                                               'raw_forward_seqs',
+                                               'raw_reverse_seqs'})
+        for key in results.keys():
+            obs = [x.replace(self.output_file_path, '')
+                   for x in results[key]]
+            self.assertEqual(set(obs), set(exp[key]))
 
 
 class ReplicateTests(BaseStepTests):
