@@ -269,6 +269,13 @@ class BaseStepTests(TestCase):
                                             self.qiita_id,
                                             Step.METAGENOMIC_TYPE)
 
+        self.amplicon_pipeline = Pipeline(self.master_config_path,
+                                          self.good_run_id, None,
+                                          self.good_mapping_file_path,
+                                          self.output_file_path,
+                                          self.qiita_id,
+                                          Step.AMPLICON_TYPE)
+
         self.fake_bin_path = self._get_searchable_path()
 
         self.delete_these = []
@@ -306,8 +313,14 @@ class BaseStepTests(TestCase):
         self.delete_these.append(tmp)
         return tmp
 
+    def _create_fake_file(self, path):
+        with open(path, 'w') as f:
+            f.write("This is a file.")
+
     def _create_test_input(self, stage):
         if stage >= 1:
+            # create an empty ConvertJob directory to test initialization
+            # with. Create fake binaries to test job submission.
             fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
             makedirs(fake_path, exist_ok=True)
             fake_path = join(self.output_file_path, 'ConvertJob', 'Reports')
@@ -321,6 +334,8 @@ class BaseStepTests(TestCase):
                                            "|09:53:41|0:0'")
 
         if stage >= 2:
+            # generate dummy fastq files in ConvertJob and create an empty
+            # NuQCJob directory to use for testing NuQCJob initialization.
             fake_path = join(self.output_file_path, 'NuQCJob', 'logs')
             makedirs(fake_path, exist_ok=True)
 
@@ -342,10 +357,10 @@ class BaseStepTests(TestCase):
                     r2 = join(fake_path, f'{sample}_SXXX_L001_R2_001.fastq.gz')
 
                     for file_path in [r1, r2]:
-                        with open(file_path, 'w') as f:
-                            f.write("This is a file.")
+                        self._create_fake_file(file_path)
 
-        if stage >= 4:
+        if stage >= 3:
+            # create a fake GenPrepFileJob directory.
             fake_path = join(self.output_file_path, 'GenPrepFileJob',
                              'PrepFiles')
             makedirs(fake_path, exist_ok=True)
@@ -353,26 +368,19 @@ class BaseStepTests(TestCase):
                      'Gerwick_6123.1.tsv']
 
             for name in names:
-                with open(join(fake_path, name), 'w') as f:
-                    f.write("This is a file.")
+                self._create_fake_file(join(fake_path, name))
 
-            fake_path = join(self.output_file_path, 'NuQCJob',
-                             'NYU_BMS_Melanoma_13059', 'fastp_reports_dir')
-            makedirs(fake_path, exist_ok=True)
-            with open(join(fake_path, 'a_file'), 'w') as f:
-                f.write("This is a file.")
+            fake_paths = [join(self.output_file_path, 'NuQCJob',
+                               'NYU_BMS_Melanoma_13059', 'fastp_reports_dir'),
+                          join(self.output_file_path, 'NuQCJob',
+                               'Feist_11661', 'fastp_reports_dir'),
+                          join(self.output_file_path, 'NuQCJob',
+                               'Gerwick_6123', 'fastp_reports_dir')
+                          ]
 
-            fake_path = join(self.output_file_path, 'NuQCJob',
-                             'Feist_11661', 'fastp_reports_dir')
-            makedirs(fake_path, exist_ok=True)
-            with open(join(fake_path, 'a_file'), 'w') as f:
-                f.write("This is a file.")
-
-            fake_path = join(self.output_file_path, 'NuQCJob',
-                             'Gerwick_6123', 'fastp_reports_dir')
-            makedirs(fake_path, exist_ok=True)
-            with open(join(fake_path, 'a_file'), 'w') as f:
-                f.write("This is a file.")
+            for fake_path in fake_paths:
+                makedirs(fake_path, exist_ok=True)
+                self._create_fake_file(join(fake_path, 'a_file'))
 
             names = ['NYU_BMS_Melanoma_13059', 'Feist_11661',
                      'Gerwick_6123']
@@ -380,8 +388,7 @@ class BaseStepTests(TestCase):
             for project in names:
                 file_name = f'{self.good_run_id}_{project}_blanks.tsv'
                 fake_path = join(self.output_file_path, file_name)
-                with open(fake_path, 'w') as f:
-                    f.write("This is a file")
+                self._create_fake_file(fake_path)
 
             tarballs = ['logs-ConvertJob.tgz', 'logs-FastQCJob.tgz',
                         'logs-GenPrepFileJob.tgz', 'logs-QCJob.tgz',
@@ -391,33 +398,93 @@ class BaseStepTests(TestCase):
 
             for file_name in tarballs:
                 fake_path = join(self.output_file_path, file_name)
-                with open(fake_path, 'w') as f:
-                    f.write("This is a file")
+                self._create_fake_file(fake_path)
 
             suffixes = ['o1611416-26', 'e1611416-26']
             for file_name in suffixes:
                 file_name = f'{self.good_run_id}_FastQCJob.{file_name}'
                 fake_path = join(self.output_file_path, 'FastQCJob', 'logs')
                 makedirs(fake_path, exist_ok=True)
-                with open(join(fake_path, file_name), 'w') as f:
-                    f.write("This is a file")
+                self._create_fake_file(join(fake_path, file_name))
 
             # we're just going to create a directory for FastQC results and
             # create a single file. We aren't going to replicate the entire
             # directory structure for now.
             fake_path = join(self.output_file_path, 'FastQCJob', 'fastqc')
             makedirs(fake_path, exist_ok=True)
-            with open(join(fake_path, 'a_file.txt'), 'w') as f:
-                f.write("This is a file")
+            self._create_fake_file(join(fake_path, 'a_file.txt'))
 
             fake_path = join(self.output_file_path, 'GenPrepFileJob', 'logs')
             makedirs(fake_path, exist_ok=True)
-            with open(join(fake_path, 'a_file.txt'), 'w') as f:
-                f.write("This is a file")
+            self._create_fake_file(join(fake_path, 'a_file.txt'))
 
             fake_path = join(self.output_file_path, 'failed_samples.html')
-            with open(fake_path, 'w') as f:
-                f.write("This is a file")
+            self._create_fake_file(fake_path)
+
+    def _create_alternate_test_input(self):
+        exp = {'Feist_11661': ['CDPH-SAL_Salmonella_Typhi_MDL-143',
+                               'CDPH-SAL_Salmonella_Typhi_MDL-144',
+                               'CDPH-SAL_Salmonella_Typhi_MDL-145',
+                               'CDPH-SAL_Salmonella_Typhi_MDL-146',
+                               'CDPH-SAL_Salmonella_Typhi_MDL-147'],
+               'Gerwick_6123': ['3A', '4A', '5B', '6A', '7A'],
+               'NYU_BMS_Melanoma_13059': ['AP581451B02', 'EP256645B01',
+                                          'EP112567B02', 'EP337425B01',
+                                          'LP127890A01']}
+
+        for project in exp:
+            trimmed_files_path = join(self.output_file_path, 'NuQCJob',
+                                      project, 'filtered_sequences')
+            empty_files_path = join(self.output_file_path, 'NuQCJob',
+                                    project, 'zero_files')
+            adapter_trimmed_files_path = join(self.output_file_path,
+                                              'NuQCJob',
+                                              'only-adapter-filtered',
+                                              project)
+
+            fake_paths = [trimmed_files_path, empty_files_path,
+                          adapter_trimmed_files_path]
+
+            for fake_path in fake_paths:
+                makedirs(fake_path, exist_ok=True)
+
+            empty_files = {
+                    'Feist_11661': [
+                        'CDPH-SAL_Salmonella_Typhi_MDL-150',
+                        'CDPH-SAL_Salmonella_Typhi_MDL-151'
+                        ],
+                    'Gerwick_6123': ['8A', '9A', '10A'],
+                    'NYU_BMS_Melanoma_13059': ['XX581451B02', 'XY256645B01',
+                                               'XZ112567B02'
+                                               ]}
+
+            f_list = []
+            for sample in exp[project]:
+                f_list += [
+                    join(trimmed_files_path,
+                         f'{sample}_SXXX_L001_R1_001.trimmed.fastq.gz'),
+                    join(trimmed_files_path,
+                         f'{sample}_SXXX_L001_R2_001.trimmed.fastq.gz'),
+                    join(trimmed_files_path,
+                         f'{sample}_SXXX_L001_I1_001.trimmed.fastq.gz'),
+                    join(trimmed_files_path,
+                         f'{sample}_SXXX_L001_I2_001.trimmed.fastq.gz'),
+                    join(adapter_trimmed_files_path,
+                         f'{sample}_SXXX_L001_R1_001.fastq.gz'),
+                    join(adapter_trimmed_files_path,
+                         f'{sample}_SXXX_L001_R2_001.fastq.gz')
+                ]
+
+            for sample in empty_files[project]:
+                f_list += [
+                    join(trimmed_files_path,
+                         f'{sample}_SXXX_L001_R1_001.trimmed.fastq.gz'),
+                    join(trimmed_files_path,
+                         f'{sample}_SXXX_L001_R2_001.trimmed.fastq.gz')
+                ]
+
+            for file_path in f_list:
+                self._create_fake_file(file_path)
 
 
 class BasicStepTests(BaseStepTests):
@@ -478,8 +545,7 @@ class BasicStepTests(BaseStepTests):
                 r2 = join(fake_path, f'{sample}_SXXX_L001_R2_001.fastq.gz')
 
                 for file_path in [r1, r2]:
-                    with open(file_path, 'w') as f:
-                        f.write("This is a file.")
+                    self._create_fake_file(file_path)
 
         step = Step(self.pipeline, self.qiita_id, None)
         config = self.pipeline.config_profile['profile']['configuration']
@@ -759,7 +825,7 @@ class BasicStepTests(BaseStepTests):
         self.assertEqual(results[2]['samples_not_in_qiita'], set())
 
     def test_generate_commands(self):
-        self._create_test_input(4)
+        self._create_test_input(3)
 
         fake_client = FakeClient()
 
@@ -899,12 +965,107 @@ class BasicStepTests(BaseStepTests):
         with self.assertRaisesRegex(PipelineError, msg):
             step.precheck(fake_client)
 
+    def test_conditional_fastqc_finder(self):
+        self._create_alternate_test_input()
+
+        # For a metagenomic pipeline, we expect indexed files to be removed
+        # from the results. We also expect only trimmed files from Feist_11661
+        # retrieved, and none from other projects, adapter-trimmed-only files,
+        # or zero-length files.
+        step = Step(self.pipeline_replicates, self.qiita_id, None)
+        results = step._get_postqc_fastq_files(self.output_file_path,
+                                               'Feist_11661')
+
+        exp = {
+            "raw_forward_seqs": [
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-143_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-144_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-145_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-146_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-147_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-150_SXXX_L001_R1_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-151_SXXX_L001_R1_001.trimmed.fastq.gz"
+            ],
+            "raw_reverse_seqs": [
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-143_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-144_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-145_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-146_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-147_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-150_SXXX_L001_R2_001.trimmed.fastq.gz",
+                "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+                "_Typhi_MDL-151_SXXX_L001_R2_001.trimmed.fastq.gz"
+            ]
+        }
+
+        # metagenomic runs shouldn't return a set of data like exp above.
+        # It shouldn't include I1 and I2 files.
+        self.assertEqual(set(results.keys()), {'raw_forward_seqs',
+                                               'raw_reverse_seqs'})
+        for key in results.keys():
+            # remove base output_file_path from the results.
+            obs = [x.replace(self.output_file_path, '')
+                   for x in results[key]]
+            self.assertEqual(set(obs), set(exp[key]))
+
+        # Hack an amplicon pipeline. reuse project-names, sample-names and
+        # qiita-ids. Expected results should be just as they are for
+        # metagenomic pipelines, except the index files are included.
+        step = Step(self.amplicon_pipeline, self.qiita_id, None)
+
+        exp['raw_barcodes'] = [
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-143_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-143_SXXX_L001_I2_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-144_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-144_SXXX_L001_I2_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-145_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-145_SXXX_L001_I2_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-146_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-146_SXXX_L001_I2_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-147_SXXX_L001_I1_001.trimmed.fastq.gz",
+            "/NuQCJob/Feist_11661/filtered_sequences/CDPH-SAL_Salmonella"
+            "_Typhi_MDL-147_SXXX_L001_I2_001.trimmed.fastq.gz"
+        ]
+
+        results = step._get_postqc_fastq_files(self.output_file_path,
+                                               'Feist_11661')
+
+        self.assertEqual(set(results.keys()), {'raw_barcodes',
+                                               'raw_forward_seqs',
+                                               'raw_reverse_seqs'})
+        for key in results.keys():
+            obs = [x.replace(self.output_file_path, '')
+                   for x in results[key]]
+            self.assertEqual(set(obs), set(exp[key]))
+
 
 class ReplicateTests(BaseStepTests):
     def setUp(self):
         super().setUp()
 
-        self._create_test_input(4)
+        self._create_test_input(3)
 
         # Fake enough of a run so that GenPrepFileJob can generate
         # prep-info files based on real input.
