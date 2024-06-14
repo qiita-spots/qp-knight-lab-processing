@@ -19,7 +19,7 @@
         "cpus_per_task": 32,
         "queue": "qiita",
         "wallclock_time_in_minutes": 2048,
-        "minimap2_databases": "/scratch/databases/minimap2",
+        "minimap2_databases": ["/databases/minimap2/db_1.mmi", "/databases/minimap2/db_2.mmi"],
         "modules_to_load": [
           "fastp_0.20.1",
           "samtools_1.12",
@@ -33,7 +33,10 @@
         "known_adapters_path": "fastp_known_adapters_formatted.fna",
         "bucket_size": 8,
         "length_limit": 100,
-        "cores_per_task": 4
+        "cores_per_task": 4,
+        "movi_executable_path": "/home/user/user_dir/Movi/build/movi-default",
+        "gres_value": 4,
+        "pmls_path": "/home/user/user_dir/human_host_filtration/scripts/qiita_filter_pmls.py"
       },
       "seqpro": {
         "seqpro_path": "seqpro",

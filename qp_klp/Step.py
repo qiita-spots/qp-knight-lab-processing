@@ -330,7 +330,10 @@ class Step:
                            config['known_adapters_path'],
                            bucket_size=config['bucket_size'],
                            length_limit=config['length_limit'],
-                           cores_per_task=config['cores_per_task'])
+                           cores_per_task=config['cores_per_task'],
+                           movi_path=config['movi_executable_path'],
+                           gres_value=config['gres_value'],
+                           pmls_path=config['pmls_path'])
 
         nuqc_job.run(callback=self.update_callback)
 
