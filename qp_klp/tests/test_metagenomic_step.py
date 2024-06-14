@@ -171,24 +171,13 @@ class MetagenomicTests(BaseStepTests):
                        'process_all_fastq_files.sh')) as f:
             obs = f.readlines()
             obs = [line.rstrip() for line in obs]
+            with open('tmpfoobar', 'w') as foo:
+                for line in obs:
+                    foo.write("%s\n" % line)
 
             # remove part of the absolute path so that comparison test is
             # valid across multiple installations.
-
             patterns = [
-                re.compile(r"cd (.*)/qp-knight-lab-processing/qp_klp/"),
-
-                re.compile(r"export TMPDIR=(.*)/qp-knight-lab-processing"
-                           r"/qp_klp/"),
-
-                re.compile(r"mkdir -p (.*)/qp-knight-lab-processing/qp_klp/"
-                           r"tests/data/output_dir/NuQCJob/fastp_reports_dir/"
-                           r"html"),
-
-                re.compile(r"mkdir -p (.*)/qp-knight-lab-processing/qp_klp/"
-                           r"tests/data/output_dir/NuQCJob/fastp_reports_dir/"
-                           r"json"),
-
                 re.compile(r"^\s+\-\-html (.*)/qp-knight-lab-processing/"
                            r"qp_klp/tests/data/output_dir/NuQCJob/fastp_"
                            r"reports_dir/html/\${html_name} \\$"),
@@ -197,10 +186,13 @@ class MetagenomicTests(BaseStepTests):
                            r"qp_klp/tests/data/output_dir/NuQCJob/fastp_"
                            r"reports_dir/json/\${json_name} \\$"),
 
-                re.compile(r"^\s+(.*/bin)/demux \\"),
+                re.compile(r"^\s+python (.*/bin)/demux \\"),
 
                 re.compile(r"    (.*)/sequence_processing_pipeline/scripts"
                            r"/splitter "),
+
+                re.compile(r"^\s+mv \$\{jobd}/seqs.movi.txt.gz (.*)/qp-knight"
+                           r"-lab-processing")
             ]
 
             for pattern in patterns:

@@ -586,9 +586,12 @@ class BasicStepTests(BaseStepTests):
     def test_get_project_info(self):
         obs = self.pipeline.get_project_info()
 
-        exp = [{'project_name': 'NYU_BMS_Melanoma_13059', 'qiita_id': '13059'},
-               {'project_name': 'Feist_11661', 'qiita_id': '11661'},
-               {'project_name': 'Gerwick_6123', 'qiita_id': '6123'}]
+        exp = [{'project_name': 'NYU_BMS_Melanoma_13059', 'qiita_id': '13059',
+                'contains_replicates': False},
+               {'project_name': 'Feist_11661', 'qiita_id': '11661',
+                'contains_replicates': False},
+               {'project_name': 'Gerwick_6123', 'qiita_id': '6123',
+                'contains_replicates': False}]
 
         self.assertEqual(obs, exp)
 
