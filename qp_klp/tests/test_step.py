@@ -797,11 +797,14 @@ class BasicStepTests(BaseStepTests):
         # however they are faked and can be expected to be returned in a
         # fixed order. Assert the order is as expected so the following tests
         # will be meaningful.
+
+        # good_sample_sheet.csv will have some but not all sample-names
+        # exchanged for tube-ids.
         self.assertCountEqual([proj['project_name'] for proj in results],
                               ['NYU_BMS_Melanoma', 'Feist', 'Gerwick'])
 
-        self.assertCountEqual([proj['tids'] for proj in results],
-                              [True, True, False])
+        self.assertCountEqual([proj['used_tids'] for proj in results],
+                              [True, False, False])
 
         # 'EP448041B04' is a sample-name from the sample-sheet and should not
         # be in fake-Qiita, as defined in FakeQiita() class. Therefore, it
@@ -947,7 +950,8 @@ class BasicStepTests(BaseStepTests):
                 'examples_in_qiita': ['1234567890a', '234567890ab',
                                       '34567890abc', 'BLANK1.1BCD'],
                 'project_name': 'TestProject',
-                'tids': True}]
+                'percentage_matched': 0.75,
+                'used_tids': True}]
 
         self.assertEqual(obs, exp)
 
@@ -959,13 +963,9 @@ class BasicStepTests(BaseStepTests):
 
         step = Step(self.another_pipeline, self.qiita_id, None)
 
-        msg = ("<br/><b>Project 'TestProject'</b> has 1 samples not "
-               "registered in Qiita: \['4567890abcd'\]\nSome registered "   # noqa
-               "samples in Project 'TestProject' include: .{11}, "
-               ".{11}, .{11}, .{11}\nProject 'TestProject' is"
-               " using tube-ids. You may be using sample names in your file.")
-
-        with self.assertRaisesRegex(PipelineError, msg):
+        with self.assertRaisesRegex(PipelineError, (".*More values matched "
+                                                    "tube-ids than sample-"
+                                                    "names.*")):
             step.precheck(fake_client)
 
     def test_conditional_fastqc_finder(self):
