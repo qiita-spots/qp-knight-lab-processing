@@ -711,9 +711,9 @@ class Step:
             # sample-names are used as keys and tube-ids are their values.
             qsam, tids = self.get_samples_in_qiita(qclient, qiita_id)
 
-            if tids is None:
-                sample_names_by_qiita_id[str(qiita_id)] = qsam
-            else:
+            sample_names_by_qiita_id[str(qiita_id)] = qsam
+
+            if tids is not None:
                 # fix values in tids to be a string instead of a list of one.
                 # also, remove the qiita_id prepending each sample-name.
                 tids = {k.replace(f'{qiita_id}.', ''): tids[k][0] for k in
@@ -733,58 +733,131 @@ class Step:
 
     def _compare_samples_against_qiita(self, qclient):
         projects = self.pipeline.get_project_info(short_names=True)
-        self._get_tube_ids_from_qiita(qclient)
 
         results = []
         for project in projects:
-            project_name = project['project_name']
+            msgs = []
+            self._get_tube_ids_from_qiita(qclient)
+            p_name = project['project_name']
             qiita_id = str(project['qiita_id'])
+            contains_replicates = project['contains_replicates']
 
             # get list of samples as presented by the sample-sheet or mapping
             # file and confirm that they are all registered in Qiita.
-            samples = set(self.pipeline.get_sample_names(project_name))
+            if contains_replicates:
+                # don't match against sample-names with a trailing well-id
+                # if project contains replicates.
+                msgs.append("This sample-sheet contains replicates. sample-"
+                            "names will be sourced from orig_name column.")
+                samples = set(self.pipeline.get_orig_names_from_sheet(p_name))
+            else:
+                samples = set(self.pipeline.get_sample_names(p_name))
 
             # do not include BLANKs. If they are unregistered, we will add
             # them downstream.
             samples = {smpl for smpl in samples
                        if not smpl.startswith('BLANK')}
 
-            # just get a list of the tube-ids themselves, not what they map
-            # to.
-            if qiita_id in self.tube_id_map:
-                # if map is not empty
-                tids = [self.tube_id_map[qiita_id][sample] for sample in
-                        self.tube_id_map[qiita_id]]
+            msgs.append(f"The total number of samples found in {p_name} that "
+                        f"aren't BLANK is: {len(samples)}")
 
-                not_in_qiita = samples - set(tids)
+            results_sn = self._process_sample_names(p_name, qiita_id,
+                                                    samples)
 
-                if not_in_qiita:
-                    # strip any leading zeroes from the sample-ids. Note that
-                    # if a sample-id has more than one leading zero, all of
-                    # them will be removed.
-                    not_in_qiita = set([x.lstrip('0') for x in samples]) - \
-                                   set(tids)
+            msgs.append("Number of values in sheet that aren't sample-names in"
+                        " Qiita: %s" % len(results_sn[0]))
 
-                examples = tids[:5]
-                used_tids = True
+            use_tids = False
+
+            if len(results_sn[0]) == 0:
+                msgs.append(f"All values in sheet matched sample-names "
+                            f"registered with {p_name}")
             else:
-                # assume project is in samples_in_qiita
-                not_in_qiita = samples - set(self.samples_in_qiita[qiita_id])
-                examples = list(samples)[:5]
-                used_tids = False
+                # not all values were matched to sample-names.
+                # check for possible match w/tube-ids, if defined in project.
+                results_tid = self._process_tube_ids(p_name, qiita_id,
+                                                     samples)
+                if results_tid:
+                    msgs.append("Number of values in sheet that aren't "
+                                "tube-ids in Qiita: %s" % len(results_tid[0]))
 
-            # convert to strings before returning
-            examples = [str(example) for example in examples]
+                    if len(results_tid[0]) == 0:
+                        # all values were matched to tube-ids.
+                        use_tids = True
+                        msgs.append(f"All values in sheet matched tube-ids "
+                                    f"registered with {p_name}")
+                    else:
+                        # we have sample-names and tube-ids and neither is
+                        # a perfect match.
+                        if len(results_tid[0]) < len(results_sn[0]):
+                            # more tube-ids matched than sample-names.
+                            use_tids = True
+                            msgs.append(f"More values in sheet matched tube-"
+                                        f"ids than sample-names with {p_name}")
+                        elif len(results_tid[0]) == len(results_sn[0]):
+                            msgs.append("Sample-names and tube-ids were "
+                                        "equally non-represented in the "
+                                        "sample-sheet")
+                        else:
+                            msgs.append(f"More values in sheet matched sample-"
+                                        f"names than tube-ids with {p_name}")
+                else:
+                    msgs.append("there are no tube-ids registered with "
+                                f"{p_name}")
+
+            if use_tids:
+                not_in_qiita = results_tid[0]
+                examples = results_tid[1]
+                total_in_qiita = results_tid[2]
+            else:
+                not_in_qiita = results_sn[0]
+                examples = results_sn[1]
+                total_in_qiita = results_sn[2]
 
             # return an entry for all projects, even when samples_not_in_qiita
             # is an empty list, as the information is still valuable.
-
             results.append({'samples_not_in_qiita': not_in_qiita,
                             'examples_in_qiita': examples,
-                            'project_name': project_name,
-                            'tids': used_tids})
+                            'project_name': p_name,
+                            'total_in_qiita': total_in_qiita,
+                            'used_tids': use_tids,
+                            'messages': msgs})
 
         return results
+
+    def _process_sample_names(self, project_name, qiita_id, samples):
+        not_in_qiita = samples - set(self.samples_in_qiita[qiita_id])
+        examples = list(samples)[:5]
+
+        # convert to strings before returning
+        examples = [str(example) for example in examples]
+
+        number_in_project = len(set(self.samples_in_qiita[qiita_id]))
+
+        return not_in_qiita, examples, number_in_project
+
+    def _process_tube_ids(self, project_name, qiita_id, samples):
+        if qiita_id in self.tube_id_map:
+            tids = [self.tube_id_map[qiita_id][sample] for sample in
+                    self.tube_id_map[qiita_id]]
+
+            not_in_qiita = samples - set(tids)
+
+            if not_in_qiita:
+                # strip any leading zeroes from the sample-ids. Note that
+                # if a sample-id has more than one leading zero, all of
+                # them will be removed.
+                not_in_qiita = set([x.lstrip('0') for x in samples]) - \
+                               set(tids)
+
+            # convert examples to strings before returning
+            examples = [str(example) for example in tids[:5]]
+
+            number_in_project = len(set(tids))
+
+            return not_in_qiita, examples, number_in_project
+
+        # return None otherwise
 
     @classmethod
     def _replace_with_tube_ids(cls, prep_file_path, tube_id_map):
@@ -899,23 +972,8 @@ class Step:
 
         if missing_counts:
             msgs = []
-            for comparison in results:
-                not_in_qiita = list(comparison['samples_not_in_qiita'])
-                not_in_qiita_count = len(not_in_qiita)
-                examples_in_qiita = ', '.join(comparison['examples_in_qiita'])
-                p_name = comparison['project_name']
-                uses_tids = comparison['tids']
-
-                msgs.append(
-                    f"<br/><b>Project '{p_name}'</b> has {not_in_qiita_count} "
-                    f"samples not registered in Qiita: {not_in_qiita[:5]}")
-
-                msgs.append(f"Some registered samples in Project '{p_name}'"
-                            f" include: {examples_in_qiita}")
-
-                if uses_tids:
-                    msgs.append(f"Project '{p_name}' is using tube-ids. You "
-                                "may be using sample names in your file.")
+            for result in results:
+                msgs += result['messages']
 
             if msgs:
                 raise PipelineError('\n'.join(msgs))

@@ -107,7 +107,7 @@ class FakeClient():
                                        '13059.AP481403B02': ['AP481403B-2'],
                                        '13059.LP127829A02': ['LP127829A-2'],
                                        '13059.BLANK3.3B': ['BLANK3.3B'],
-                                       '13059.EP529635B02': ['EP529635B02'],
+                                       '13059.EP529635B02': ['EP529635B-2'],
                                        '13059.EP542578B04': ['EP542578B-4'],
                                        '13059.EP446602B01': ['EP446602B-1'],
                                        '13059.EP121011B01': ['EP121011B-1'],
@@ -247,6 +247,7 @@ class BaseStepTests(TestCase):
         self.process_shell_script = cc_path('process_all_fastq_files.sh')
         self.master_config_path = cc_path('configuration.json')
         self.dummy_fastq_file = cc_path('dummy.fastq.gz')
+        self.mini_sheet_path = cc_path('mini-sample-sheet.csv')
         self.qiita_id = '077c4da8-74eb-4184-8860-0207f53623be'
         makedirs(self.output_file_path, exist_ok=True)
 
@@ -255,6 +256,12 @@ class BaseStepTests(TestCase):
                                  self.good_sample_sheet_path, None,
                                  self.output_file_path, self.qiita_id,
                                  Step.METAGENOMIC_TYPE)
+
+        self.pipeline_mini = Pipeline(self.master_config_path,
+                                      self.good_run_id,
+                                      self.mini_sheet_path, None,
+                                      self.output_file_path, self.qiita_id,
+                                      Step.METAGENOMIC_TYPE)
 
         self.another_pipeline = Pipeline(self.master_config_path,
                                          self.good_run_id,
@@ -748,7 +755,7 @@ class BasicStepTests(BaseStepTests):
                     '13059.AP481403B02': ['AP481403B-2'],
                     '13059.LP127829A02': ['LP127829A-2'],
                     '13059.BLANK3.3B': ['BLANK3.3B'],
-                    '13059.EP529635B02': ['EP529635B02'],
+                    '13059.EP529635B02': ['EP529635B-2'],
                     '13059.EP542578B04': ['EP542578B-4'],
                     '13059.EP446602B01': ['EP446602B-1'],
                     '13059.EP121011B01': ['EP121011B-1'],
@@ -768,7 +775,7 @@ class BasicStepTests(BaseStepTests):
                          'AP481403B02': 'AP481403B-2',
                          'LP127829A02': 'LP127829A-2',
                          'BLANK3.3B': 'BLANK3.3B',
-                         'EP529635B02': 'EP529635B02',
+                         'EP529635B02': 'EP529635B-2',
                          'EP542578B04': 'EP542578B-4',
                          'EP446602B01': 'EP446602B-1',
                          'EP121011B01': 'EP121011B-1',
@@ -783,12 +790,13 @@ class BasicStepTests(BaseStepTests):
 
     def test_compare_samples_against_qiita(self):
         fake_client = FakeClient()
-        step = Step(self.pipeline, self.qiita_id, None)
+        step = Step(self.pipeline_mini, self.qiita_id, None)
         results = step._compare_samples_against_qiita(fake_client)
 
         # confirm projects in results match what's expected
         obs = [project['project_name'] for project in results]
-        exp = ["NYU_BMS_Melanoma", "Feist", "Gerwick"]
+        exp = ["NYU_BMS_Melanoma", "Gerwick"]
+
         self.assertEqual(obs, exp)
 
         # confirm projects using tube-ids match what's expected
@@ -797,16 +805,22 @@ class BasicStepTests(BaseStepTests):
         # however they are faked and can be expected to be returned in a
         # fixed order. Assert the order is as expected so the following tests
         # will be meaningful.
+
+        # good_sample_sheet.csv will have some but not all sample-names
+        # exchanged for tube-ids.
         self.assertCountEqual([proj['project_name'] for proj in results],
-                              ['NYU_BMS_Melanoma', 'Feist', 'Gerwick'])
+                              ['NYU_BMS_Melanoma', 'Gerwick'])
 
-        self.assertCountEqual([proj['tids'] for proj in results],
-                              [True, True, False])
+        # since Gerwick doesn't have tube-ids, it should always use sample-
+        # names. NYU has tube-id in FakeQiita() so it's possible to test
+        # tube-ids.
+        self.assertCountEqual([proj['used_tids'] for proj in results],
+                              [True, False])
 
-        # 'EP448041B04' is a sample-name from the sample-sheet and should not
+        # 'NOTINQIITA1' is a sample-name from the sample-sheet and should not
         # be in fake-Qiita, as defined in FakeQiita() class. Therefore, it
         # should appear in the 'samples_not_in_qiita' list.
-        self.assertIn('EP448041B04', results[0]['samples_not_in_qiita'])
+        self.assertIn('NOTINQIITA1', results[0]['samples_not_in_qiita'])
 
         # 'BLANK3.3B' is defined in the sample-sheet and also in FakeQiita,
         # both as a sample-name and as a tube-id (One of the few to be so
@@ -818,14 +832,14 @@ class BasicStepTests(BaseStepTests):
         # the tube-ids in 'examples_in_qiita' list should be a subset of all
         # the tube-ids in FakeQiita().
         exp = {'SP331130A-4', 'AP481403B-2', 'LP127829A-2', 'BLANK3.3B',
-               'EP529635B02', 'EP542578B-4', 'EP446602B-1', 'EP121011B-1',
+               'EP529635B-2', 'EP542578B-4', 'EP446602B-1', 'EP121011B-1',
                'EP636802A-1', 'SP573843A-4'}
 
         self.assertTrue(set(results[0]['examples_in_qiita']).issubset(exp))
 
         # Gerwick has a small number of samples in the sample-sheet, and all
         # of which are in FakeQiita().
-        self.assertEqual(results[2]['samples_not_in_qiita'], set())
+        self.assertEqual(results[1]['samples_not_in_qiita'], set())
 
     def test_generate_commands(self):
         self._create_test_input(3)
@@ -946,8 +960,17 @@ class BasicStepTests(BaseStepTests):
         exp = [{'samples_not_in_qiita': {'4567890abcd'},
                 'examples_in_qiita': ['1234567890a', '234567890ab',
                                       '34567890abc', 'BLANK1.1BCD'],
-                'project_name': 'TestProject',
-                'tids': True}]
+                'project_name': 'TestProject', 'total_in_qiita': 4,
+                'used_tids': True,
+                'messages': [
+                    "The total number of samples found in TestProject that"
+                    " aren't BLANK is: 4",
+                    "Number of values in sheet that aren't sample-names in"
+                    " Qiita: 4",
+                    "Number of values in sheet that aren't tube-ids in "
+                    "Qiita: 1",
+                    "More values in sheet matched tube-ids than sample-names"
+                    " with TestProject"]}]
 
         self.assertEqual(obs, exp)
 
@@ -959,11 +982,11 @@ class BasicStepTests(BaseStepTests):
 
         step = Step(self.another_pipeline, self.qiita_id, None)
 
-        msg = ("<br/><b>Project 'TestProject'</b> has 1 samples not "
-               "registered in Qiita: \['4567890abcd'\]\nSome registered "   # noqa
-               "samples in Project 'TestProject' include: .{11}, "
-               ".{11}, .{11}, .{11}\nProject 'TestProject' is"
-               " using tube-ids. You may be using sample names in your file.")
+        msg = ("The total number of samples found in TestProject that aren't"
+               " BLANK is: 4\nNumber of values in sheet that aren't sample-"
+               "names in Qiita: 4\nNumber of values in sheet that aren't tube"
+               "-ids in Qiita: 1\nMore values in sheet matched tube-ids than"
+               " sample-names with TestProject")
 
         with self.assertRaisesRegex(PipelineError, msg):
             step.precheck(fake_client)
