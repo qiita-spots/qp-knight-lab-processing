@@ -736,60 +736,96 @@ class Step:
 
         results = []
         for project in projects:
+            msgs = []
             self._get_tube_ids_from_qiita(qclient)
-            project_name = project['project_name']
+            p_name = project['project_name']
             qiita_id = str(project['qiita_id'])
+            contains_replicates = project['contains_replicates']
 
             # get list of samples as presented by the sample-sheet or mapping
             # file and confirm that they are all registered in Qiita.
-            samples = set(self.pipeline.get_sample_names(project_name))
+            if contains_replicates:
+                # don't match against sample-names with a trailing well-id
+                # if project contains replicates.
+                msgs.append("This sample-sheet contains replicates. sample-"
+                            "names will be sourced from orig_name column.")
+                samples = set(self.pipeline.get_orig_names_from_sheet(p_name))
+            else:
+                samples = set(self.pipeline.get_sample_names(p_name))
 
             # do not include BLANKs. If they are unregistered, we will add
             # them downstream.
             samples = {smpl for smpl in samples
                        if not smpl.startswith('BLANK')}
 
-            results_sn = self._process_sample_names(project_name, qiita_id,
+            msgs.append(f"The total number of samples found in {p_name} that "
+                        f"aren't BLANK is: {len(samples)}")
+
+            results_sn = self._process_sample_names(p_name, qiita_id,
                                                     samples)
+
+            msgs.append("Number of values in sheet that aren't sample-names in"
+                        " Qiita: %s" % len(results_sn[0]))
 
             use_tids = False
 
-            percent_sn_matched = results_sn[2]
+            print("SAMPLE_NAMES:")
+            for item in samples:
+                print(f"\t{item}")
 
-            if percent_sn_matched != 1.0:
+            if len(results_sn[0]) == 0:
+                msgs.append(f"All values in sheet matched sample-names "
+                            f"registered with {p_name}")
+            else:
                 # not all values were matched to sample-names.
                 # check for possible match w/tube-ids, if defined in project.
-                results_tid = self._process_tube_ids(project_name, qiita_id,
+                results_tid = self._process_tube_ids(p_name, qiita_id,
                                                      samples)
                 if results_tid:
-                    percent_tid_matched = results_tid[2]
-                    if percent_tid_matched == 1.0:
+                    msgs.append("Number of values in sheet that aren't "
+                                "tube-ids in Qiita: %s" % len(results_tid[0]))
+
+                    if len(results_tid[0]) == 0:
                         # all values were matched to tube-ids.
                         use_tids = True
+                        msgs.append(f"All values in sheet matched tube-ids "
+                                    f"registered with {p_name}")
                     else:
                         # we have sample-names and tube-ids and neither is
                         # a perfect match.
-                        if percent_tid_matched > percent_sn_matched:
+                        if len(results_tid[0]) < len(results_sn[0]):
                             # more tube-ids matched than sample-names.
                             use_tids = True
+                            msgs.append(f"More values in sheet matched tube-"
+                                        f"ids than sample-names with {p_name}")
+                        elif len(results_tid[0]) == len(results_sn[0]):
+                            msgs.append("Sample-names and tube-ids were "
+                                        "equally non-represented in the "
+                                        "sample-sheet")
+                        else:
+                            msgs.append(f"More values in sheet matched sample-"
+                                        f"names than tube-ids with {p_name}")
+                else:
+                    msgs.append("there are no tube-ids registered with "
+                                f"{p_name}")
 
             if use_tids:
                 not_in_qiita = results_tid[0]
                 examples = results_tid[1]
-                percentage_matched = results_tid[2]
+                total_in_qiita = results_tid[2]
             else:
                 not_in_qiita = results_sn[0]
                 examples = results_sn[1]
-                percentage_matched = results_sn[2]
+                total_in_qiita = results_sn[2]
 
             # return an entry for all projects, even when samples_not_in_qiita
             # is an empty list, as the information is still valuable.
-
             results.append({'samples_not_in_qiita': not_in_qiita,
                             'examples_in_qiita': examples,
-                            'project_name': project_name,
-                            'percentage_matched': percentage_matched,
-                            'used_tids': use_tids})
+                            'project_name': p_name,
+                            'total_in_qiita': total_in_qiita,
+                            'used_tids': use_tids,
+                            'messages': msgs})
 
         return results
 
@@ -800,10 +836,9 @@ class Step:
         # convert to strings before returning
         examples = [str(example) for example in examples]
 
-        number_matched = len(samples) - len(not_in_qiita)
         number_in_project = len(set(self.samples_in_qiita[qiita_id]))
 
-        return not_in_qiita, examples, number_matched / number_in_project
+        return not_in_qiita, examples, number_in_project
 
     def _process_tube_ids(self, project_name, qiita_id, samples):
         if qiita_id in self.tube_id_map:
@@ -822,11 +857,9 @@ class Step:
             # convert examples to strings before returning
             examples = [str(example) for example in tids[:5]]
 
-            number_matched = len(samples) - len(not_in_qiita)
             number_in_project = len(set(tids))
-            percentage = number_matched / number_in_project
 
-            return not_in_qiita, examples, percentage
+            return not_in_qiita, examples, number_in_project
 
         # return None otherwise
 
@@ -943,23 +976,8 @@ class Step:
 
         if missing_counts:
             msgs = []
-            for comparison in results:
-                not_in_qiita = list(comparison['samples_not_in_qiita'])
-                not_in_qiita_count = len(not_in_qiita)
-                examples_in_qiita = ', '.join(comparison['examples_in_qiita'])
-                p_name = comparison['project_name']
-                used_tids = comparison['used_tids']
-
-                msgs.append(
-                    f"<br/><b>Project '{p_name}'</b> has {not_in_qiita_count} "
-                    f"samples not registered in Qiita: {not_in_qiita[:5]}")
-
-                msgs.append(f"Some registered samples in Project '{p_name}'"
-                            f" include: {examples_in_qiita}")
-
-                if used_tids:
-                    msgs.append("More values matched tube-ids than sample-"
-                                "names")
+            for result in results:
+                msgs += result['messages']
 
             if msgs:
                 raise PipelineError('\n'.join(msgs))
