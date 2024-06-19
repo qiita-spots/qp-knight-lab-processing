@@ -839,7 +839,6 @@ class BasicStepTests(BaseStepTests):
 
         # Gerwick has a small number of samples in the sample-sheet, and all
         # of which are in FakeQiita().
-        print(results)
         self.assertEqual(results[1]['samples_not_in_qiita'], set())
 
     def test_generate_commands(self):

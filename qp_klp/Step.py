@@ -769,10 +769,6 @@ class Step:
 
             use_tids = False
 
-            print("SAMPLE_NAMES:")
-            for item in samples:
-                print(f"\t{item}")
-
             if len(results_sn[0]) == 0:
                 msgs.append(f"All values in sheet matched sample-names "
                             f"registered with {p_name}")
