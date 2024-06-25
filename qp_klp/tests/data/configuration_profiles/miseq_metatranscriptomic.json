@@ -46,6 +46,7 @@
         "length_limit": 100,
         "cores_per_task": 2,
         "movi_executable_path": "/home/user/user_dir/Movi/build/movi-default",
+        "gres_value": 4,
         "pmls_path": "/home/user/user_dir/human_host_filtration/scripts/qiita_filter_pmls.py"
       },
       "seqpro": {
