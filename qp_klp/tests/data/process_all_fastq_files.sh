@@ -9,7 +9,9 @@
 ### as well as sbatch -c. demux threads remains fixed at 1.
 ### Note -c set to 4 and thread counts set to 7 during testing.
 #SBATCH -c 2
-#SBATCH --gres=node_jobs:2
+### Commented out for now, but there is a possibility it will be needed
+### in the future.
+###SBATCH --gres=node_jobs:2
 
 
 echo "---------------"
@@ -53,8 +55,8 @@ export TMPDIR=${TMPDIR}
 export TMPDIR=$(mktemp -d)
 echo $TMPDIR
 
-mkdir -p ${WKDIR}NuQCJob/fastp_reports_dir/html
-mkdir -p ${WKDIR}NuQCJob/fastp_reports_dir/json
+mkdir -p ${WKDIR}/fastp_reports_dir/html
+mkdir -p ${WKDIR}/fastp_reports_dir/json
 
 export ADAPTER_ONLY_OUTPUT=${OUTPUT}/only-adapter-filtered
 mkdir -p ${ADAPTER_ONLY_OUTPUT}
@@ -74,9 +76,8 @@ function mux-runner () {
 
     jobd=${TMPDIR}
     id_map=${jobd}/id_map
-    seqs_r1=${jobd}/seqs.r1.fastq.gz
-    seqs_r2=${jobd}/seqs.r2.fastq
-    r1_filt=${jobd}/seqs.r1.adapter-removed.fastq.gz
+    seqs_reads=${jobd}/seqs.interleaved.fastq
+    seq_reads_filter_alignment=${jobd}/seqs.interleaved.filter_alignment.fastq
 
     for i in $(seq 1 ${n})
     do
@@ -86,13 +87,18 @@ function mux-runner () {
         base=$(echo ${line} | cut -f 3 -d" ")
         r1_name=$(basename ${r1} .fastq.gz)
         r2_name=$(basename ${r2} .fastq.gz)
-        r1_adapter_only=${ADAPTER_ONLY_OUTPUT}/${r1_name}.fastq.gz
+        r_adapter_only=${ADAPTER_ONLY_OUTPUT}/${r1_name}.interleave.fastq.gz
 
         s_name=$(basename "${r1}" | sed -r 's/\.fastq\.gz//')
         html_name=$(echo "$s_name.html")
         json_name=$(echo "$s_name.json")
 
         echo -e "${i}\t${r1_name}\t${r2_name}\t${base}" >> ${id_map}
+
+        # movi, in the current version, works on the interleaved version of the
+        # fwd/rev reads so we are gonna take advantage fastp default output
+        # to minimize steps. Additionally, movi expects the input to not be
+        # gz, so we are not going to compress seqs_r1
 
         fastp \
             -l 100 \
@@ -102,47 +108,39 @@ function mux-runner () {
             --adapter_fasta fastp_known_adapters_formatted.fna \
             --html REMOVED/qp-knight-lab-processing/qp_klp/tests/data/output_dir/NuQCJob/fastp_reports_dir/html/${html_name} \
             --json REMOVED/qp-knight-lab-processing/qp_klp/tests/data/output_dir/NuQCJob/fastp_reports_dir/json/${json_name} \
-            --stdout | gzip > ${r1_filt}
+            --stdout | gzip > ${r_adapter_only}
 
         # multiplex and write adapter filtered data all at once
-        zcat ${r1_filt} | \
+        zcat ${r_adapter_only} | \
             sed -r "1~4s/^@(.*)/@${i}${delimiter}\1/" \
-            >> ${seqs_r1}
-        cat ${r1_filt} | \
-            gzip -c > ${r1_adapter_only} &
-        wait
-
-        rm ${r1_filt} &
-        wait
+            >> ${seqs_reads}
     done
 
     # minimap/samtools pair commands are now generated in NuQCJob._generate_mmi_filter_cmds()
-    # and passed to this template. This method assumes ${jobd} is the correct location to
-    # filter files, the initial file is "${jobd}/seqs.r1.fastq"), and the output name is
-    # "${jobd}/seqs.r1.ALIGN.fastq".
-    minimap2 -2 -ax sr -t 1 /databases/minimap2/db_1.mmi ${jobd}/seqs.r1.fastq -a | samtools fastq -@ 1 -f 12 -F 256 > ${jobd}/foo
+    # and passed to this template.
+    minimap2 -2 -ax sr -t 1 /databases/minimap2/db_1.mmi ${jobd}/seqs.interleaved.fastq -a | samtools fastq -@ 1 -f 12 -F 256 > ${jobd}/foo
 minimap2 -2 -ax sr -t 1 /databases/minimap2/db_2.mmi ${jobd}/foo -a | samtools fastq -@ 1 -f 12 -F 256 > ${jobd}/bar
-mv ${jobd}/bar ${jobd}/seqs.r1.ALIGN.fastq
+mv ${jobd}/bar ${jobd}/seqs.interleaved.filter_alignment.fastq
 [ -e ${jobd}/foo ] && rm ${jobd}/foo
 [ -e ${jobd}/bar ] && rm ${jobd}/bar
 
     /home/user/user_dir/Movi/build/movi-default query \
         --index /scratch/movi_hg38_chm13_hprc94 \
-        --read <(zcat ${jobd}/seqs.r1.ALIGN.fastq.gz) \
+        --read ${seq_reads_filter_alignment} \
         --stdout | gzip > ${jobd}/seqs.movi.txt.gz
 
     python /home/user/user_dir/human_host_filtration/scripts/qiita_filter_pmls.py <(zcat ${jobd}/seqs.movi.txt.gz) | \
-        seqtk subseq ${jobd}/seqs.r1.ALIGN.fastq.gz - | gzip > ${jobd}/seqs.r1.final.fastq.gz
+        seqtk subseq ${seq_reads_filter_alignment} - > ${jobd}/seqs.final.fastq
 
-    REMOVED/sequence_processing_pipeline/scripts/splitter ${jobd}/seqs.r1.final.fastq \
+    REMOVED/sequence_processing_pipeline/scripts/splitter ${jobd}/seqs.final.fastq \
         ${jobd}/reads.r1.fastq ${delimiter} ${r1_tag} &
-    REMOVED/sequence_processing_pipeline/scripts/splitter ${jobd}/seqs.r1.final.fastq \
+    REMOVED/sequence_processing_pipeline/scripts/splitter ${jobd}/seqs.final.fastq \
         ${jobd}/reads.r2.fastq ${delimiter} ${r2_tag} &
     wait
     fastq_pair -t 50000000 ${jobd}/reads.r1.fastq ${jobd}/reads.r2.fastq
 
     # keep seqs.movi.txt and migrate it to NuQCJob directory.
-    mv ${jobd}/seqs.movi.txt.gz REMOVED/qp-knight-lab-processing/qp_klp/tests/data/output_dir/NuQCJob/seqs.movi.${SLURM_ARRAY_TASK_ID}.txt.gz
+    mv ${jobd}/seqs.movi.txt.gz REMOVED/qp-knight-lab-processing/qp_klp/tests/data/output_dir/NuQCJob/logs/seqs.movi.${SLURM_ARRAY_TASK_ID}.txt.gz
 }
 export -f mux-runner
 

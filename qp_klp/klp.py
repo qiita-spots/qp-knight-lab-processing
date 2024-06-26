@@ -180,6 +180,8 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         if exists(join(out_dir, 'GenPrepFileJob')):
             skip_steps.append('FastQCJob')
 
+        # it doesn't matter if cmds.log is a valid cmds.log or just
+        # an empty file. The cmds.log will get overwritten downstream.
         if exists(join(out_dir, 'cmds.log')):
             skip_steps.append('GenPrepFileJob')
 
