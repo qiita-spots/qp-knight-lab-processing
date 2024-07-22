@@ -6,9 +6,9 @@ This plugin provides the following commands:
 
 #. Sequence Processing Pipeline (SPP):
 
-This command converts the BCL to FASTQ files, does adaptor and host/human sequence filtering, summarizes results and uploads the resulting files to Qiita as a new preparation and artifact. This command is based on [mg-scripts](https://github.com/biocore/mg-scripts) and (metapool)[https://github.com/biocore/metagenomics_pooling_notebook/].
+This command converts the BCL to FASTQ files, does adaptor and host/human sequence filtering, summarizes results and uploads the resulting files to Qiita as one or more new preparations and artifacts. This command is based on [mg-scripts](https://github.com/biocore/mg-scripts) and (metapool)[https://github.com/biocore/metagenomics_pooling_notebook/].
 
-When the SPP adds a new preparation it adds some extra columns to that preparation:
+The new preparations that the SPP adds contain some automatically generated extra columns:
 
 * raw_reads_r1r2: this is the total number of reads that the sequencing generated for R1 and R2.
 
