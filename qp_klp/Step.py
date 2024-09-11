@@ -950,7 +950,42 @@ class Step:
                 qclient.http_patch(f'/api/v1/study/{study_id}/samples',
                                    data=dumps(data))
 
+    def _project_metadata_check(self, qclient):
+        # Let Pipeline() retrieve the needed qiita study ids from the user
+        # input while this plugin queries for the existing set of column
+        # names in each project's sample metadata. We'll let Pipeline()
+        # decide (using its metapool dependency) which column names are
+        # reserved.
+        qiita_ids = [x['qiita_id'] for x in self.pipeline.get_project_info()]
+
+        results = []
+
+        for qiita_id in qiita_ids:
+            categories = qclient.get(f"/api/v1/study/{qiita_id}/samples/info")[
+                "categories"]
+
+            res = self.pipeline.identify_reserved_words(qiita_id, categories)
+
+            # if any reserved words were identified, generate an appropriate
+            # error message for it and add it to the list of error messages
+            # to return to the user.
+            res = [f"'{x}' exists in Qiita study {qiita_id}'s sample metadata"
+                   for x in res]
+
+            results += res
+
+        if results:
+            # return any error messages generated across all of the projects.
+            raise PipelineError("\n".join(results))
+
     def precheck(self, qclient):
+        # since one of the objectives of SPP is to generate prep-info files
+        # and automatically load them into Qiita, confirm that all studies
+        # mentioned in the sample-sheet/pre-prep do not contain sample
+        # metadata that would cause an error in the pipeline after processing
+        # has already completed but the results have not yet been loaded.
+        self._project_metadata_check(qclient)
+
         # compare sample-ids/tube-ids in sample-sheet/mapping file
         # against what's in Qiita. Results are a list of dictionaries, one
         # per project.

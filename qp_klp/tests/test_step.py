@@ -977,7 +977,7 @@ class BasicStepTests(BaseStepTests):
     def test_precheck(self):
         fake_client = AnotherFakeClient()
 
-        # test that precheck() raises a PipelineError with the correct
+        # test that Step.precheck() raises a PipelineError with the correct
         # message, given the configuration of Step() and AnotherFakeClient().
 
         step = Step(self.another_pipeline, self.qiita_id, None)
@@ -990,6 +990,24 @@ class BasicStepTests(BaseStepTests):
 
         with self.assertRaisesRegex(PipelineError, msg):
             step.precheck(fake_client)
+
+    def test_project_metadata_check(self):
+        fake_client = FakeClient()
+
+        # self.pipeline represents a metagenomic pathway.
+        step = Step(self.pipeline, self.qiita_id, None)
+
+        # _project_metadata_check() should return w/out raising an Error if
+        # step and fake_client is used.
+        step._project_metadata_check(fake_client)
+
+        fake_client.info_in_11661['categories'].append('well_id_384')
+        fake_client.info_in_13059['categories'].append('well_id_384')
+
+        msg = ("'well_id_384' exists in Qiita study 13059's sample metadata"
+               "\n'well_id_384' exists in Qiita study 11661's sample metadata")
+        with self.assertRaisesRegex(PipelineError, msg):
+            step._project_metadata_check(fake_client)
 
     def test_conditional_fastqc_finder(self):
         self._create_alternate_test_input()
