@@ -964,7 +964,7 @@ class Step:
             categories = qclient.get(f"/api/v1/study/{qiita_id}/samples/info")[
                 "categories"]
 
-            res = self.pipeline.identify_reserved_words(qiita_id, categories)
+            res = self.pipeline.identify_reserved_words(categories)
 
             # if any reserved words were identified, generate an appropriate
             # error message for it and add it to the list of error messages
@@ -975,7 +975,7 @@ class Step:
             results += res
 
         if results:
-            # return any error messages generated across all of the projects.
+            # return any error messages generated across all the projects.
             raise PipelineError("\n".join(results))
 
     def precheck(self, qclient):
