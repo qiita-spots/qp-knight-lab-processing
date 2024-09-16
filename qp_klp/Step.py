@@ -4,6 +4,7 @@ from metapool import load_sample_sheet
 from os import makedirs, walk, listdir
 from os.path import join, exists, split, basename, dirname, abspath
 from sequence_processing_pipeline.ConvertJob import ConvertJob
+from sequence_processing_pipeline.TRConvertJob import TRConvertJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.PipelineError import PipelineError
@@ -142,6 +143,7 @@ class Step:
         self.touched_studies_prep_info = None
         self.run_prefixes = {}
         self.prep_copy_index = 0
+        self.use_tellread = False
 
     @classmethod
     def generate_pipeline(cls, pipeline_type, input_file_path, lane_number,
@@ -295,17 +297,34 @@ class Step:
         return (samples, tids)
 
     def _convert_bcl_to_fastq(self, config, input_file_path):
-        convert_job = ConvertJob(self.pipeline.run_dir,
-                                 self.pipeline.output_path,
-                                 input_file_path,
-                                 config['queue'],
-                                 config['nodes'],
-                                 config['nprocs'],
-                                 config['wallclock_time_in_minutes'],
-                                 config['per_process_memory_limit'],
-                                 config['executable_path'],
-                                 config['modules_to_load'],
-                                 self.master_qiita_job_id)
+        if self.use_tellread is True:
+            # we'll check to see if this needs to be done using tellread
+            # and if so, instantiate TRConvertJob instead of ConvertJob.
+            # For now we'll just get this working with Metagenomic and leave
+            # the possibility of Amplicon for another time.
+            convert_job = TRConvertJob(self.pipeline.run_dir,
+                                       self.pipeline.output_path,
+                                       input_file_path,
+                                       config['queue'],
+                                       config['nodes'],
+                                       config['nprocs'],
+                                       config['wallclock_time_in_minutes'],
+                                       config['per_process_memory_limit'],
+                                       config['executable_path'],
+                                       config['modules_to_load'],
+                                       self.master_qiita_job_id)
+        else:
+            convert_job = ConvertJob(self.pipeline.run_dir,
+                                     self.pipeline.output_path,
+                                     input_file_path,
+                                     config['queue'],
+                                     config['nodes'],
+                                     config['nprocs'],
+                                     config['wallclock_time_in_minutes'],
+                                     config['per_process_memory_limit'],
+                                     config['executable_path'],
+                                     config['modules_to_load'],
+                                     self.master_qiita_job_id)
 
         convert_job.run(callback=self.update_callback)
 
