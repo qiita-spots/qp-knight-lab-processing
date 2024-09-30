@@ -8,28 +8,25 @@
 from functools import partial
 from os import environ
 from qiita_client import ArtifactInfo
-from qp_klp.Amplicon import Amplicon
-from qp_klp.Metagenomic import Metagenomic
-from qp_klp.Step import Step
+from qp_klp.Assays import Amplicon, Metagenomic, Metatranscriptomic
+from qp_klp.Instruments import Illumina, TellSeq
 from os import makedirs
 from os.path import join, split, exists
 from sequence_processing_pipeline.Pipeline import Pipeline
 from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from metapool import load_sample_sheet
+from Workflows import WorkflowFactory
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
 
 
 class StatusUpdate():
-    def __init__(self, qclient, job_id, msgs):
+    def __init__(self, qclient, job_id):
         self.qclient = qclient
         self.job_id = job_id
         self.msg = ''
-        self.current_step = 0
-        self.step_count = len(msgs)
-        self.msgs = msgs
 
     def update_job_status(self, status, jid):
         # internal function implements a callback function for Pipeline.run().
@@ -38,17 +35,15 @@ class StatusUpdate():
         self.qclient.update_job_step(self.job_id,
                                      self.msg + f" ({jid}: {status})")
 
-    def update_current_message(self, include_step=True):
+    def update_current_message(self, step=None):
         # internal function that sets current_message to the new value before
         # updating the job step in the UI.
-        if include_step:
-            msg = "Step %d of %d: " % (self.current_step + 1, self.step_count)
+        if step:
+            msg = "Step %d of %d: " % (step[0], step[1])
         else:
             msg = ""
 
         self.msg = msg + self.msgs[self.current_step]
-
-        self.current_step += 1
 
         self.qclient.update_job_step(self.job_id, self.msg)
 
@@ -158,15 +153,15 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         return False, None, ("Your uploaded file doesn't appear to be a sample"
                              "-sheet or a mapping-file.")
 
-    msgs = ["Setting up pipeline", "Getting project information",
+    msgs = ["", "",
             "Converting data", "Performing quality control",
             "Generating reports", "Generating preps",
             "Generating sample information ", "Registering blanks in Qiita",
             "Loading preps into Qiita", "Generating packaging commands",
-            "Packaging results", "SPP finished"]
+            "Packaging results"]
 
     status_line = StatusUpdate(qclient, job_id, msgs)
-    status_line.update_current_message()
+    status_line.update_current_message("Setting up pipeline")
 
     skip_steps = []
     if is_restart:
@@ -186,6 +181,9 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
             skip_steps.append('GenPrepFileJob')
 
     try:
+        workflow = WorkflowFactory().generate_workflow(assay_type,
+                                                       instrument_type)
+
         pipeline = Step.generate_pipeline(pipeline_type,
                                           uif_path,
                                           lane_number,
@@ -193,6 +191,17 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                                           run_identifier,
                                           out_dir,
                                           job_id)
+
+        workflow.get_ready(qclient,
+                           pipeline,
+                           job_id,
+                           status_update_callback=status_line.
+                           update_current_message,
+                           lane_number=lane_number,
+                           is_restart=is_restart)
+
+    # TODO: MUCH TO CLEAN UP HERE! :)
+
     except PipelineError as e:
         # assume AttributeErrors are issues w/bad sample-sheets or
         # mapping-files.
@@ -208,7 +217,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                 pipeline, job_id, status_line, lane_number,
                 is_restart=is_restart)
 
-        status_line.update_current_message()
+        status_line.update_current_message("Getting project information")
 
         step.precheck(qclient)
 
@@ -219,7 +228,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                               update=True,
                               skip_steps=skip_steps)
 
-        status_line.update_current_message()
+        status_line.update_current_message("SPP finished")
 
     except PipelineError as e:
         return False, None, str(e)

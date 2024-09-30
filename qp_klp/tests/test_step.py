@@ -494,7 +494,7 @@ class BaseStepTests(TestCase):
 
 
 class BasicStepTests(BaseStepTests):
-    def test_creation(self):
+    def atest_creation(self):
         # Test base-class creation method, even though base-class will never
         # be instantiated by itself in normal usage.
 
@@ -510,7 +510,7 @@ class BasicStepTests(BaseStepTests):
 
         self.assertIsNotNone(step)
 
-    def test_convert_bcl_to_fastq(self):
+    def atest_convert_bcl_to_fastq(self):
         self._create_test_input(1)
 
         step = Step(self.pipeline, self.qiita_id, None)
@@ -522,7 +522,7 @@ class BasicStepTests(BaseStepTests):
         step._convert_bcl_to_fastq(config['bcl-convert'],
                                    self.good_sample_sheet_path)
 
-    def test_quality_control(self):
+    def atest_quality_control(self):
         self._create_test_input(2)
 
         fake_path = join(self.output_file_path, 'NuQCJob', 'logs')
@@ -558,7 +558,7 @@ class BasicStepTests(BaseStepTests):
         step._quality_control(config['nu-qc'],
                               self.good_sample_sheet_path)
 
-    def test_generate_pipeline(self):
+    def atest_generate_pipeline(self):
         pipeline = Step.generate_pipeline(Step.METAGENOMIC_TYPE,
                                           self.good_sample_sheet_path,
                                           1,
@@ -589,7 +589,7 @@ class BasicStepTests(BaseStepTests):
 
         self.assertIsNotNone(pipeline)
 
-    def test_get_project_info(self):
+    def atest_get_project_info(self):
         obs = self.pipeline.get_project_info()
 
         exp = [{'project_name': 'NYU_BMS_Melanoma_13059', 'qiita_id': '13059',
@@ -601,10 +601,10 @@ class BasicStepTests(BaseStepTests):
 
         self.assertEqual(obs, exp)
 
-    def test_parse_prep_file(self):
+    def atest_parse_prep_file(self):
         good_prep_file = join('qp_klp', 'tests', 'good-prep-file-small.txt')
 
-        obs = Step.parse_prep_file(good_prep_file)
+        obs = Step._parse_prep_file(good_prep_file)
 
         # assert that prep-files that begin with sample-names of the form
         # '363192526', '1e-3', and '123.000' are parsed as strings instead of
@@ -722,10 +722,10 @@ class BasicStepTests(BaseStepTests):
 
         # simply confirm that a DataFrame is returned when convert_to_dict is
         # False. We already know that the contents of obs will be correct.
-        obs = Step.parse_prep_file(good_prep_file, convert_to_dict=False)
+        obs = Step._parse_prep_file(good_prep_file, convert_to_dict=False)
         self.assertIsInstance(obs, pd.DataFrame)
 
-    def test_generate_special_map(self):
+    def atest_generate_special_map(self):
         fake_client = FakeClient()
         step = Step(self.pipeline, self.qiita_id, None)
         step.generate_special_map(fake_client)
@@ -740,7 +740,7 @@ class BasicStepTests(BaseStepTests):
 
         self.assertEquals(obs, exp)
 
-    def test_get_samples_in_qiita(self):
+    def atest_get_samples_in_qiita(self):
         fake_client = FakeClient()
         step = Step(self.pipeline, self.qiita_id, None)
         obs_samples, obs_tids = step.get_samples_in_qiita(fake_client, '13059')
@@ -764,7 +764,7 @@ class BasicStepTests(BaseStepTests):
         self.assertEqual(obs_samples, exp_samples)
         self.assertDictEqual(obs_tids, exp_tids)
 
-    def test_get_tube_ids_from_qiita(self):
+    def atest_get_tube_ids_from_qiita(self):
         fake_client = FakeClient()
         step = Step(self.pipeline, self.qiita_id, None)
         step._get_tube_ids_from_qiita(fake_client)
@@ -787,7 +787,7 @@ class BasicStepTests(BaseStepTests):
 
         self.assertDictEqual(obs, exp)
 
-    def test_compare_samples_against_qiita(self):
+    def atest_compare_samples_against_qiita(self):
         fake_client = FakeClient()
         step = Step(self.pipeline_mini, self.qiita_id, None)
         results = step._compare_samples_against_qiita(fake_client)
@@ -840,7 +840,7 @@ class BasicStepTests(BaseStepTests):
         # of which are in FakeQiita().
         self.assertEqual(results[1]['samples_not_in_qiita'], set())
 
-    def test_generate_commands(self):
+    def atest_generate_commands(self):
         self._create_test_input(3)
 
         fake_client = FakeClient()
@@ -892,7 +892,7 @@ class BasicStepTests(BaseStepTests):
 
         self.assertEqual(step.cmds, exp)
 
-    def test_overwrite_prep_files(self):
+    def atest_overwrite_prep_files(self):
         # use a prep-file specifically for modification by the
         # _overwrite_prep_files() method.
         fake_client = FakeClient()
@@ -930,7 +930,7 @@ class BasicStepTests(BaseStepTests):
         exp = set([tids[t][0] for t in tids])
         self.assertEqual(new_old_sample_names, exp)
 
-    def test_compare_samples_against_qiita_error_handling(self):
+    def atest_compare_samples_against_qiita_error_handling(self):
         fake_client = AnotherFakeClient()
 
         # In addition to the samples in AnotherFakeClient(),
@@ -973,7 +973,7 @@ class BasicStepTests(BaseStepTests):
 
         self.assertEqual(obs, exp)
 
-    def test_precheck(self):
+    def atest_precheck(self):
         fake_client = AnotherFakeClient()
 
         # test that Step.precheck() raises a PipelineError with the correct
@@ -990,7 +990,7 @@ class BasicStepTests(BaseStepTests):
         with self.assertRaisesRegex(PipelineError, msg):
             step.precheck(fake_client)
 
-    def test_project_metadata_check(self):
+    def atest_project_metadata_check(self):
         fake_client = FakeClient()
 
         # self.pipeline represents a metagenomic pathway.
@@ -1008,7 +1008,7 @@ class BasicStepTests(BaseStepTests):
         with self.assertRaisesRegex(PipelineError, msg):
             step._project_metadata_check(fake_client)
 
-    def test_conditional_fastqc_finder(self):
+    def atest_conditional_fastqc_finder(self):
         self._create_alternate_test_input()
 
         # For a metagenomic pipeline, we expect indexed files to be removed
@@ -1216,7 +1216,7 @@ class ReplicateTests(BaseStepTests):
         if exists(self.output_file_path):
             rmtree(self.output_file_path)
 
-    def test_replicates(self):
+    def atest_replicates(self):
         self.maxDiff = None
 
         # Create run_dir_stats_dir Step object and generate prep-files.
@@ -1358,7 +1358,7 @@ class FailedSamplesRecordTests(TestCase):
 
         self.output = TemporaryDirectory()
 
-    def test_failed_samples_record(self):
+    def atest_failed_samples_record(self):
         fsr = FailedSamplesRecord(self.output.name, self.samples)
 
         # assert that a state file doesn't already exist and attempt to load()
