@@ -21,14 +21,15 @@ class WorkflowError(Exception):
 
 class Workflow():
     def __init__(self):
-        # base initializer allows WorkflowFactory to return the correct
-        # Workflow() type w/out having to include all possible starting
-        # parameters needed for each Workflow type.
+        """
+        base initializer allows WorkflowFactory to return the correct
+        Workflow() type w/out having to include all possible starting
+        parameters needed for each Workflow type.
+        """
         self.special_map = None
         self.prep_file_paths = None
         self.pipeline = None
         self.qclient = None
-        self.special_map = None
         self.sifs = None
         self.cmds_log_path = None
         self.cmds = None
@@ -40,14 +41,27 @@ class Workflow():
         # than be undefined.
 
     def configure(self):
+        """
+        Second stage initializer that accepts sets of parameters unique to each
+         workflow.
+        :return:
+        """
         raise WorkflowError("configure() method not implemented for base "
                             "Workflow() class")
 
     def what_am_i(self):
+        """
+        Returns text description of Workflow's Instrument & Assay mixins.
+        :return:
+        """
         return (f"Instrument: {self.instrument_name()}" + " " +
                 f"Assay: {self.assay_name()}")
 
     def generate_special_map(self):
+        """
+        Generates a list of tuples to support pipeline processing.
+        :return: A list of triplets.
+        """
         # this function should be able to be tested by passing in simulated =
         # results from qclient.
 
@@ -68,6 +82,10 @@ class Workflow():
         self.special_map = special_map
 
     def generate_sifs(self):
+        """
+        TODO
+        :return:
+        """
         from_qiita = {}
 
         for study_id in self.prep_file_paths:
@@ -103,6 +121,10 @@ class Workflow():
         return self.sifs
 
     def update_blanks_in_qiita(self):
+        """
+        TODO
+        :return:
+        """
         for sif_path in self.sifs:
             # get study_id from sif_file_name ...something_14385_blanks.tsv
             study_id = sif_path.split('_')[-2]
@@ -149,6 +171,10 @@ class Workflow():
                                         data=dumps(data))
 
     def _helper_process_operations(self):
+        """
+        Helper method for generate_commands()
+        :return:
+        """
         RESULTS_DIR = 'final_results'
         TAR_CMD = 'tar zcvf'
         LOG_PREFIX = 'logs'
@@ -214,7 +240,12 @@ class Workflow():
 
         return cmds
 
-    def _helper_process_blanks(self):
+    def _process_blanks(self):
+        """
+        Helper method for generate_commands().
+
+        :return:
+        """
         results = [x for x in listdir(self.pipeline.output_path) if
                    x.endswith('_blanks.tsv')]
 
@@ -223,7 +254,11 @@ class Workflow():
         if len(results) > 0:
             return 'tar zcvf sample-files.tgz' + ' ' + ' '.join(results)
 
-    def _helper_process_fastp_report_dirs(self):
+    def _process_fastp_report_dirs(self):
+        """
+        Helper method for generate_commands().
+        :return:
+        """
         report_dirs = []
 
         for root, dirs, files in walk(self.pipeline.output_path):
@@ -242,21 +277,29 @@ class Workflow():
             # is empty. Some pipelines do not generate fastp reports.
             return []
 
-    def write_commands_to_output_path(self):
+    def _write_commands_to_output_path(self):
+        """
+        Helper method for generate_commands().
+        :return:
+        """
         self.cmds_log_path = join(self.pipeline.output_path, 'cmds.log')
         with open(self.cmds_log_path, 'w') as f:
             for cmd in self.cmds:
                 f.write(f'{cmd}\n')
 
     def generate_commands(self):
+        """
+        TODO
+        :return:
+        """
         cmds = self._helper_process_operations()
 
-        result = self._helper_process_fastp_report_dirs()
+        result = self._process_fastp_report_dirs()
 
         if result:
             cmds.append(result)
 
-        result = self._helper_process_blanks()
+        result = self._process_blanks()
 
         if result:
             cmds.append(result)
@@ -273,14 +316,21 @@ class Workflow():
 
         self.cmds = cmds
 
-        self.write_commands_to_output_path()
+        self._write_commands_to_output_path()
 
     def execute_commands(self):
+        """
+        TODO
+        :return:
+        """
         # execute the list of commands in order
         for cmd in self.cmds:
-            p = Popen(cmd, universal_newlines=True, shell=True,
-                      stdout=PIPE, stderr=PIPE)
-            std_out, std_err = p.communicate()
+            p = Popen(cmd,
+                      universal_newlines=True,
+                      shell=True,
+                      stdout=PIPE,
+                      stderr=PIPE)
+            _, _ = p.communicate()
             return_code = p.returncode
 
             if return_code != 0:
@@ -289,6 +339,10 @@ class Workflow():
                 raise WorkflowError(f"'{cmd}' returned {return_code}")
 
     def _project_metadata_check(self):
+        """
+        Helper method for pre_check()
+        :return:
+        """
         # Let Pipeline() retrieve the needed qiita study ids from the user
         # input while this plugin queries for the existing set of column
         # names in each project's sample metadata. We'll let Pipeline()
@@ -318,7 +372,13 @@ class Workflow():
             # return any error messages generated across all the projects.
             raise WorkflowError("\n".join(results))
 
-    def _process_tube_ids(self, project_name, qiita_id, samples):
+    def _process_tube_ids(self, qiita_id, samples):
+        """
+        Helper method for _compare_samples_against_qiita().
+        :param qiita_id:
+        :param samples:
+        :return:
+        """
         if qiita_id in self.tube_id_map:
             tids = [self.tube_id_map[qiita_id][sample] for sample in
                     self.tube_id_map[qiita_id]]
@@ -342,6 +402,10 @@ class Workflow():
         # return None otherwise
 
     def _compare_samples_against_qiita(self):
+        """
+        Helper method for pre_check().
+        :return:
+        """
         projects = self.pipeline.get_project_info(short_names=True)
 
         results = []
@@ -704,7 +768,6 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
         self.samples_in_qiita = None
         self.output_path = None
         self.sample_state = None
-        self.special_map = None
         self.touched_studies_prep_info = None
         self.run_prefixes = {}
         self.prep_copy_index = 0
@@ -838,13 +901,131 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
 
 class TellSeqMetagenomicWorkflow(Metagenomic, TellSeq):
     def __init__(self):
+        pass
+
+    def execute_pipeline(self, update_status, update=True, skip_steps=[]):
         '''
-        This is the standard metagenomic workflow.
+        Executes steps of pipeline in proper sequence.
+        :param qclient: Qiita client library or equivalent.
+        :param update_status: callback function to update status.
+        :param update: Set False to prevent updates to Qiita.
+        :return: None
         '''
 
-    def what_am_i(self):
-        return (f"Instrument: {self.instrument_name()}" + " " +
-                f"Assay: {self.assay_name()}")
+        if not self.is_restart:
+            self.pre_check()
+
+        # this is performed even in the event of a restart.
+        self.generate_special_map()
+
+        # even if a job is being skipped, it's being skipped because it was
+        # determined that it already completed successfully. Hence,
+        # increment the status because we are still iterating through them.
+
+        update_status("Converting data", 1, 9)
+        if "ConvertJob" not in skip_steps:
+            # converting raw data to fastq depends heavily on the instrument
+            # used to generate the run_directory. Hence this method is
+            # supplied by the instrument mixin.
+            results = self.convert_raw_to_fastq()
+            self.fsr_write(results, 'ConvertJob')
+
+        update_status("Performing quality control", 2, 9)
+        if "NuQCJob" not in skip_steps:
+            # amplicon runs do not currently perform qc as the demuxing of
+            # samples is performed downstream of SPP. It also does not depend
+            # on the instrument type since fastq files are by convention the
+            # output in either case.
+            #
+            # Hence, quality control is associated w/the assay mixin (for now).
+            self.quality_control(self.pipeline)
+
+        update_status("Generating reports", 3, 9)
+        if "FastQCJob" not in skip_steps:
+            # reports are currently implemented by the assay mixin. This is
+            # only because metagenomic runs currently require a failed-samples
+            # report to be generated. This is not done for amplicon runs since
+            # demultiplexing occurs downstream of SPP.
+            self.generate_reports()
+
+        update_status("Generating preps", 4, 9)
+        if "GenPrepFileJob" not in skip_steps:
+            # preps are currently associated with array mixin, but only
+            # because there are currently some slight differences in how
+            # FastQCJob gets instantiated(). This could get moved into a
+            # shared method, but probably still in Assay.
+            self.generate_prep_file()
+
+        # moved final component of genprepfilejob outside of object.
+        # obtain the paths to the prep-files generated by GenPrepFileJob
+        # w/out having to recover full state.
+        tmp = join(self.pipeline.output_path, 'GenPrepFileJob', 'PrepFiles')
+
+        self.has_replicates = False
+
+        prep_paths = []
+        self.prep_file_paths = {}
+
+        for root, dirs, files in walk(tmp):
+            for _file in files:
+                # breakup the prep-info-file into segments
+                # (run-id, project_qid, other) and cleave
+                # the qiita-id from the project_name.
+                qid = _file.split('.')[1].split('_')[-1]
+
+                if qid not in self.prep_file_paths:
+                    self.prep_file_paths[qid] = []
+
+                _path = abspath(join(root, _file))
+                if _path.endswith('.tsv'):
+                    prep_paths.append(_path)
+                    self.prep_file_paths[qid].append(_path)
+
+            for _dir in dirs:
+                if _dir == '1':
+                    # if PrepFiles contains the '1' directory, then it's a
+                    # given that this sample-sheet contains replicates.
+                    self.has_replicates = True
+
+        # currently imported from Assay although it is a base method. it
+        # could be imported into Workflows potentially, since it is a post-
+        # processing step. All pairings of assay and instrument type need to
+        # generate prep-info files in the same format.
+        self.overwrite_prep_files(prep_paths)
+
+        # for now, simply re-run any line below as if it was a new job, even
+        # for a restart. functionality is idempotent, except for the
+        # registration of new preps in Qiita. These will simply be removed
+        # manually.
+
+        # post-processing steps are by default associated with the Workflow
+        # class, since they deal with fastq files and Qiita, and don't depend
+        # on assay or instrument type.
+        update_status("Generating sample information", 5, 9)
+        self.sifs = self.generate_sifs()
+
+        # post-processing step.
+        update_status("Registering blanks in Qiita", 6, 9)
+        if update:
+            self.update_blanks_in_qiita()
+
+        update_status("Loading preps into Qiita", 7, 9)
+        if update:
+            self.update_prep_templates()
+
+        # before we load preps into Qiita we need to copy the fastq
+        # files n times for n preps and correct the file-paths each
+        # prep is pointing to.
+        self.load_preps_into_qiita()
+
+        update_status("Generating packaging commands", 8, 9)
+        self.generate_commands()
+
+        update_status("Packaging results", 9, 9)
+        if update:
+            self.execute_commands()
+
+        # DONE! :)
 
 
 class WorkflowFactory():
