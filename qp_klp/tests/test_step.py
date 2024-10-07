@@ -6,7 +6,6 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import TestCase
-from qp_klp.Step import Step, FailedSamplesRecord
 from sequence_processing_pipeline.Pipeline import Pipeline, PipelineError
 from os.path import join, abspath, exists, dirname
 from functools import partial
@@ -18,6 +17,7 @@ from metapool import parse_prep
 import re
 from copy import deepcopy
 from tempfile import TemporaryDirectory
+from FailedSamplesRecord import FailedSamplesRecord
 
 
 class FakeClient():
