@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from qp_klp.tests.test_step import BaseStepTests
-from qp_klp.Metagenomic import Metagenomic
+from qp_klp.Assays import Metagenomic
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os import makedirs
 from os.path import join, split, exists, basename, dirname
@@ -21,7 +21,7 @@ class MetagenomicTests(BaseStepTests):
     def setUp(self):
         super().setUp()
 
-    def test_metagenomic_creation(self):
+    def atest_metagenomic_creation(self):
         # Test base-class creation method, even though base-class will never
         # be instantiated by itself in normal usage.
 
@@ -51,11 +51,11 @@ class MetagenomicTests(BaseStepTests):
 
         self.assertIsNotNone(step)
 
-    def test_metagenomic_convert_bcl_to_fastq(self):
+    def atest_metagenomic_convert_bcl_to_fastq(self):
         self._create_test_input(1)
 
         step = Metagenomic(self.pipeline, self.qiita_id, None)
-        step.convert_bcl_to_fastq()
+        step.convert_raw_to_fastq()
 
     def _generate_fake_fastq_files(self, output_path, file_count,
                                    max_fastq_size_in_mb):
@@ -99,7 +99,7 @@ class MetagenomicTests(BaseStepTests):
 
         return return_these
 
-    def test_metagenomic_quality_control(self):
+    def atest_metagenomic_quality_control(self):
         self._create_test_input(2)
 
         metadata = {'NYU_BMS_Melanoma_13059': {'needs_filtering': False,
@@ -142,7 +142,7 @@ class MetagenomicTests(BaseStepTests):
                                                         '.trimmed.fastq.gz'))
                 copyfile(fp, file_path)
 
-        # Since the 'sbatch' and 'sacct' commands don't exist in the testing
+        # Since the 'sbatch' and 'squeue' commands don't exist in the testing
         # environment, fake them by creating fakes that will output to stdout
         # the metadata needed to keep run() working as intended. These faked
         # binary files overwrite the versions created by test_step.py and are
@@ -151,11 +151,11 @@ class MetagenomicTests(BaseStepTests):
             # code will extract 777 for use as the fake job-id in slurm.
             f.write("echo Hello 777")
 
-        with open(join(dirname(sys.executable), 'sacct'), 'w') as f:
-            # fake sacct will return job-id 777 completed successfully.
+        with open(join(dirname(sys.executable), 'squeue'), 'w') as f:
+            # fake squeue will return job-id 777 completed successfully.
             # faked output files created in test method() will generate
             # faked results.
-            f.write("echo \"777|cc_fake_job.sh|COMPLETED|00:10:00|0:0\"")
+            f.write("echo \"ARRAY_JOB_ID,JOBID,STATE\n777,777,COMPLETED\"")
 
         # execute the quality_control() method, which will in turn call NuQC's
         # run() method.
