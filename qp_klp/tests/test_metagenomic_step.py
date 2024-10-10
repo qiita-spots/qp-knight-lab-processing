@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from qp_klp.tests.test_step import BaseStepTests
-from qp_klp.Metagenomic import Metagenomic
+from qp_klp.Assays import Metagenomic
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os import makedirs
 from os.path import join, split, exists, basename, dirname

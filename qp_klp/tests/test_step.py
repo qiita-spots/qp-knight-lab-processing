@@ -17,7 +17,7 @@ from metapool import parse_prep
 import re
 from copy import deepcopy
 from tempfile import TemporaryDirectory
-from FailedSamplesRecord import FailedSamplesRecord
+from qp_klp.FailedSamplesRecord import FailedSamplesRecord
 
 
 class FakeClient():

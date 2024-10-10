@@ -8,7 +8,7 @@
 from sequence_processing_pipeline.Pipeline import Pipeline
 from os.path import join, abspath
 from qp_klp.tests.test_step import BaseStepTests
-from qp_klp.Amplicon import Amplicon
+from qp_klp.Assays import Amplicon
 
 
 class AmpliconTests(BaseStepTests):

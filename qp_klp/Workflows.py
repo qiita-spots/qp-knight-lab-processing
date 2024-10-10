@@ -53,8 +53,9 @@ class Workflow():
                 absent_list.append(attribute)
 
         if absent_list:
-            raise ValueError("The following values are not defined in kwargs:"
-                             + " " + ', '.join(absent_list))
+            raise ValueError(f"The following values must also be defined in "
+                             f"kwargs for {self.__class__.__name__} workflows"
+                             + ": " + ', '.join(absent_list))
 
     def update_status(self, msg):
         if self.status_update_callback:
@@ -511,16 +512,6 @@ class Workflow():
         return results
 
     @classmethod
-    def update_sample_sheet(cls, sample_sheet_path, lane_number):
-        # use KLSampleSheet functionality to add/overwrite lane number.
-        sheet = load_sample_sheet(sample_sheet_path)
-        for sample in sheet:
-            sample['Lane'] = f'{lane_number}'
-
-        with open(sample_sheet_path, 'w') as f:
-            sheet.write(f)
-
-    @classmethod
     def get_samples_in_qiita(cls, qclient, qiita_id):
         '''
         Obtain lists for sample-names and tube-ids registered in Qiita.
@@ -717,14 +708,14 @@ class Workflow():
 
 class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
     def __init__(self, **kwargs):
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
 
-        self.mandatory_attributes = ['qclient', 'input_file_path',
+        self.mandatory_attributes = ['qclient', 'uif_path',
                                      'lane_number', 'config_fp',
                                      'run_identifier', 'output_dir', 'job_id',
                                      'lane_number', 'is_restart']
 
-        self.confirm_mandatory_attributes(kwargs)
+        self.confirm_mandatory_attributes()
 
         # second stage initializer that could conceivably be pushed down into
         # specific children requiring specific parameters.
@@ -732,11 +723,13 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
 
         self.pipeline = Pipeline(self.kwargs['config_fp'],
                                  self.kwargs['run_identifier'],
-                                 self.kwargs['input_file_path'],
+                                 self.kwargs['uif_path'],
                                  self.kwargs['output_dir'],
                                  self.kwargs['job_id'],
                                  ASSAY_NAME_METAGENOMIC,
                                  lane_number=self.kwargs['lane_number'])
+
+        print(self.pipeline.pipeline_type)
 
         self.master_qiita_job_id = None
 
@@ -930,27 +923,87 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
 
 
 class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
-    @classmethod
-    def generate_pipeline(cls, pipeline_type, input_file_path, lane_number,
-                          config_fp,
-                          run_identifier, out_dir, job_id):
-        # TODO METAOMIC_ASSAY_NAMES could still fall out of sync with what;s
-        # in mg-scripts.
-        if pipeline_type in METAOMIC_ASSAY_NAMES:
-            cls.update_sample_sheet(input_file_path, lane_number)
-            return Pipeline(config_fp, run_identifier, input_file_path, None,
-                            out_dir, job_id, pipeline_type)
-        elif pipeline_type == ASSAY_NAME_AMPLICON:
-            return Pipeline(config_fp, run_identifier, None, input_file_path,
-                            out_dir, job_id, pipeline_type)
-        else:
-            raise WorkflowError(
-                f"'{pipeline_type}' is not a valid Pipeline type.")
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # TODO: Replace these with frozen set() or similar.
+        self.mandatory_attributes = ['qclient', 'uif_path', 'config_fp',
+                                     'run_identifier', 'output_dir', 'job_id',
+                                     'is_restart']
+
+        self.confirm_mandatory_attributes()
+
+        # second stage initializer that could conceivably be pushed down into
+        # specific children requiring specific parameters.
+        self.qclient = self.kwargs['qclient']
+
+        self.pipeline = Pipeline(self.kwargs['config_fp'],
+                                 self.kwargs['run_identifier'],
+                                 self.kwargs['uif_path'],
+                                 self.kwargs['output_dir'],
+                                 self.kwargs['job_id'],
+                                 ASSAY_NAME_AMPLICON,
+                                 lane_number=self.kwargs['lane_number'])
+
+        self.master_qiita_job_id = None
+
+        self.lane_number = self.kwargs['lane_number']
+        self.is_restart = bool(self.kwargs['is_restart'])
+
+        if self.is_restart is True:
+            self.determine_steps_to_skip()
+
+        self.update = True
+
+        if 'update_qiita' in kwargs:
+            if bool(kwargs['update_qiita']) is False:
+                self.update = False
+
+    def determine_steps_to_skip(self):
+        pass
+        # TODO: Fill in. It's largely the same as for Meta*Omic.
+
+    def execute_pipeline(self):
+        pass
+        # TODO: Fill in. It's largely the same as in the old impl.
 
 
 class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
-    def __init__(self):
-        pass
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # TODO: Replace these with frozen set() or similar.
+        self.mandatory_attributes = ['qclient', 'uif_path', 'config_fp',
+                                     'run_identifier', 'output_dir', 'job_id',
+                                     'is_restart']
+
+        self.confirm_mandatory_attributes()
+
+        # second stage initializer that could conceivably be pushed down into
+        # specific children requiring specific parameters.
+        self.qclient = self.kwargs['qclient']
+
+        self.pipeline = Pipeline(self.kwargs['config_fp'],
+                                 self.kwargs['run_identifier'],
+                                 self.kwargs['uif_path'],
+                                 self.kwargs['output_dir'],
+                                 self.kwargs['job_id'],
+                                 ASSAY_NAME_METAGENOMIC,
+                                 lane_number=self.kwargs['lane_number'])
+
+        self.master_qiita_job_id = None
+
+        self.lane_number = self.kwargs['lane_number']
+        self.is_restart = bool(self.kwargs['is_restart'])
+
+        if self.is_restart is True:
+            self.determine_steps_to_skip()
+
+        self.update = True
+
+        if 'update_qiita' in kwargs:
+            if bool(kwargs['update_qiita']) is False:
+                self.update = False
 
     def execute_pipeline(self, update_status, update=True, skip_steps=[]):
         '''
@@ -961,124 +1014,13 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
         :return: None
         '''
 
-        if not self.is_restart:
-            self.pre_check()
-
-        # this is performed even in the event of a restart.
-        self.generate_special_map()
-
-        # even if a job is being skipped, it's being skipped because it was
-        # determined that it already completed successfully. Hence,
-        # increment the status because we are still iterating through them.
-
-        update_status("Converting data", 1, 9)
-        if "ConvertJob" not in skip_steps:
-            # converting raw data to fastq depends heavily on the instrument
-            # used to generate the run_directory. Hence this method is
-            # supplied by the instrument mixin.
-            results = self.convert_raw_to_fastq()
-            self.fsr_write(results, 'ConvertJob')
-
-        update_status("Performing quality control", 2, 9)
-        if "NuQCJob" not in skip_steps:
-            # amplicon runs do not currently perform qc as the demuxing of
-            # samples is performed downstream of SPP. It also does not depend
-            # on the instrument type since fastq files are by convention the
-            # output in either case.
-            #
-            # Hence, quality control is associated w/the assay mixin (for now).
-            self.quality_control(self.pipeline)
-
-        update_status("Generating reports", 3, 9)
-        if "FastQCJob" not in skip_steps:
-            # reports are currently implemented by the assay mixin. This is
-            # only because metagenomic runs currently require a failed-samples
-            # report to be generated. This is not done for amplicon runs since
-            # demultiplexing occurs downstream of SPP.
-            self.generate_reports()
-
-        update_status("Generating preps", 4, 9)
-        if "GenPrepFileJob" not in skip_steps:
-            # preps are currently associated with array mixin, but only
-            # because there are currently some slight differences in how
-            # FastQCJob gets instantiated(). This could get moved into a
-            # shared method, but probably still in Assay.
-            self.generate_prep_file()
-
-        # moved final component of genprepfilejob outside of object.
-        # obtain the paths to the prep-files generated by GenPrepFileJob
-        # w/out having to recover full state.
-        tmp = join(self.pipeline.output_path, 'GenPrepFileJob', 'PrepFiles')
-
-        self.has_replicates = False
-
-        prep_paths = []
-        self.prep_file_paths = {}
-
-        for root, dirs, files in walk(tmp):
-            for _file in files:
-                # breakup the prep-info-file into segments
-                # (run-id, project_qid, other) and cleave
-                # the qiita-id from the project_name.
-                qid = _file.split('.')[1].split('_')[-1]
-
-                if qid not in self.prep_file_paths:
-                    self.prep_file_paths[qid] = []
-
-                _path = abspath(join(root, _file))
-                if _path.endswith('.tsv'):
-                    prep_paths.append(_path)
-                    self.prep_file_paths[qid].append(_path)
-
-            for _dir in dirs:
-                if _dir == '1':
-                    # if PrepFiles contains the '1' directory, then it's a
-                    # given that this sample-sheet contains replicates.
-                    self.has_replicates = True
-
-        # currently imported from Assay although it is a base method. it
-        # could be imported into Workflows potentially, since it is a post-
-        # processing step. All pairings of assay and instrument type need to
-        # generate prep-info files in the same format.
-        self.overwrite_prep_files(prep_paths)
-
-        # for now, simply re-run any line below as if it was a new job, even
-        # for a restart. functionality is idempotent, except for the
-        # registration of new preps in Qiita. These will simply be removed
-        # manually.
-
-        # post-processing steps are by default associated with the Workflow
-        # class, since they deal with fastq files and Qiita, and don't depend
-        # on assay or instrument type.
-        update_status("Generating sample information", 5, 9)
-        self.sifs = self.generate_sifs()
-
-        # post-processing step.
-        update_status("Registering blanks in Qiita", 6, 9)
-        if update:
-            self.update_blanks_in_qiita()
-
-        update_status("Loading preps into Qiita", 7, 9)
-        if update:
-            self.update_prep_templates()
-
-        # before we load preps into Qiita we need to copy the fastq
-        # files n times for n preps and correct the file-paths each
-        # prep is pointing to.
-        self.load_preps_into_qiita()
-
-        update_status("Generating packaging commands", 8, 9)
-        self.generate_commands()
-
-        update_status("Packaging results", 9, 9)
-        if update:
-            self.execute_commands()
-
-        # DONE! :)
+        pass
 
 
 class WorkflowFactory():
-    WORKFLOWS = [StandardMetagenomicWorkflow, TellSeqMetagenomicWorkflow]
+    WORKFLOWS = [StandardMetagenomicWorkflow,
+                 StandardAmpliconWorkflow,
+                 TellSeqMetagenomicWorkflow]
 
     ST_TO_IN_MAP = {INSTRUMENT_NAME_ILLUMINA: ['standard_metag',
                                                'standard_metat',
@@ -1095,19 +1037,41 @@ class WorkflowFactory():
 
     @classmethod
     def generate_workflow(cls, **kwargs):
-        if 'uif_path' not in kwargs:
-            raise ValueError("The following values are not defined in "
-                             "kwargs: 'uif_path'")
+        msg = "kwargs must not be None and must define 'uif_path'"
 
-        # determine assay-type & instrument-type
+        if not kwargs:
+            # if kwargs is None or {}, raise an Error
+            raise ValueError(msg)
+
+        if 'uif_path' not in kwargs:
+            raise ValueError(msg)
 
         if Pipeline.is_sample_sheet(kwargs['uif_path']):
+            # NB: The Pipeline() determines an input-file is a sample-sheet
+            # if the first line begins with "[Header]" followed by any number
+            # of ','. A file that begins this way but fails to load
+            # successfully because of an undefined SheetType and/or
+            # SheetVersion will raise a ValueError() here, w/the message
+            # "'{sheet}' doesn't appear to be a valid sample-sheet."
+
             sheet = load_sample_sheet(kwargs['uif_path'])
-            assay_type = sheet.Header['Assay']
-            if assay_type not in METAOMIC_ASSAY_NAMES:
-                raise WorkflowError("Can't determine workflow from assay "
-                                    "type: %s" % assay_type)
-            instrument_type = cls._get_instrument_type(sheet)
+            # if we do not validate the sample-sheet now, it will be validated
+            # downstream when we attempt to instantiate a Workflow(), which in
+            # turn will attempt to instantiate a Pipeline(), which will load
+            # and validate the sample-sheet on its own. This is an early
+            # abort. Expect the user/caller to diagnose the sample-sheet in a
+            # notebook or by other means.
+            if sheet.validate_and_scrub_sample_sheet():
+                assay_type = sheet.Header['Assay']
+                if assay_type not in METAOMIC_ASSAY_NAMES:
+                    # NB: This Error is not likely to be raised unless an
+                    # assay type is defined in metapool but not in Assays.
+                    raise WorkflowError("Can't determine workflow from assay "
+                                        "type: %s" % assay_type)
+                instrument_type = cls._get_instrument_type(sheet)
+            else:
+                raise WorkflowError(f"'{kwargs['uif_path']} doesn't appear to "
+                                    "be a valid sample-sheet.")
         elif Pipeline.is_mapping_file(kwargs['uif_path']):
             # if file is readable as a basic TSV and contains all the required
             # headers, then treat this as a mapping file, even if it's an
@@ -1120,16 +1084,21 @@ class WorkflowFactory():
             # the entire Amplicon pipeline assumes as much.
             instrument_type = 'Illumina'
         else:
-            raise WorkflowError("Your uploaded file doesn't appear to be a "
-                                "sample-sheet or a mapping-file.")
+            raise ValueError("Your uploaded file doesn't appear to be a "
+                             "sample-sheet or a mapping-file.")
 
         for workflow in WorkflowFactory.WORKFLOWS:
-            if workflow.assay_name == assay_type:
-                if workflow.instrument_name == instrument_type:
+            if workflow.assay_type == assay_type:
+                if workflow.instrument_type == instrument_type:
                     # return instantiated workflow object
-                    kwargs
+                    print("ASSAY TYPE: %s" % workflow.assay_type)
+                    print("INSTRUMENT TYPE: %s" % workflow.instrument_type)
+                    print("CREATING WORKFLOW...")
                     return workflow(**kwargs)
 
+        # This Error will only be raised if a sample-sheet passes metapool's
+        # validation method but a Workflow() for its instrument-type and
+        # assay-type doesn't exist.
         raise ValueError(f"Assay type '{assay_type}' and Instrument type "
-                         "'{instrument_type}' did not match any known workflow"
-                         " configuration")
+                         f"'{instrument_type}' did not match any known "
+                         "workflow configuration")

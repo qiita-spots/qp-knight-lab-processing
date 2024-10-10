@@ -1,0 +1,116 @@
+# -----------------------------------------------------------------------------
+# Copyright (c) 2014--, The Qiita Development Team.
+#
+# Distributed under the terms of the BSD 3-clause License.
+#
+# The full license is in the file LICENSE, distributed with this software.
+# -----------------------------------------------------------------------------
+from qp_klp.Workflows import WorkflowFactory
+from unittest import TestCase
+from os import makedirs
+from qp_klp.Instruments import (INSTRUMENT_NAME_ILLUMINA,
+                                INSTRUMENT_NAME_TELLSEQ)
+from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
+                           ASSAY_NAME_METATRANSCRIPTOMIC,
+                           ASSAY_NAME_AMPLICON)
+from shutil import rmtree
+
+
+class WorkflowFactoryTests(TestCase):
+    def setUp(self):
+        self.remove_these = []
+
+        fake_client = None
+
+    def tearDown(self):
+        for fp in self.remove_these:
+            print(f"removing {fp}...")
+            rmtree(fp)
+
+    def _create_directory(self, fp):
+        makedirs(fp, exist_ok=True)
+        self.remove_these.append(fp)
+
+    def test_no_parameters(self):
+        # confirm factory doesn't create workflows when given no parameters.
+        msg = "kwargs must not be None and must define 'uif_path'"
+        with self.assertRaisesRegex(ValueError, msg):
+            WorkflowFactory.generate_workflow()
+
+        with self.assertRaisesRegex(ValueError, msg):
+            WorkflowFactory.generate_workflow(**{})
+
+        with self.assertRaisesRegex(ValueError, msg):
+            WorkflowFactory.generate_workflow(**{"foo": "bar"})
+
+    def test_workflow_performs_parameter_checking(self):
+        # confirm that once factory is given enough information to select a
+        # Workflow() class, the class itself confirms that it has all the
+        # parameters it needs.
+        kwargs = {"uif_path": "qp_klp/tests/data/good-sample-sheet.csv"}
+
+        msg = ("The following values must also be defined in kwargs for "
+               "StandardMetagenomicWorkflow workflows: qclient, lane_number,"
+               " config_fp, run_identifier, output_dir, job_id, lane_number,"
+               " is_restart")
+
+        with self.assertRaisesRegex(ValueError, msg):
+            WorkflowFactory.generate_workflow(**kwargs)
+
+        kwargs = {"uif_path": "qp_klp/tests/data/good-mapping-file.txt"}
+
+        msg = ("The following values must also be defined in kwargs for StandardAmpliconWorkflow workflows: qclient, config_fp, run_identifier, output_dir, job_id, is_restart")
+
+        with self.assertRaisesRegex(ValueError, msg):
+            WorkflowFactory.generate_workflow(**kwargs)
+
+    def test_invalid_sample_sheets(self):
+        # confirm an otherwise good-sample-sheet w/a bad SheetType is going
+        # fail because it doesn't pass validation. SheetType directly
+        # determines the Instrument Mixin to be used.
+        kwargs = {"uif_path": "qp_klp/tests/data/bad-sample-sheet1.csv"}
+
+        msg = "'qp_klp/tests/data/bad-sample-sheet1.csv' does not appear to be a valid sample-sheet."
+        with self.assertRaisesRegex(ValueError, msg):
+            WorkflowFactory.generate_workflow(**kwargs)
+
+        # confirm an otherwise good-sample-sheet w/a bad Assay value is going
+        # to fail because it doesn't pass validation.
+        kwargs = {"uif_path": "qp_klp/tests/data/bad-sample-sheet2.csv"}
+
+        msg = "'qp_klp/tests/data/bad-sample-sheet2.csv' does not appear to be a valid sample-sheet."
+        with self.assertRaisesRegex(ValueError, msg):
+            WorkflowFactory.generate_workflow(**kwargs)
+
+        # confirm a file that is obviously not a mapping-file or sample-sheet
+        # file will not follow through.
+        kwargs = {"uif_path": "qp_klp/tests/data/Demultiplex_Stats.csv"}
+
+        msg = "Your uploaded file doesn't appear to be a sample-sheet or a mapping-file."
+        with self.assertRaisesRegex(ValueError, msg):
+            WorkflowFactory.generate_workflow(**kwargs)
+
+    def test_metagenomic_workflow_creation(self):
+        kwargs = {"uif_path": "qp_klp/tests/data/good-sample-sheet.csv",
+                  "qclient": None,
+                  "lane_number": "1",
+                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "run_identifier": "211021_A00000_0000_SAMPLE",
+                  "output_dir": "qp_klp/tests/test_output",
+                  "job_id": "78901",
+                  "is_restart": False
+                  }
+
+        self._create_directory(self.kwargs['output_dir'])
+
+        self.wf = WorkflowFactory.generate_workflow(**kwargs)
+
+        # confirm that the proper type of workflow was generated.
+        self.assertEqual(self.wf.instrument_type, INSTRUMENT_NAME_ILLUMINA)
+        self.assertEqual(self.wf.assay_type, ASSAY_NAME_METAGENOMIC)
+
+    def test_amplicon_workflow_creation(self):
+        pass
+        # TODO: Redo w/real Qiita installation and real study as requested.
+
+

@@ -47,10 +47,7 @@ class Assay():
         self.touched_studies_prep_info
         self.update_callback (can be None)
     """
-
-    @property
-    def assay_name(self):
-        return ASSAY_NAME_NONE
+    assay_type = ASSAY_NAME_NONE
 
     @classmethod
     def _replace_tube_ids_w_sample_names(cls, prep_file_path, tube_id_map):
@@ -163,10 +160,7 @@ class Assay():
 class Amplicon(Assay):
     AMPLICON_TYPE = 'Amplicon'
     AMPLICON_SUB_TYPES = {'16S', '18S', 'ITS'}
-
-    @property
-    def assay_name(self):
-        return ASSAY_NAME_AMPLICON
+    assay_type = ASSAY_NAME_AMPLICON
 
     def quality_control(self):
         """
@@ -373,9 +367,7 @@ class MetaOmic(Assay, FailedSamplesRecord):
     MetaOmic() is a base class for Metagenomic() and Metatranscriptomic(),
     which are currently identical in functionality.
     """
-    def assay_name(self):
-        # defined by Metagenomic() and Metatranscriptomic().
-        return ASSAY_NAME_NONE
+    assay_type = ASSAY_NAME_NONE
 
     def quality_control(self):
         # because this is a mixin, assume containing object will contain
@@ -522,13 +514,10 @@ class MetaOmic(Assay, FailedSamplesRecord):
 
 class Metagenomic(MetaOmic):
     METAGENOMIC_TYPE = 'Metagenomic'
-
-    def assay_name(self):
-        return ASSAY_NAME_METAGENOMIC
+    assay_type = ASSAY_NAME_METAGENOMIC
 
 
 class Metatranscriptomic(MetaOmic):
     METATRANSCRIPTOMIC_TYPE = 'Metatranscriptomic'
 
-    def assay_name(self):
-        return ASSAY_NAME_METATRANSCRIPTOMIC
+    assay_type = ASSAY_NAME_METATRANSCRIPTOMIC
