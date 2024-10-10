@@ -20,8 +20,6 @@ class WorkflowFactoryTests(TestCase):
     def setUp(self):
         self.remove_these = []
 
-        fake_client = None
-
     def tearDown(self):
         for fp in self.remove_these:
             print(f"removing {fp}...")
@@ -47,7 +45,7 @@ class WorkflowFactoryTests(TestCase):
         # confirm that once factory is given enough information to select a
         # Workflow() class, the class itself confirms that it has all the
         # parameters it needs.
-        kwargs = {"uif_path": "qp_klp/tests/data/good-sample-sheet.csv"}
+        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/illumina/good_sheet1.csv"}
 
         msg = ("The following values must also be defined in kwargs for "
                "StandardMetagenomicWorkflow workflows: qclient, lane_number,"
@@ -57,9 +55,11 @@ class WorkflowFactoryTests(TestCase):
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)
 
-        kwargs = {"uif_path": "qp_klp/tests/data/good-mapping-file.txt"}
+        kwargs = {"uif_path": "qp_klp/tests/data/pre-preps/good_pre_prep1.txt"}
 
-        msg = ("The following values must also be defined in kwargs for StandardAmpliconWorkflow workflows: qclient, config_fp, run_identifier, output_dir, job_id, is_restart")
+        msg = ("The following values must also be defined in kwargs for "
+               "StandardAmpliconWorkflow workflows: qclient, config_fp, "
+               "run_identifier, output_dir, job_id, is_restart")
 
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)
@@ -68,17 +68,21 @@ class WorkflowFactoryTests(TestCase):
         # confirm an otherwise good-sample-sheet w/a bad SheetType is going
         # fail because it doesn't pass validation. SheetType directly
         # determines the Instrument Mixin to be used.
-        kwargs = {"uif_path": "qp_klp/tests/data/bad-sample-sheet1.csv"}
+        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/illumina/bad_sheet1.csv"}
 
-        msg = "'qp_klp/tests/data/bad-sample-sheet1.csv' does not appear to be a valid sample-sheet."
+        msg = ("'qp_klp/tests/data/sample-sheets/metagenomic/illumina/bad_sheet1.csv' does not appear to "
+               "be a valid sample-sheet.")
+
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm an otherwise good-sample-sheet w/a bad Assay value is going
         # to fail because it doesn't pass validation.
-        kwargs = {"uif_path": "qp_klp/tests/data/bad-sample-sheet2.csv"}
+        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/illumina/bad_sheet2.csv"}
 
-        msg = "'qp_klp/tests/data/bad-sample-sheet2.csv' does not appear to be a valid sample-sheet."
+        msg = ("'qp_klp/tests/data/sample-sheets/metagenomic/illumina/bad_sheet2.csv' does not appear to "
+               "be a valid sample-sheet.")
+
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)
 
@@ -86,12 +90,13 @@ class WorkflowFactoryTests(TestCase):
         # file will not follow through.
         kwargs = {"uif_path": "qp_klp/tests/data/Demultiplex_Stats.csv"}
 
-        msg = "Your uploaded file doesn't appear to be a sample-sheet or a mapping-file."
+        msg = ("Your uploaded file doesn't appear to be a sample-sheet or a "
+               "mapping-file.")
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)
 
     def test_metagenomic_workflow_creation(self):
-        kwargs = {"uif_path": "qp_klp/tests/data/good-sample-sheet.csv",
+        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/illumina/good_sheet1.csv",
                   "qclient": None,
                   "lane_number": "1",
                   "config_fp": "qp_klp/tests/data/configuration.json",
@@ -101,7 +106,7 @@ class WorkflowFactoryTests(TestCase):
                   "is_restart": False
                   }
 
-        self._create_directory(self.kwargs['output_dir'])
+        self._create_directory(kwargs['output_dir'])
 
         self.wf = WorkflowFactory.generate_workflow(**kwargs)
 
@@ -110,7 +115,39 @@ class WorkflowFactoryTests(TestCase):
         self.assertEqual(self.wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
     def test_amplicon_workflow_creation(self):
-        pass
-        # TODO: Redo w/real Qiita installation and real study as requested.
+        kwargs = {"uif_path": "qp_klp/tests/data/pre-preps/good_pre_prep1.txt",
+                  "qclient": None,
+                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "run_identifier": "211021_A00000_0000_SAMPLE",
+                  "output_dir": "qp_klp/tests/test_output",
+                  "job_id": "78901",
+                  "is_restart": False
+                  }
 
+        self._create_directory(kwargs['output_dir'])
 
+        self.wf = WorkflowFactory.generate_workflow(**kwargs)
+
+        # confirm that the proper type of workflow was generated.
+        self.assertEqual(self.wf.instrument_type, INSTRUMENT_NAME_ILLUMINA)
+        self.assertEqual(self.wf.assay_type, ASSAY_NAME_AMPLICON)
+
+    def atest_tellseq_workflow_creation(self):
+        # TODO: Note we will need to modify metapool enough to accept and
+        # validate these drafts.
+        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/tellseq/good_sheet_draft1.csv",
+                  "qclient": None,
+                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "run_identifier": "211021_A00000_0000_SAMPLE",
+                  "output_dir": "qp_klp/tests/test_output",
+                  "job_id": "78901",
+                  "is_restart": False
+                  }
+
+        self._create_directory(kwargs['output_dir'])
+
+        self.wf = WorkflowFactory.generate_workflow(**kwargs)
+
+        # confirm that the proper type of workflow was generated.
+        self.assertEqual(self.wf.instrument_type, INSTRUMENT_NAME_TELLSEQ)
+        self.assertEqual(self.wf.assay_type, ASSAY_NAME_METAGENOMIC)
