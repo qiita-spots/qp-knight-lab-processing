@@ -1,235 +1,5 @@
-# -----------------------------------------------------------------------------
-# Copyright (c) 2014--, The Qiita Development Team.
-#
-# Distributed under the terms of the BSD 3-clause License.
-#
-# The full license is in the file LICENSE, distributed with this software.
-# -----------------------------------------------------------------------------
-from unittest import TestCase
-from sequence_processing_pipeline.Pipeline import Pipeline, PipelineError
-from os.path import join, abspath, exists, dirname
-from functools import partial
-from os import makedirs, chmod, access, W_OK
-from shutil import rmtree, copy, which, copytree
-from os import environ, remove, getcwd
-import pandas as pd
-from metapool import parse_prep
-import re
-from copy import deepcopy
-from tempfile import TemporaryDirectory
-from qp_klp.FailedSamplesRecord import FailedSamplesRecord
 
-
-class FakeClient():
-    def __init__(self):
-        self.cwd = getcwd()
-        self.base_path = join(self.cwd, 'qp_klp/tests/data/QDir')
-        self.qdirs = {'Demultiplexed': 'Demultiplexed',
-                      'beta_div_plots': 'analysis/beta_div_plots',
-                      'rarefaction_curves': 'analysis/rarefaction_curves',
-                      'taxa_summary': 'analysis/taxa_summary',
-                      'q2_visualization': 'working_dir',
-                      'distance_matrix': 'working_dir',
-                      'ordination_results': 'working_dir',
-                      'alpha_vector': 'working_dir',
-                      'FASTQ': 'FASTQ',
-                      'BIOM': 'BIOM',
-                      'per_sample_FASTQ': 'per_sample_FASTQ',
-                      'SFF': 'SFF',
-                      'FASTA': 'FASTA',
-                      'FASTA_Sanger': 'FASTA_Sanger',
-                      'FeatureData': 'FeatureData',
-                      'job-output-folder': 'job-output-folder',
-                      'BAM': 'BAM',
-                      'VCF': 'VCF',
-                      'SampleData': 'SampleData',
-                      'uploads': 'uploads'}
-
-        self.samples_in_13059 = ['13059.SP331130A04', '13059.AP481403B02',
-                                 '13059.LP127829A02', '13059.BLANK3.3B',
-                                 '13059.EP529635B02', '13059.EP542578B04',
-                                 '13059.EP446602B01', '13059.EP121011B01',
-                                 '13059.EP636802A01', '13059.SP573843A04']
-
-        # note these samples have known tids, but aren't in good-sample-sheet.
-        self.samples_in_11661 = ['11661.1.24', '11661.1.57', '11661.1.86',
-                                 '11661.10.17', '11661.10.41', '11661.10.64',
-                                 '11661.11.18', '11661.11.43', '11661.11.64',
-                                 '11661.12.15']
-
-        self.samples_in_6123 = ['3A', '4A', '5B', '6A', 'BLANK.41.12G', '7A',
-                                '8A', 'ISB', 'GFR', '6123']
-
-        self.info_in_11661 = {'number-of-samples': 10,
-                              'categories': ['sample_type', 'tube_id']}
-
-        self.info_in_13059 = {'number-of-samples': 10,
-                              'categories': ['anonymized_name',
-                                             'collection_timestamp',
-                                             'description',
-                                             'dna_extracted',
-                                             'elevation', 'empo_1',
-                                             'empo_2', 'empo_3',
-                                             'env_biome', 'env_feature',
-                                             'env_material',
-                                             'env_package',
-                                             'geo_loc_name', 'host_age',
-                                             'host_age_units',
-                                             'host_body_habitat',
-                                             'host_body_mass_index',
-                                             'host_body_product',
-                                             'host_body_site',
-                                             'host_common_name',
-                                             'host_height',
-                                             'host_height_units',
-                                             'host_life_stage',
-                                             'host_scientific_name',
-                                             'host_subject_id',
-                                             'host_taxid', 'host_weight',
-                                             'host_weight_units',
-                                             'latitude', 'longitude',
-                                             'nyuid',
-                                             'physical_specimen_location',
-                                             'physical_specimen_remaining',
-                                             'predose_time',
-                                             'sample_type',
-                                             'scientific_name', 'sex',
-                                             'subject_id', 'taxon_id',
-                                             'title', 'tube_id']}
-
-        # Study not in qiita-rc. Faking results.
-        self.info_in_6123 = {'number-of-samples': 10,
-                             'categories': ['sample_type', 'subject_id',
-                                            'title']}
-
-        self.tids_13059 = {"header": ["tube_id"],
-                           "samples": {'13059.SP331130A04': ['SP331130A-4'],
-                                       '13059.AP481403B02': ['AP481403B-2'],
-                                       '13059.LP127829A02': ['LP127829A-2'],
-                                       '13059.BLANK3.3B': ['BLANK3.3B'],
-                                       '13059.EP529635B02': ['EP529635B-2'],
-                                       '13059.EP542578B04': ['EP542578B-4'],
-                                       '13059.EP446602B01': ['EP446602B-1'],
-                                       '13059.EP121011B01': ['EP121011B-1'],
-                                       '13059.EP636802A01': ['EP636802A-1'],
-                                       '13059.SP573843A04': ['SP573843A-4']}}
-
-        self.tids_11661 = {"header": ["tube_id"],
-                           "samples": {"11661.1.24": ["1.24"],
-                                       "11661.1.57": ["1.57"],
-                                       "11661.1.86": ["1.86"],
-                                       "11661.10.17": ["10.17"],
-                                       "11661.10.41": ["10.41"],
-                                       "11661.10.64": ["10.64"],
-                                       "11661.11.18": ["11.18"],
-                                       "11661.11.43": ["11.43"],
-                                       "11661.11.64": ["11.64"],
-                                       "11661.12.15": ["12.15"]}}
-
-        for key in self.qdirs:
-            self.qdirs[key] = join(self.base_path, self.qdirs[key])
-
-        for qdir in self.qdirs:
-            makedirs(self.qdirs[qdir], exist_ok=True)
-
-        self.fake_id = 1000
-        self._server_url = "some.server.url"
-        self.saved_posts = {}
-
-    def get(self, url):
-        m = {'/api/v1/study/11661/samples': self.samples_in_11661,
-             '/api/v1/study/11661/samples/categories=tube_id': self.tids_11661,
-             '/api/v1/study/11661/samples/info': self.info_in_11661,
-             '/api/v1/study/13059/samples': self.samples_in_13059,
-             '/api/v1/study/13059/samples/categories=tube_id': self.tids_13059,
-             '/api/v1/study/13059/samples/info': self.info_in_13059,
-             '/api/v1/study/6123/samples': self.samples_in_6123,
-             '/api/v1/study/6123/samples/info': self.info_in_6123,
-             '/qiita_db/artifacts/types/': self.qdirs}
-
-        if url in m:
-            return m[url]
-
-        return None
-
-    def post(self, url, data=None):
-        if '/qiita_db/prep_template/' == url:
-            self.fake_id += 1
-            return {'prep': self.fake_id}
-        elif '/qiita_db/artifact/' == url:
-            self.saved_posts[str(self.fake_id)] = data
-            self.fake_id += 1
-            return {'job_id': self.fake_id}
-        else:
-            raise ValueError("Unsupported URL")
-
-
-class AnotherFakeClient():
-    def __init__(self):
-        self.cwd = getcwd()
-        self.base_path = join(self.cwd, 'qp_klp/tests/data/QDir')
-        self.qdirs = {'Demultiplexed': 'Demultiplexed',
-                      'beta_div_plots': 'analysis/beta_div_plots',
-                      'rarefaction_curves': 'analysis/rarefaction_curves',
-                      'taxa_summary': 'analysis/taxa_summary',
-                      'q2_visualization': 'working_dir',
-                      'distance_matrix': 'working_dir',
-                      'ordination_results': 'working_dir',
-                      'alpha_vector': 'working_dir',
-                      'FASTQ': 'FASTQ',
-                      'BIOM': 'BIOM',
-                      'per_sample_FASTQ': 'per_sample_FASTQ',
-                      'SFF': 'SFF',
-                      'FASTA': 'FASTA',
-                      'FASTA_Sanger': 'FASTA_Sanger',
-                      'FeatureData': 'FeatureData',
-                      'job-output-folder': 'job-output-folder',
-                      'BAM': 'BAM',
-                      'VCF': 'VCF',
-                      'SampleData': 'SampleData',
-                      'uploads': 'uploads'}
-
-        self.samples_in_99999 = ['99999.AAAAAAAAAAA',
-                                 '99999.BBBBBBBBBBB',
-                                 '99999.CCCCCCCCCCC',
-                                 '99999.BLANK1.1BCD']
-
-        self.info_in_99999 = {'number-of-samples': 10,
-                              'categories': ['column1', 'column2', 'tube_id']}
-
-        self.tids_99999 = {"header": ["tube_id"],
-                           "samples": {'99999.AAAAAAAAAAA': ['1234567890a'],
-                                       '99999.BBBBBBBBBBB': ['234567890ab'],
-                                       '99999.CCCCCCCCCCC': ['34567890abc'],
-                                       '99999.BLANK1.1BCD': ['BLANK1.1BCD']}}
-
-        for key in self.qdirs:
-            self.qdirs[key] = join(self.base_path, self.qdirs[key])
-
-        for qdir in self.qdirs:
-            makedirs(self.qdirs[qdir], exist_ok=True)
-
-    def get(self, url):
-        m = {'/api/v1/study/99999/samples': self.samples_in_99999,
-             '/api/v1/study/99999/samples/categories=tube_id': self.tids_99999,
-             '/api/v1/study/99999/samples/info': self.info_in_99999,
-             '/qiita_db/artifacts/types/': self.qdirs}
-
-        if url in m:
-            return m[url]
-
-        return None
-
-
-class BaseStepTests(TestCase):
-    '''
-    BaseStepTests contains all the configuration information and helper
-    functions used by every child StepTests class. This class does not
-    include any tests. All tests defined in this class will be inherited by
-    every child and will consequently be run multiple times. Hence, general
-    functionality is instead tested by BasicStepSteps class.
-    '''
-
+class BaseWorkflowTests(TestCase):
     def setUp(self):
         package_root = abspath('./qp_klp')
         cc_path = partial(join, package_root, 'tests', 'data')
@@ -283,87 +53,13 @@ class BaseStepTests(TestCase):
                                           self.qiita_id,
                                           Step.AMPLICON_TYPE)
 
-        self.fake_bin_path = self._get_searchable_path()
 
-        self.delete_these = []
 
-    def tearDown(self):
-        if exists(self.output_file_path):
-            rmtree(self.output_file_path)
-        for fake_bin in self.delete_these:
-            if exists(fake_bin):
-                remove(fake_bin)
-        if exists('tmp.config'):
-            remove('tmp.config')
 
-    def _get_searchable_path(self):
-        searchable_paths = []
-
-        if 'CONDA_PREFIX' in environ:
-            # create fake binaries in bin directory of Conda environment
-            searchable_paths.append(environ['CONDA_PREFIX'] + '/bin')
-        else:
-            # if CONDA_PREFIX doesn't exist, select a path from a list of
-            # searchable paths that contains 'env' and assume it's writable.
-            tmp = environ['PATH']
-            searchable_paths += tmp.split(':')
-
-        for a_path in searchable_paths:
-            if access(a_path, W_OK):
-                return a_path
-
-    def _create_fake_bin(self, name, content):
-        tmp = join(self.fake_bin_path, name)
-        with open(tmp, 'w') as f:
-            f.write(f"#!/bin/sh\n{content}\n")
-        chmod(tmp, 0o777)
-        self.delete_these.append(tmp)
-        return tmp
-
-    def _create_fake_file(self, path):
-        with open(path, 'w') as f:
-            f.write("This is a file.")
 
     def _create_test_input(self, stage):
-        if stage >= 1:
-            # create an empty ConvertJob directory to test initialization
-            # with. Create fake binaries to test job submission.
-            fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
-            makedirs(fake_path, exist_ok=True)
-            fake_path = join(self.output_file_path, 'ConvertJob', 'Reports')
-            makedirs(fake_path, exist_ok=True)
 
-            self._create_fake_bin('sbatch', "echo 'Submitted "
-                                            "batch job 9999999'")
 
-            self._create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
-                                  "9999999,9999999,COMPLETED'")
-
-        if stage >= 2:
-            # generate dummy fastq files in ConvertJob and create an empty
-            # NuQCJob directory to use for testing NuQCJob initialization.
-            fake_path = join(self.output_file_path, 'NuQCJob', 'logs')
-            makedirs(fake_path, exist_ok=True)
-
-            exp = {'Feist_11661': ['CDPH-SAL_Salmonella_Typhi_MDL-143',
-                                   'CDPH-SAL_Salmonella_Typhi_MDL-144',
-                                   'CDPH-SAL_Salmonella_Typhi_MDL-145',
-                                   'CDPH-SAL_Salmonella_Typhi_MDL-146',
-                                   'CDPH-SAL_Salmonella_Typhi_MDL-147'],
-                   'Gerwick_6123': ['3A', '4A', '5B', '6A', '7A'],
-                   'NYU_BMS_Melanoma_13059': ['AP581451B02', 'EP256645B01',
-                                              'EP112567B02', 'EP337425B01',
-                                              'LP127890A01']}
-            for project in exp:
-                fake_path = join(self.output_file_path, 'ConvertJob', project)
-                makedirs(fake_path, exist_ok=True)
-
-                for sample in exp[project]:
-                    r1 = join(fake_path, f'{sample}_SXXX_L001_R1_001.fastq.gz')
-                    r2 = join(fake_path, f'{sample}_SXXX_L001_R2_001.fastq.gz')
-
-                    for file_path in [r1, r2]:
-                        self._create_fake_file(file_path)
 
         if stage >= 3:
             # create a fake GenPrepFileJob directory.
@@ -493,70 +189,15 @@ class BaseStepTests(TestCase):
                 self._create_fake_file(file_path)
 
 
-class BasicStepTests(BaseStepTests):
-    def atest_creation(self):
-        # Test base-class creation method, even though base-class will never
-        # be instantiated by itself in normal usage.
 
-        with self.assertRaisesRegex(ValueError, "A pipeline object is needed"
-                                                " to initialize Step"):
-            Step(None, self.qiita_id, None)
 
-        with self.assertRaisesRegex(ValueError, "A Qiita job-id is needed to "
-                                                "initialize Step"):
-            Step(self.pipeline, None, None)
+# tests to ensure mixins can't be instantiated?
+# tests to make sure Workflows can't be created without all the right parameters?
+# test convert_bcl_to_fastq() by itself. perhaps create the whole workflow but check just the one step
+# same with _quality_control
 
-        step = Step(self.pipeline, self.qiita_id, None)
 
-        self.assertIsNotNone(step)
 
-    def atest_convert_bcl_to_fastq(self):
-        self._create_test_input(1)
-
-        step = Step(self.pipeline, self.qiita_id, None)
-
-        fake_path = join(self.output_file_path, 'ConvertJob', 'logs')
-        makedirs(fake_path, exist_ok=True)
-
-        config = self.pipeline.config_profile['profile']['configuration']
-        step._convert_bcl_to_fastq(config['bcl-convert'],
-                                   self.good_sample_sheet_path)
-
-    def atest_quality_control(self):
-        self._create_test_input(2)
-
-        fake_path = join(self.output_file_path, 'NuQCJob', 'logs')
-        makedirs(fake_path, exist_ok=True)
-
-        exp = {'Feist_11661': (['CDPH-SAL_Salmonella_Typhi_MDL-143',
-                                'CDPH-SAL_Salmonella_Typhi_MDL-144',
-                                'CDPH-SAL_Salmonella_Typhi_MDL-145',
-                                'CDPH-SAL_Salmonella_Typhi_MDL-146',
-                                'CDPH-SAL_Salmonella_Typhi_MDL-147'], False),
-               'Gerwick_6123': (['3A', '4A', '5B', '6A', '7A'], True),
-               'NYU_BMS_Melanoma_13059': (['AP581451B02', 'EP256645B01',
-                                           'EP112567B02', 'EP337425B01',
-                                           'LP127890A01'], False)}
-        for project in exp:
-            fake_path = join(self.output_file_path, 'ConvertJob', project)
-            fake_path2 = join(self.output_file_path, 'NuQCJob', project)
-            makedirs(fake_path, exist_ok=True)
-            if exp[project][1]:
-                makedirs(join(fake_path2, 'filtered_sequences'), exist_ok=True)
-            else:
-                makedirs(join(fake_path2, 'trimmed_sequences'), exist_ok=True)
-
-            for sample in exp[project][0]:
-                r1 = join(fake_path, f'{sample}_SXXX_L001_R1_001.fastq.gz')
-                r2 = join(fake_path, f'{sample}_SXXX_L001_R2_001.fastq.gz')
-
-                for file_path in [r1, r2]:
-                    self._create_fake_file(file_path)
-
-        step = Step(self.pipeline, self.qiita_id, None)
-        config = self.pipeline.config_profile['profile']['configuration']
-        step._quality_control(config['nu-qc'],
-                              self.good_sample_sheet_path)
 
     def atest_generate_pipeline(self):
         pipeline = Step.generate_pipeline(Step.METAGENOMIC_TYPE,
@@ -1102,6 +743,8 @@ class BasicStepTests(BaseStepTests):
             obs = [x.replace(self.output_file_path, '')
                    for x in results[key]]
             self.assertEqual(set(obs), set(exp[key]))
+
+
 
 
 class ReplicateTests(BaseStepTests):

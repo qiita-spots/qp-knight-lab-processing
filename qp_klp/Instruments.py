@@ -2,6 +2,7 @@ from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.TellReadJob import TellReadJob
 from sequence_processing_pipeline.TRNormCountsJob import TRNormCountsJob
 from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
+from qp_klp.FailedSamplesRecord import FailedSamplesRecord
 
 
 INSTRUMENT_NAME_NONE = "Instrument"
@@ -19,7 +20,7 @@ class Instrument():
     instrument_type = INSTRUMENT_NAME_NONE
 
 
-class Illumina(Instrument):
+class Illumina(Instrument, FailedSamplesRecord):
     instrument_type = INSTRUMENT_NAME_ILLUMINA
 
     def convert_raw_to_fastq(self):
@@ -37,10 +38,14 @@ class Illumina(Instrument):
                          config['modules_to_load'],
                          self.master_qiita_job_id)
 
-        job.run(callback=self.update_callback)
+        job.run(callback=self.status_update_callback)
 
-        # NB: This isn't currently needed for Amplicon runs.
-        return job.audit(self.pipeline.get_sample_ids())
+        # audit the results to determine which samples failed to convert
+        # properly. Append these to the failed-samples report and also
+        # return the list directly to the caller.
+        failed_samples = job.audit(self.pipeline.get_sample_ids())
+        self.fsr_write(failed_samples, job.__class__.__name__)
+        return failed_samples
 
 
 class TellSeq(Instrument):
@@ -61,7 +66,7 @@ class TellSeq(Instrument):
                              config['modules_to_load'],
                              self.master_qiita_job_id)
 
-        tr_job.run(callback=self.update_callback)
+        tr_job.run(callback=self.status_update_callback)
 
         # TODO: determine these appropriately
         max_array_length = "foo"
@@ -85,7 +90,7 @@ class TellSeq(Instrument):
                                      config['indicies_script_path'],
                                      label)
 
-            nc_job.run(callback=self.update_callback)
+            nc_job.run(callback=self.status_update_callback)
 
         # after the primary job and the optional counts job is completed,
         # the job to integrate results and add metadata to the fastq files
@@ -103,7 +108,7 @@ class TellSeq(Instrument):
                                config['indicies_script_path'],
                                label)
 
-        i_job.run(callback=self.update_callback)
+        i_job.run(callback=self.status_update_callback)
 
         # TODO: after i_job is completed, there are two optional jobs that
         # can be performed in parallel using the new functionality in Job()

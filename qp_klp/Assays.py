@@ -399,7 +399,12 @@ class MetaOmic(Assay, FailedSamplesRecord):
 
         job.run(callback=self.update_callback)
 
-        self.fsr_write(job.audit(self.pipeline.get_sample_ids()), 'NuQCJob')
+        # audit the results to determine which samples failed to convert
+        # properly. Append these to the failed-samples report and also
+        # return the list directly to the caller.
+        failed_samples = job.audit(self.pipeline.get_sample_ids())
+        self.fsr_write(failed_samples, job.__class__.__name__)
+        return failed_samples
 
     def generate_reports(self):
         config = self.pipeline.get_software_configuration('fastqc')
