@@ -7,9 +7,9 @@
 # -----------------------------------------------------------------------------
 from unittest import TestCase
 from sequence_processing_pipeline.Pipeline import Pipeline, PipelineError
-from os.path import join, abspath, exists, dirname
+from os.path import join, abspath, exists, dirname, split
 from functools import partial
-from os import makedirs, chmod, access, W_OK
+from os import makedirs, chmod, access, W_OK, walk
 from shutil import rmtree, copy, which, copytree
 from os import environ, remove, getcwd
 import pandas as pd
@@ -17,7 +17,6 @@ from metapool import parse_prep
 import re
 from copy import deepcopy
 from tempfile import TemporaryDirectory
-from qp_klp.FailedSamplesRecord import FailedSamplesRecord
 from qp_klp.Workflows import StandardMetagenomicWorkflow, WorkflowFactory
 from metapool import load_sample_sheet
 from collections import defaultdict
@@ -239,7 +238,6 @@ class Basics(TestCase):
         # We want a clean directory, nothing from leftover runs
         makedirs(self.output_dir, exist_ok=False)
 
-
     def tearDown(self):
         for fp in self.delete_these_files:
             if exists(fp):
@@ -366,84 +364,73 @@ class Basics(TestCase):
         obs = md5(open(script_path, 'rb').read()).hexdigest()
         self.assertEqual(obs, exp)
 
-    def atest_quality_control(self):
-        # create a shell-script mimicking what the real sbatch prints to
-        # stdout. The code in Job() will extract the job-id (9999999) which
-        # it will poll for using our fake squeue script.
-        #
-        # after printing to stdout, our fake sbatch will simulate the results
-        # of bcl-convert generating fastqs by creating a directory full of
-        # fastq files for each project.
-
-        # the line returning the fake Slurm job-id.
-        cmds = ["echo 'Submitted batch job 9999999'"]
+        # ConvertJob successful.
+        cmds = []
 
         # the lines to recreate the directories a standard Job() object creates.
-        cmds.append("mkdir -p %s" % join(self.output_dir, 'ConvertJob', 'logs'))
-        cmds.append("mkdir -p %s" % join(self.output_dir, 'ConvertJob', 'Reports'))
         cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'logs'))
-        # Reports directory is not needed.
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'only-adapter-filtered'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'html'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'json'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'filtered_sequences'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'tmp'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'tmp.564341'))
 
-        # use the list of sample_ids found in the sample-sheet to generate
-        # fake fastq files for convert_raw_to_fastq() to find and manipulate.
-        sheet = load_sample_sheet("qp_klp/tests/data/sample-sheets/metagenomic"
-                                  "/illumina/good_sheet1.csv")
-        exp = defaultdict(list)
-        for sample in sheet.samples:
-            sample = sample.to_json()
-            exp[sample['Sample_Project']].append(sample['Sample_ID'])
+        fake_path = join(self.output_dir, 'ConvertJob', project)
 
-        # in order to test post-process auditing, we will manually remove a
-        # single sample_id from each project in order to simulate failed
-        # conversions.
-        simulated_failed_samples = []
+        # simulate host-filtering scripts by scanning contents of ConvertJob
+        # directory and copying the files into the expected location for post-
+        # processing.
+        for root, dirs, files in walk(join(self.output_dir, 'ConvertJob')):
+            for _file in files:
+                convert_job_path, project_name = split(root)
+                new_name = _file.replace('.fastq.gz', '.interleave.fastq.gz')
+                file_path = join(self.output_dir, 'NuQCJob', 'only-adapter-filtered', new_name)
+                cmds.append(f"echo 'This is a file.' > {file_path}")
 
-        for project in exp:
-            # sort the list so that files are created in a predictable order.
-            exp[project].sort()
+                new_name = _file.replace('.fastq.gz', '.trimmed.fastq.gz')
+                file_path = join(self.output_dir, 'NuQCJob', 'filtered_sequences', new_name)
+                cmds.append(f"echo 'This is a file.' > {file_path}")
 
-            simulated_failed_samples.append(exp[project].pop())
+                new_name = _file.replace('.fastq.gz', '.html')
+                file_path = join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'html', new_name)
+                cmds.append(f"echo 'This is a file.' > {file_path}")
 
-            fake_path = join(self.output_dir, 'ConvertJob', project)
-            cmds.append(f"mkdir -p {fake_path}")
-
-            for sample in exp[project]:
-                r1 = join(fake_path, f'{sample}_SXXX_L001_R1_001.fastq.gz')
-                r2 = join(fake_path, f'{sample}_SXXX_L001_R2_001.fastq.gz')
-
-                for file_path in [r1, r2]:
-                    cmds.append(f"echo 'This is a file.' > {file_path}")
+                new_name = _file.replace('.fastq.gz', '.json')
+                file_path = join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'json', new_name)
+                cmds.append(f"echo 'This is a file.' > {file_path}")
 
         # write all the statements out into a bash-script named 'sbatch' and
         # place it somewhere in the PATH. (It will be removed on tearDown()).
         self.create_fake_bin('sbatch', "\n".join(cmds))
 
-        # create fake squeue binary that writes to stdout what Job() needs to
-        # see to think that bcl-convert has completed successfully.
-        self.create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
-                              "9999999,9999999,COMPLETED'")
+        audit_results = sorted(wf.quality_control())
 
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
-                  "illumina/good_sheet1.csv",
-                  "qclient": FakeClient(),
-                  "lane_number": "1",
-                  "config_fp": "qp_klp/tests/data/configuration.json",
-                  "run_identifier": '211021_A00000_0000_SAMPLE',
-                  "output_dir": self.output_dir,
-                  "job_id": "077c4da8-74eb-4184-8860-0207f53623be",
-                  "is_restart": False
-                  }
+        self.assertTrue(False)
 
-        wf = WorkflowFactory.generate_workflow(**kwargs)
 
-        # perform convert_raw_to_fastq() to setup for quality_control call.
-        wf.convert_raw_to_fastq()
+
+
+
 
         # we will need to simulate quality_control()'s creation of filtered
         # files in non-traditional locations so that nuqc's post-processing
         # step can be tested.
 
         #wf.quality_control()
+
+        '''
+        Stuff that needs to be made:
+            working_dir/NuQCJob/logs/Slurm_2541607_1.out
+            working_dir/NuQCJob/only-adapter-filtered/MySample27_S20_L001_R1_001.interleave.fastq.gz
+            working_dir/NuQCJob/fastp_reports_dir/html/MySample27_S20_L001_R1_001.html
+            working_dir/NuQCJob/fastp_reports_dir/json/MySample27_S20_L001_R1_001.json
+            working_dir/NuQCJob/process_all_fastq_files.sh
+            working_dir/NuQCJob/tmp
+
+
+
+        '''
 
 
 

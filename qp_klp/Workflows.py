@@ -13,6 +13,7 @@ from .Assays import Amplicon, Metagenomic, Metatranscriptomic
 from .Assays import (METAOMIC_ASSAY_NAMES, ASSAY_NAME_AMPLICON,
                      ASSAY_NAME_METAGENOMIC, ASSAY_NAME_METATRANSCRIPTOMIC)
 from .Instruments import INSTRUMENT_NAME_ILLUMINA, INSTRUMENT_NAME_TELLSEQ
+from .FailedSamplesRecord import FailedSamplesRecord
 
 
 class WorkflowError(Exception):
@@ -731,7 +732,8 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
                                  ASSAY_NAME_METAGENOMIC,
                                  lane_number=self.kwargs['lane_number'])
 
-        print(self.pipeline.pipeline_type)
+        self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
+                                       self.pipeline.sample_sheet.samples)
 
         self.master_qiita_job_id = None
 
@@ -948,7 +950,8 @@ class StandardMetatranscriptomicWorkflow(Workflow, Metatranscriptomic,
                                  ASSAY_NAME_METATRANSCRIPTOMIC,
                                  lane_number=self.kwargs['lane_number'])
 
-        print(self.pipeline.pipeline_type)
+        self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
+                                       self.pipeline.sample_sheet.samples)
 
         self.master_qiita_job_id = None
 

@@ -1,8 +1,9 @@
 from os import listdir, makedirs
 from os.path import isfile
 from shutil import copyfile
-from .FailedSamplesRecord import FailedSamplesRecord
-from sequence_processing_pipeline import NuQCJob, FastQCJob, GenPrepFileJob
+from sequence_processing_pipeline.NuQCJob import NuQCJob
+from sequence_processing_pipeline.FastQCJob import FastQCJob
+from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from os.path import join
 import pandas as pd
 from json import dumps
@@ -45,7 +46,7 @@ class Assay():
         self.run_prefixes
         self.special_map
         self.touched_studies_prep_info
-        self.update_callback (can be None)
+        self.status_update_callback (can be None)
     """
     assay_type = ASSAY_NAME_NONE
 
@@ -251,7 +252,7 @@ class Amplicon(Assay):
                         config['job_max_array_length'],
                         True)
 
-        job.run(callback=self.update_callback)
+        job.run(callback=self.status_update_callback)
 
     def generate_prep_file(self):
         """
@@ -275,7 +276,7 @@ class Amplicon(Assay):
                              self.master_qiita_job_id,
                              is_amplicon=True)
 
-        job.run(callback=self.update_callback)
+        job.run(callback=self.status_update_callback)
 
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates
@@ -362,7 +363,7 @@ class Amplicon(Assay):
         return df
 
 
-class MetaOmic(Assay, FailedSamplesRecord):
+class MetaOmic(Assay):
     """
     MetaOmic() is a base class for Metagenomic() and Metatranscriptomic(),
     which are currently identical in functionality.
@@ -397,13 +398,13 @@ class MetaOmic(Assay, FailedSamplesRecord):
                       gres_value=config['gres_value'],
                       pmls_path=config['pmls_path'])
 
-        job.run(callback=self.update_callback)
+        job.run(callback=self.status_update_callback)
 
         # audit the results to determine which samples failed to convert
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         failed_samples = job.audit(self.pipeline.get_sample_ids())
-        self.fsr_write(failed_samples, job.__class__.__name__)
+        self.fsr.write(failed_samples, job.__class__.__name__)
         return failed_samples
 
     def generate_reports(self):
@@ -426,13 +427,13 @@ class MetaOmic(Assay, FailedSamplesRecord):
                         config['job_max_array_length'],
                         False)
 
-        job.run(callback=self.update_callback)
+        job.run(callback=self.status_update_callback)
 
-        self.fsr_write(job.audit(self.pipeline.get_sample_ids()), 'FastQCJob')
+        self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'FastQCJob')
 
         # as generate_reports is the final step that updates self.fsr,
         # we can generate the final human-readable report following this step.
-        self.fsr_generate_report()
+        self.fsr.generate_report()
 
     def generate_prep_file(self):
         config = self.pipeline.get_software_configuration('seqpro')
@@ -447,7 +448,7 @@ class MetaOmic(Assay, FailedSamplesRecord):
                              self.master_qiita_job_id,
                              is_amplicon=False)
 
-        job.run(callback=self.update_callback)
+        job.run(callback=self.status_update_callback)
 
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates

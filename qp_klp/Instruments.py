@@ -2,7 +2,6 @@ from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.TellReadJob import TellReadJob
 from sequence_processing_pipeline.TRNormCountsJob import TRNormCountsJob
 from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
-from qp_klp.FailedSamplesRecord import FailedSamplesRecord
 
 
 INSTRUMENT_NAME_NONE = "Instrument"
@@ -20,7 +19,7 @@ class Instrument():
     instrument_type = INSTRUMENT_NAME_NONE
 
 
-class Illumina(Instrument, FailedSamplesRecord):
+class Illumina(Instrument):
     instrument_type = INSTRUMENT_NAME_ILLUMINA
 
     def convert_raw_to_fastq(self):
@@ -44,7 +43,7 @@ class Illumina(Instrument, FailedSamplesRecord):
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         failed_samples = job.audit(self.pipeline.get_sample_ids())
-        self.fsr_write(failed_samples, job.__class__.__name__)
+        self.fsr.write(failed_samples, job.__class__.__name__)
         return failed_samples
 
 
