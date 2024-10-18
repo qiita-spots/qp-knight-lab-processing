@@ -336,10 +336,8 @@ class BaseStepTests(TestCase):
             self._create_fake_bin('sbatch', "echo 'Submitted "
                                             "batch job 9999999'")
 
-            self._create_fake_bin('sacct', "echo '9999999|99999999-9999-9999"
-                                           "-9999-999999999999.txt|COMPLETED"
-                                           "|09:53:41|0:0'")
-
+            self._create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
+                                            "9999999,9999999,COMPLETED'")
         if stage >= 2:
             # generate dummy fastq files in ConvertJob and create an empty
             # NuQCJob directory to use for testing NuQCJob initialization.

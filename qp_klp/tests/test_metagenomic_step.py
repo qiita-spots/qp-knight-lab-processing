@@ -142,20 +142,21 @@ class MetagenomicTests(BaseStepTests):
                                                         '.trimmed.fastq.gz'))
                 copyfile(fp, file_path)
 
-        # Since the 'sbatch' and 'sacct' commands don't exist in the testing
+        # Since the 'sbatch' and 'squeue' commands don't exist in the testing
         # environment, fake them by creating fakes that will output to stdout
         # the metadata needed to keep run() working as intended. These faked
         # binary files overwrite the versions created by test_step.py and are
         # automatically deleted after testing. test_step.py sets chmod for us.
         with open(join(dirname(sys.executable), 'sbatch'), 'w') as f:
-            # code will extract 777 for use as the fake job-id in slurm.
-            f.write("echo Hello 777")
+            # code will extract 9999999 for use as the fake job-id in slurm.
+            f.write("echo 'Submitted batch job 9999999'")
 
-        with open(join(dirname(sys.executable), 'sacct'), 'w') as f:
-            # fake sacct will return job-id 777 completed successfully.
+        with open(join(dirname(sys.executable), 'squeue'), 'w') as f:
+            # fake squeue will return job-id 9999999 completed successfully.
             # faked output files created in test method() will generate
             # faked results.
-            f.write("echo \"777|cc_fake_job.sh|COMPLETED|00:10:00|0:0\"")
+            f.write("echo \"ARRAY_JOB_ID,JOBID,STATE\n9999999,9999999,"
+                    "COMPLETED\"")
 
         # execute the quality_control() method, which will in turn call NuQC's
         # run() method.

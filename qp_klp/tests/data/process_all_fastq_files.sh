@@ -118,8 +118,8 @@ function mux-runner () {
 
     # minimap/samtools pair commands are now generated in NuQCJob._generate_mmi_filter_cmds()
     # and passed to this template.
-    minimap2 -2 -ax sr -t 1 /databases/minimap2/db_1.mmi ${jobd}/seqs.interleaved.fastq -a | samtools fastq -@ 1 -f 12 -F 256 > ${jobd}/foo
-minimap2 -2 -ax sr -t 1 /databases/minimap2/db_2.mmi ${jobd}/foo -a | samtools fastq -@ 1 -f 12 -F 256 > ${jobd}/bar
+    minimap2 -2 -ax sr -y -t 1 /databases/minimap2/db_1.mmi ${jobd}/seqs.interleaved.fastq -a | samtools fastq -@ 1 -f 12 -F 256 -T BX > ${jobd}/foo
+minimap2 -2 -ax sr -y -t 1 /databases/minimap2/db_2.mmi ${jobd}/foo -a | samtools fastq -@ 1 -f 12 -F 256 -T BX > ${jobd}/bar
 mv ${jobd}/bar ${jobd}/seqs.interleaved.filter_alignment.fastq
 [ -e ${jobd}/foo ] && rm ${jobd}/foo
 [ -e ${jobd}/bar ] && rm ${jobd}/bar
