@@ -238,13 +238,13 @@ class BaseStepTests(TestCase):
         self.good_sample_sheet_path = cc_path('good-sample-sheet.csv')
         self.another_good_sample_sheet_path = cc_path('another-good-sample-'
                                                       'sheet.csv')
+        self.process_shell_script = cc_path()
         self.sheet_w_replicates_path = cc_path('good_sheet_w_replicates.csv')
         self.good_mapping_file_path = cc_path('good-mapping-file.txt')
         self.good_prep_info_file_path = cc_path('good-sample-prep.tsv')
         self.good_transcript_sheet_path = cc_path('good-sample-sheet-'
                                                   'transcriptomics.csv')
         self.output_file_path = cc_path('output_dir')
-        self.process_shell_script = cc_path('process_all_fastq_files.sh')
         self.master_config_path = cc_path('configuration.json')
         self.dummy_fastq_file = cc_path('dummy.fastq.gz')
         self.mini_sheet_path = cc_path('mini-sample-sheet.csv')

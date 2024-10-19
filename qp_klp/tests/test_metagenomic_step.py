@@ -100,6 +100,31 @@ class MetagenomicTests(BaseStepTests):
         return return_these
 
     def test_metagenomic_quality_control(self):
+        # depending on the addition of optional fastq descriptions in
+        # the configuration of NuQCJob w/in Step.quality_control(), the
+        # resulting job script will be slightly different. Since this
+        # parameter is passed to NuQCJob() directly from the configuration-
+        # profile, the test code remains the same in both cases. To test
+        # both paths we must vary configuration file and the expected output
+        # file.
+
+        # test w/out optional fastq descriptions specified.
+        exp_output_path = join(self.process_shell_script,
+                               "process_all_fastq_files.sh")
+        self.metagenomic_quality_control_exam(exp_output_path)
+
+    def test_metagenomic_quality_control_w_descr(self):
+        # test w/optional fastq descriptions.
+
+        # rather than direct Step to use a different configuration file just
+        # to change one value, we will modify the value in place.
+        ref = self.pipeline.config_profile['profile']['configuration']
+        ref['nu-qc']['additional_fastq_tags'] = ['BX']
+        exp_output_path = join(self.process_shell_script,
+                               "process_all_fastq_files_w_descr.sh")
+        self.metagenomic_quality_control_exam(exp_output_path)
+
+    def metagenomic_quality_control_exam(self, exp_output_path):
         self._create_test_input(2)
 
         metadata = {'NYU_BMS_Melanoma_13059': {'needs_filtering': False,
@@ -164,7 +189,7 @@ class MetagenomicTests(BaseStepTests):
 
         # after step.quality_control() executes, process_all_fastq_files.sh
         # should be created. Confirm the output of this file is as expected.
-        with open(self.process_shell_script, 'r') as f:
+        with open(exp_output_path, 'r') as f:
             exp = f.readlines()
             exp = [line.rstrip() for line in exp]
 
