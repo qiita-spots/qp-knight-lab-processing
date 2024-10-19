@@ -391,12 +391,13 @@ class MetaOmic(Assay):
                       self.master_qiita_job_id,
                       config['job_max_array_length'],
                       config['known_adapters_path'],
+                      config['movi_executable_path'],
+                      config['gres_value'],
+                      config['pmls_path'],
+                      config['additional_fastq_tags'],
                       bucket_size=config['bucket_size'],
                       length_limit=config['length_limit'],
-                      cores_per_task=config['cores_per_task'],
-                      movi_path=config['movi_executable_path'],
-                      gres_value=config['gres_value'],
-                      pmls_path=config['pmls_path'])
+                      cores_per_task=config['cores_per_task'])
 
         job.run(callback=self.status_update_callback)
 

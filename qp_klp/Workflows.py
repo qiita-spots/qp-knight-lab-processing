@@ -749,6 +749,10 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
             if bool(kwargs['update_qiita']) is False:
                 self.update = False
 
+        # for now, hardcode this at the legacy value, since we've never
+        # changed it.
+        self.job_pool_size = 30
+
         """
         member variables from deprecated Step class. it may be good to
         add one or more of these here.
@@ -765,9 +769,7 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
         else:
         self.update_callback = None
 
-        # for now, hardcode this at the legacy value, since we've never
-        # changed it.
-        self.job_pool_size = 30
+
 
         # initialize other member variables so that they're always present,
         # even when the step that populates them hasn't been run yet.
@@ -1314,9 +1316,6 @@ class WorkflowFactory():
             if workflow.assay_type == assay_type:
                 if workflow.instrument_type == instrument_type:
                     # return instantiated workflow object
-                    print("ASSAY TYPE: %s" % workflow.assay_type)
-                    print("INSTRUMENT TYPE: %s" % workflow.instrument_type)
-                    print("CREATING WORKFLOW...")
                     return workflow(**kwargs)
 
         # This Error will only be raised if a sample-sheet passes metapool's

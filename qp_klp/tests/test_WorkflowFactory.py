@@ -120,7 +120,7 @@ class WorkflowFactoryTests(TestCase):
 
     def test_metatranscriptomic_workflow_creation(self):
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/"
-                  "metatranscriptomic/good_sheet1.csv",
+                  "metatranscriptomic/illumina/good_sheet1.csv",
                   # TODO: Fix qclient?
                   "qclient": None,
                   "lane_number": "1",

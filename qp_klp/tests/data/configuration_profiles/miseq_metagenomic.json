@@ -47,6 +47,7 @@
         "cores_per_task": 2,
         "movi_executable_path": "/home/user/user_dir/Movi/build/movi-default",
         "gres_value": 2,
+        "additional_fastq_tags": ["BX"],
         "pmls_path": "/home/user/user_dir/human_host_filtration/scripts/qiita_filter_pmls.py"
       },
       "seqpro": {
@@ -64,7 +65,7 @@
         ],
         "fastqc_executable_path": "fastqc",
         "multiqc_executable_path": "multiqc",
-        "multiqc_config_file_path": "sequence_processing_pipeline/multiqc-bclconvert-config.yaml",
+        "multiqc_config_file_path": "/home/charlie/Development/CHOCO_SUNDAE/qp-knight-lab-processing/qp_klp/tests/data/multiqc-bclconvert-config.yaml",
         "job_total_memory_limit": "20gb",
         "job_pool_size": 120,
         "job_max_array_length": 2000

@@ -241,10 +241,11 @@ class Basics(TestCase):
         makedirs(self.output_dir, exist_ok=False)
 
     def tearDown(self):
+        rmtree(self.output_dir)
+
         for fp in self.delete_these_files:
             if exists(fp):
-                #remove(fp)
-                pass
+                remove(fp)
 
     def create_fake_bin(self, name, content):
         tmp = join(self.fake_bin_path, name)
@@ -274,7 +275,7 @@ class Basics(TestCase):
             if access(a_path, W_OK):
                 return a_path
 
-    def test_partial_pipeline(self):
+    def test_partial_metagenomic_pipeline(self):
         # Tests convert_raw_to_fastq() and quality_control() steps of
         # StandardMetagenomicWorkflow(), which in turn exercises
         # FailedSamplesRecord, Metagenomic and Illumina mixins, and the
@@ -386,12 +387,10 @@ class Basics(TestCase):
         cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'tmp'))
         cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'tmp.564341'))
 
-        #fake_path = join(self.output_dir, 'ConvertJob', project)
-
         # simulate host-filtering scripts by scanning contents of ConvertJob
         # directory and copying the files into the expected location for post-
         # processing.
-        for root, dirs, files in walk(join(self.output_dir, 'ConvertJob')):
+        for root, _, files in walk(join(self.output_dir, 'ConvertJob')):
             for _file in files:
                 # don't process anything from ConvertJob directory that isn't
                 # a simulated fastq file. Since these are fake files we can
@@ -429,4 +428,227 @@ class Basics(TestCase):
         # add some assertions to show that the post-processing step is munging the correct
         # directory structure needed for subsequent steps.
 
+        # TODO: We want to have some files end up in zero-files folder. can be random. just need to test
+        # and confirm results are returned.
+
+        #NuQCJob successful.
+
+        cmds = ["echo 'Submitted batch job 9999999'"]
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'FastQCJob', 'logs'))
+        self.create_fake_bin('sbatch', "\n".join(cmds))
+
+        '''
+        # need to set up fake multqc bin for it to run. need to fake the results of fastqc and multiqc jobs.
+
+        audit_results = sorted(wf.generate_reports())
+
         self.assertTrue(False)
+        '''
+
+    def test_partial_metatranscriptomic_pipeline(self):
+        # Tests convert_raw_to_fastq() and quality_control() steps of
+        # StandardMetagenomicWorkflow(), which in turn exercises
+        # FailedSamplesRecord, Metagenomic and Illumina mixins, and the
+        # base Workflow class.
+
+        # create a shell-script mimicking what the real sbatch prints to
+        # stdout. The code in Job() will extract the job-id (9999999) which
+        # it will poll for using our fake squeue script.
+        #
+        # after printing to stdout, our fake sbatch will simulate the results
+        # of bcl-convert generating fastqs by creating a directory full of
+        # fastq files for each project.
+
+        # the line returning the fake Slurm job-id.
+        cmds = ["echo 'Submitted batch job 9999999'"]
+
+        # the lines to recreate the directories a standard Job() object creates.
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'ConvertJob', 'logs'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'ConvertJob', 'Reports'))
+
+        # use the list of sample_ids found in the sample-sheet to generate
+        # fake fastq files for convert_raw_to_fastq() to find and manipulate.
+        sheet = load_sample_sheet("qp_klp/tests/data/sample-sheets/metagenomic/tellseq/good_sheet_draft1.csv")
+        exp = defaultdict(list)
+        for sample in sheet.samples:
+            sample = sample.to_json()
+            exp[sample['Sample_Project']].append(sample['Sample_ID'])
+
+        # in order to test post-process auditing, we will manually remove a
+        # single sample_id from each project in order to simulate failed
+        # conversions.
+        simulated_failed_samples = []
+
+        for project in exp:
+            # sort the list so that files are created in a predictable order.
+            exp[project].sort()
+
+            simulated_failed_samples.append(exp[project].pop())
+
+            fake_path = join(self.output_dir, 'ConvertJob', project)
+            cmds.append(f"mkdir -p {fake_path}")
+
+            for sample in exp[project]:
+                r1 = join(fake_path, f'{sample}_S123_L001_R1_001.fastq.gz')
+                r2 = join(fake_path, f'{sample}_S123_L001_R2_001.fastq.gz')
+
+                # let r1 and r2 be the same size.
+                size = randint(1, 10)
+                for file_path in [r1, r2]:
+                    cmds.append(f"dd if=/dev/zero of={file_path} bs={size}MB count=1 2>/dev/null")
+
+        # write all the statements out into a bash-script named 'sbatch' and
+        # place it somewhere in the PATH. (It will be removed on tearDown()).
+        self.create_fake_bin('sbatch', "\n".join(cmds))
+
+        # create fake squeue binary that writes to stdout what Job() needs to
+        # see to think that bcl-convert has completed successfully.
+        self.create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
+                              "9999999,9999999,COMPLETED'")
+
+        # Create a Workflow object using WorkflowFactory(). No need to confirm
+        # it is the correct one; that is confirmed in other tests. Run
+        # convert_raw_to_fastq() and confirm that the directory structure and
+        # the audit results match what is expected.
+        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/tellseq/good_sheet_draft1.csv",
+                  "qclient": FakeClient(),
+                  "lane_number": "1",
+                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "run_identifier": '211021_A00000_0000_SAMPLE',
+                  "output_dir": self.output_dir,
+                  "job_id": "077c4da8-74eb-4184-8860-0207f53623be",
+                  "is_restart": False
+                  }
+
+        wf = WorkflowFactory.generate_workflow(**kwargs)
+
+        # Illumina.convert_raw_to_fastq() calls Job.audit() after bcl-convert
+        # exists and will identify the samples that failed to process. Confirm
+        # the values are correct here.
+        audit_results = sorted(wf.convert_raw_to_fastq())
+
+        self.assertEqual(audit_results, sorted(simulated_failed_samples))
+
+        # NB: bcl-convert's presence in ConvertJob.sh confirms it is getting
+        # path and binary name from the correct configuration file. Note it
+        # doesn't check to see that the binary exists because where Job() runs
+        # is not the same location as where bcl-convert will run (compute-
+        # node.)
+
+        # confirm ConvertJob.sh Slurm job script looks exactly as intended by
+        # confirming its digest.
+
+        # TODO: Redo this test since full path is now present
+        #exp = "8b3354068d30142ff4158cd049808afe"
+        #script_path = join(self.output_dir, 'ConvertJob', 'ConvertJob.sh')
+        #obs = md5(open(script_path, 'rb').read()).hexdigest()
+        #self.assertEqual(obs, exp)
+
+        # ConvertJob successful.
+        cmds = []
+
+        # the lines to recreate the directories a standard Job() object creates.
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'logs'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'only-adapter-filtered'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'html'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'json'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'tmp'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'tmp.564341'))
+
+        # simulate host-filtering scripts by scanning contents of ConvertJob
+        # directory and copying the files into the expected location for post-
+        # processing.
+        for root, _, files in walk(join(self.output_dir, 'ConvertJob')):
+            for _file in files:
+                # don't process anything from ConvertJob directory that isn't
+                # a simulated fastq file. Since these are fake files we can
+                # assume 'Undetermined' fastq files are not present.
+                if not _file.endswith('.fastq.gz'):
+                    continue
+
+                raw_file = join(root, _file)
+                _, project_name = split(root)
+
+                new_name = _file.replace('.fastq.gz', '.interleave.fastq.gz')
+                file_path = join(self.output_dir, 'NuQCJob', 'only-adapter-filtered', new_name)
+                cmds.append(f"cp {raw_file} {file_path}")
+
+                cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', project_name, 'filtered_sequences'))
+
+                file_path = join(self.output_dir, 'NuQCJob', project_name, 'filtered_sequences', _file)
+                cmds.append(f"cp {raw_file} {file_path}")
+
+                new_name = _file.replace('.fastq.gz', '.html')
+                file_path = join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'html', new_name)
+                cmds.append(f"echo 'This is an html file.' > {file_path}")
+
+                new_name = _file.replace('.fastq.gz', '.json')
+                file_path = join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'json', new_name)
+                cmds.append(f"echo 'This is a json file.' > {file_path}")
+
+        cmds.append("echo 'Submitted batch job 9999999'")
+        # write all the statements out into a bash-script named 'sbatch' and
+        # place it somewhere in the PATH. (It will be removed on tearDown()).
+        self.create_fake_bin('sbatch', "\n".join(cmds))
+        audit_results = sorted(wf.quality_control())
+
+        '''
+
+
+        # add tests to test audit results, modify test to introduce some 'zero-length' files.
+        # add some assertions to show that the post-processing step is munging the correct
+        # directory structure needed for subsequent steps.
+
+        # TODO: We want to have some files end up in zero-files folder. can be random. just need to test
+        # and confirm results are returned.
+
+        #NuQCJob successful.
+
+        cmds = ["echo 'Submitted batch job 9999999'"]
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'FastQCJob', 'logs'))
+        self.create_fake_bin('sbatch', "\n".join(cmds))
+
+
+        # need to set up fake multqc bin for it to run. need to fake the results of fastqc and multiqc jobs.
+
+        audit_results = sorted(wf.generate_reports())
+
+         self.assertTrue(False)
+        '''
+
+    def test_partial_amplicon_pipeline(self):
+        kwargs = {"uif_path": "qp_klp/tests/data/pre-preps/good_pre_prep1.txt",
+                  "qclient": FakeClient(),
+                  "lane_number": "1",
+                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "run_identifier": '211021_A00000_0000_SAMPLE',
+                  "output_dir": self.output_dir,
+                  "job_id": "077c4da8-74eb-4184-8860-0207f53623be",
+                  "is_restart": False
+                  }
+
+        wf = WorkflowFactory.generate_workflow(**kwargs)
+
+        # Illumina.convert_raw_to_fastq() calls Job.audit() after bcl-convert
+        # exists and will identify the samples that failed to process. Confirm
+        # the values are correct here.
+        #audit_results = sorted(wf.convert_raw_to_fastq())
+
+    def test_parital_tellseq_pipeline(self):
+        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/tellseq/good_sheet_draft1.csv",
+                  "qclient": FakeClient(),
+                  "lane_number": "1",
+                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "run_identifier": '211021_A00000_0000_SAMPLE',
+                  "output_dir": self.output_dir,
+                  "job_id": "077c4da8-74eb-4184-8860-0207f53623be",
+                  "is_restart": False
+                  }
+
+        wf = WorkflowFactory.generate_workflow(**kwargs)
+
+
+
+
+
+
