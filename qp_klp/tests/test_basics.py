@@ -22,6 +22,7 @@ from metapool import load_sample_sheet
 from collections import defaultdict
 from hashlib import md5
 from random import randint
+from platform import system as os_type
 
 
 class FakeClient():
@@ -240,6 +241,16 @@ class Basics(TestCase):
         # We want a clean directory, nothing from leftover runs
         makedirs(self.output_dir, exist_ok=False)
 
+        # dd on Linux based systems use bs=1MB while MacOS requires
+        # bs=1m
+
+        tmp = {'Linux': 'MB', 'Darwin': 'm'}
+
+        if os_type() in tmp:
+            self.dd_param = tmp[os_type()]
+        else:
+            raise ValueError("Nosetests are not supported on this platform.")
+
     def tearDown(self):
         rmtree(self.output_dir)
 
@@ -326,7 +337,7 @@ class Basics(TestCase):
                 # let r1 and r2 be the same size.
                 size = randint(1, 10)
                 for file_path in [r1, r2]:
-                    cmds.append(f"dd if=/dev/zero of={file_path} bs={size}MB count=1 2>/dev/null")
+                    cmds.append(f"dd if=/dev/zero of={file_path} bs={size}{self.dd_param} count=1 2>/dev/null")
 
         # write all the statements out into a bash-script named 'sbatch' and
         # place it somewhere in the PATH. (It will be removed on tearDown()).
@@ -495,7 +506,7 @@ class Basics(TestCase):
                 # let r1 and r2 be the same size.
                 size = randint(1, 10)
                 for file_path in [r1, r2]:
-                    cmds.append(f"dd if=/dev/zero of={file_path} bs={size}MB count=1 2>/dev/null")
+                    cmds.append(f"dd if=/dev/zero of={file_path} bs={size}{self.dd_param} count=1 2>/dev/null")
 
         # write all the statements out into a bash-script named 'sbatch' and
         # place it somewhere in the PATH. (It will be removed on tearDown()).
@@ -644,7 +655,7 @@ class Basics(TestCase):
         # let r1 and r2 be the same size.
         size = randint(1, 10)
         for file_path in [r1, r2]:
-            cmds.append(f"dd if=/dev/zero of={file_path} bs={size}MB count=1 2>/dev/null")
+            cmds.append(f"dd if=/dev/zero of={file_path} bs={size}{self.dd_param} count=1 2>/dev/null")
 
         # write all the statements out into a bash-script named 'sbatch' and
         # place it somewhere in the PATH. (It will be removed on tearDown()).
