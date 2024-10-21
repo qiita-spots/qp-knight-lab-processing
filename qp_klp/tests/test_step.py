@@ -238,13 +238,13 @@ class BaseStepTests(TestCase):
         self.good_sample_sheet_path = cc_path('good-sample-sheet.csv')
         self.another_good_sample_sheet_path = cc_path('another-good-sample-'
                                                       'sheet.csv')
+        self.process_shell_script = cc_path()
         self.sheet_w_replicates_path = cc_path('good_sheet_w_replicates.csv')
         self.good_mapping_file_path = cc_path('good-mapping-file.txt')
         self.good_prep_info_file_path = cc_path('good-sample-prep.tsv')
         self.good_transcript_sheet_path = cc_path('good-sample-sheet-'
                                                   'transcriptomics.csv')
         self.output_file_path = cc_path('output_dir')
-        self.process_shell_script = cc_path('process_all_fastq_files.sh')
         self.master_config_path = cc_path('configuration.json')
         self.dummy_fastq_file = cc_path('dummy.fastq.gz')
         self.mini_sheet_path = cc_path('mini-sample-sheet.csv')
@@ -336,10 +336,8 @@ class BaseStepTests(TestCase):
             self._create_fake_bin('sbatch', "echo 'Submitted "
                                             "batch job 9999999'")
 
-            self._create_fake_bin('sacct', "echo '9999999|99999999-9999-9999"
-                                           "-9999-999999999999.txt|COMPLETED"
-                                           "|09:53:41|0:0'")
-
+            self._create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
+                                            "9999999,9999999,COMPLETED'")
         if stage >= 2:
             # generate dummy fastq files in ConvertJob and create an empty
             # NuQCJob directory to use for testing NuQCJob initialization.

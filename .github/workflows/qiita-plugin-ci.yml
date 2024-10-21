@@ -79,7 +79,7 @@ jobs:
           # seqtk is a conda-installed requirement for metapool and isn't
           # installed automatically by its setup.py.
           conda config --add channels bioconda
-          conda create -q --yes -n klp python=3.9 seqtk
+          conda create -q --yes -n klp python=3.9 'seqtk>=1.4'
           conda activate klp
 
           export QIITA_SERVER_CERT=`pwd`/qiita-dev/qiita_core/support_files/server.crt

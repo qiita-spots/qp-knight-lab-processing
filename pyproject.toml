@@ -36,7 +36,7 @@ dependencies = [
     "pandas",
     "qiita-files@https://github.com/qiita-spots/qiita-files/archive/master.zip",
     "qiita_client@https://github.com/qiita-spots/qiita_client/archive/master.zip",
-    "sequence-processing-pipeline@https://github.com/biocore/mg-scripts/archive/master.zip",
+    "sequence-processing-pipeline@https://github.com/biocore/mg-scripts/archive/master.zip"
 ]
 [project.scripts]
 configure_klp = "qp_klp.scripts.configure_klp:config"
