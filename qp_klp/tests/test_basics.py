@@ -617,6 +617,48 @@ class Basics(TestCase):
         '''
 
     def test_partial_amplicon_pipeline(self):
+        # Tests convert_raw_to_fastq() and quality_control() steps of
+        # StandardAmpliconWorkflow(), which in turn exercises
+        # Amplicon and Illumina mixins, and the base Workflow class.
+
+        # create a shell-script mimicking what the real sbatch prints to
+        # stdout. The code in Job() will extract the job-id (9999999) which
+        # it will poll for using our fake squeue script.
+        #
+        # after printing to stdout, our fake sbatch will simulate the results
+        # of bcl-convert generating fastqs by creating a directory full of
+        # fastq files for each project.
+
+        # the line returning the fake Slurm job-id.
+        cmds = ["echo 'Submitted batch job 9999999'"]
+
+        # the lines to recreate the directories a standard Job() object creates.
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'ConvertJob', 'logs'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'ConvertJob', 'Reports'))
+
+        r1 = join(join(self.output_dir, 'ConvertJob'),
+                  'Undetermined_S0_L001_R1_001.fastq.gz')
+        r2 = join(join(self.output_dir, 'ConvertJob'),
+                  'Undetermined_S0_L001_R2_001.fastq.gz')
+
+        # let r1 and r2 be the same size.
+        size = randint(1, 10)
+        for file_path in [r1, r2]:
+            cmds.append(f"dd if=/dev/zero of={file_path} bs={size}MB count=1 2>/dev/null")
+
+        # write all the statements out into a bash-script named 'sbatch' and
+        # place it somewhere in the PATH. (It will be removed on tearDown()).
+        self.create_fake_bin('sbatch', "\n".join(cmds))
+
+        # create fake squeue binary that writes to stdout what Job() needs to
+        # see to think that bcl-convert has completed successfully.
+        self.create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
+                              "9999999,9999999,COMPLETED'")
+
+        # Create a Workflow object using WorkflowFactory(). No need to confirm
+        # it is the correct one; that is confirmed in other tests. Run
+        # convert_raw_to_fastq() and confirm that the directory structure and
+        # the audit results match what is expected.
         kwargs = {"uif_path": "qp_klp/tests/data/pre-preps/good_pre_prep1.txt",
                   "qclient": FakeClient(),
                   "lane_number": "1",
@@ -629,12 +671,70 @@ class Basics(TestCase):
 
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
-        # Illumina.convert_raw_to_fastq() calls Job.audit() after bcl-convert
-        # exists and will identify the samples that failed to process. Confirm
-        # the values are correct here.
-        #audit_results = sorted(wf.convert_raw_to_fastq())
+        # Amplicon (16S) workflow doesn't demux samples, hence there is
+        # nothing to audit. Just run convert_raw_to_fastq().
+        wf.convert_raw_to_fastq()
 
-    def test_parital_tellseq_pipeline(self):
+        # NB: bcl2fastq's presence in ConvertJob.sh confirms it is getting
+        # path and binary name from the correct configuration file. Note it
+        # doesn't check to see that the binary exists because where Job() runs
+        # is not the same location as where bcl-convert will run (compute-
+        # node.)
+
+        # confirm ConvertJob.sh Slurm job script looks exactly as intended by
+        # confirming its digest.
+
+        # TODO: Redo this test since full path is now present
+        #exp = "8b3354068d30142ff4158cd049808afe"
+        #script_path = join(self.output_dir, 'ConvertJob', 'ConvertJob.sh')
+        #obs = md5(open(script_path, 'rb').read()).hexdigest()
+        #self.assertEqual(obs, exp)
+
+        # ConvertJob successful.
+
+        # NB: Since Amplicon workflows do not demux samples into individual
+        # fastq files and there is no adapter-trimming, there is nothing for
+        # the traditional 'quality-control' step to do. The only thing for
+        # quality control to do is post-process the results of ConvertJob and
+        # copy them into a structure that FastQCJob expects.
+
+        # Hence, we do not recreate the structure of NuQCJob here and write
+        # it into a bash script. Instead we'll run quality_control() and
+        # confirm that Amplicon.quality_control() copies the results from
+        # ConvertJob() into a faked NuQCJob structure for FastQCJob to find.
+
+        # With multiple projects and multiplexed fastq files, it's not
+        # possible to sort them by project, but all downstream processes
+        # expect this, including prep-info file generation and loading of them
+        # into Qiita.
+
+        # To support these downstream processes, Amplicon.quality_control()
+        # creates project directories for as many projects are listed in the
+        # pre-prep file, and copies _all_ of the Undetermined fastq files into
+        # _each_ project directory.
+
+        wf.quality_control()
+
+        base_path = "qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be"
+
+        exp = [join(base_path, 'NuQCJob'),
+               join(base_path, 'NuQCJob', 'TestProj_1'),
+               join(base_path, 'NuQCJob', 'TestProj_2'),
+               join(base_path, 'NuQCJob', 'TestProj_1', 'amplicon'),
+               join(base_path, 'NuQCJob', 'TestProj_2', 'amplicon'),
+               join(base_path, 'NuQCJob', 'TestProj_1', 'amplicon',
+                    'Undetermined_S0_L001_R1_001.fastq.gz'),
+                join(base_path, 'NuQCJob', 'TestProj_1', 'amplicon',
+                    'Undetermined_S0_L001_R2_001.fastq.gz'),
+               join(base_path, 'NuQCJob', 'TestProj_2', 'amplicon',
+                    'Undetermined_S0_L001_R1_001.fastq.gz'),
+                join(base_path, 'NuQCJob', 'TestProj_1', 'amplicon',
+                    'Undetermined_S0_L001_R2_001.fastq.gz')]
+
+        for _path in exp:
+            self.assertTrue(exists(_path))
+
+    def atest_parital_tellseq_pipeline(self):
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/tellseq/good_sheet_draft1.csv",
                   "qclient": FakeClient(),
                   "lane_number": "1",

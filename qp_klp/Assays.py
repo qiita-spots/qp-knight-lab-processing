@@ -175,6 +175,7 @@ class Amplicon(Assay):
 
         # Simulate NuQCJob's output directory for use as input into FastQCJob.
         projects = self.pipeline.get_project_info()
+
         projects = [x['project_name'] for x in projects]
 
         for project_name in projects:
@@ -198,12 +199,14 @@ class Amplicon(Assay):
             # get list of all raw output files to be copied.
             job_output = [join(raw_fastq_files_path, x) for x in
                           listdir(raw_fastq_files_path)]
+
             job_output = [x for x in job_output if isfile(x)]
             job_output = [x for x in job_output if x.endswith('fastq.gz')]
-            # Undetermined files are very small and should be filtered from
-            # results.
+
+            # NB: In this case, ensure the ONLY files that get copied are
+            # Undetermined files, and this is what we expect for 16S runs.
             job_output = [x for x in job_output if
-                          not basename(x).startswith('Undetermined')]
+                          basename(x).startswith('Undetermined')]
 
             # copy the file
             for fastq_file in job_output:

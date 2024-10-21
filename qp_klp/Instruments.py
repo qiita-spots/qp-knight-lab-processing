@@ -2,6 +2,7 @@ from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.TellReadJob import TellReadJob
 from sequence_processing_pipeline.TRNormCountsJob import TRNormCountsJob
 from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
+from sequence_processing_pipeline.PipelineError import PipelineError
 
 
 INSTRUMENT_NAME_NONE = "Instrument"
@@ -22,8 +23,40 @@ class Instrument():
 class Illumina(Instrument):
     instrument_type = INSTRUMENT_NAME_ILLUMINA
 
+    def _get_configuration(self, command):
+        # NB: This helper method is to change the behavior of Pipeline.
+        # get_software_command. In most cases we know and expect a specific
+        # configuration dictionary and it's beneficial to raise an Error if
+        # it's not found. In this particular case however, the user expects
+        # that one or both of two different config dictionaries can be
+        # present.
+        try:
+            return self.pipeline.get_software_configuration(command)
+        except PipelineError as e:
+            if str(e) != f"'{command}' is not defined in configuration":
+                # re-raise the Error if it's not the one we are expecting and
+                # can properly handle here.
+                raise PipelineError(e)
+
     def convert_raw_to_fastq(self):
-        config = self.pipeline.get_software_configuration('bcl-convert')
+        # NB: it is preferable to use bcl-convert over bcl2fastq to generate
+        # fastq files in most situations. bcl2fastq is used for processing
+        # 16S runs, as it handles the need to keep the samples muxed better
+        # than bcl-convert.
+        #
+        # ConvertJob knows how to generate the proper job-script for each
+        # utility. It determines the software to use by processing the
+        # executable_path for a file_name. Set the software to use by
+        # defining either a bcl-convert or bcl2fastq section in the config
+        # profile. If both are defined, this class will perfer bcl-convert.
+        bcl2fastq_conf = self._get_configuration('bcl2fastq')
+        bclcnvrt_conf = self._get_configuration('bcl-convert')
+
+        if bclcnvrt_conf is None and bcl2fastq_conf is None:
+            raise PipelineError("bcl-convert and bcl2fastq sections not "
+                                "defined in configuation profile.")
+
+        config = bcl2fastq_conf if bclcnvrt_conf is None else bclcnvrt_conf
 
         job = ConvertJob(self.pipeline.run_dir,
                          self.pipeline.output_path,
@@ -43,7 +76,10 @@ class Illumina(Instrument):
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         failed_samples = job.audit(self.pipeline.get_sample_ids())
-        self.fsr.write(failed_samples, job.__class__.__name__)
+        if hasattr(self, 'fsr'):
+            # NB 16S does not require a failed samples report and
+            # it is not performed by SPP.
+            self.fsr.write(failed_samples, job.__class__.__name__)
         return failed_samples
 
 
