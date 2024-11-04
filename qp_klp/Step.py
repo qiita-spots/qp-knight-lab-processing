@@ -327,12 +327,13 @@ class Step:
                            self.master_qiita_job_id,
                            config['job_max_array_length'],
                            config['known_adapters_path'],
+                           config['movi_executable_path'],
+                           config['gres_value'],
+                           config['pmls_path'],
+                           config['additional_fastq_tags'],
                            bucket_size=config['bucket_size'],
                            length_limit=config['length_limit'],
-                           cores_per_task=config['cores_per_task'],
-                           movi_path=config['movi_executable_path'],
-                           gres_value=config['gres_value'],
-                           pmls_path=config['pmls_path'])
+                           cores_per_task=config['cores_per_task'])
 
         nuqc_job.run(callback=self.update_callback)
 
@@ -760,7 +761,8 @@ class Step:
                                                     samples)
 
             msgs.append("Number of values in sheet that aren't sample-names in"
-                        " Qiita: %s" % len(results_sn[0]))
+                        f" Qiita: {len(results_sn[0])} "
+                        f"{list(results_sn[0])[:10]}")
 
             use_tids = False
 
