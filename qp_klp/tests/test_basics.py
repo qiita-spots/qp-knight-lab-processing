@@ -6,23 +6,17 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from unittest import TestCase
-from sequence_processing_pipeline.Pipeline import Pipeline, PipelineError
-from os.path import join, abspath, exists, dirname, split
-from functools import partial
+from os.path import join, abspath, exists, split
 from os import makedirs, chmod, access, W_OK, walk
-from shutil import rmtree, copy, which, copytree
+from shutil import rmtree
 from os import environ, remove, getcwd
-import pandas as pd
-from metapool import parse_prep
 import re
-from copy import deepcopy
-from tempfile import TemporaryDirectory
-from qp_klp.Workflows import StandardMetagenomicWorkflow, WorkflowFactory
+from qp_klp.Workflows import WorkflowFactory
 from metapool import load_sample_sheet
 from collections import defaultdict
 from hashlib import md5
 from random import randint
-from platform import system as os_type
+from platform import system as get_operating_system_type
 
 
 class FakeClient():
@@ -241,22 +235,15 @@ class Basics(TestCase):
         # We want a clean directory, nothing from leftover runs
         makedirs(self.output_dir, exist_ok=False)
 
-        # dd on Linux based systems use bs=1MB while MacOS requires
-        # bs=1m
-
-        tmp = {'Linux': 'MB', 'Darwin': 'm'}
-
-        if os_type() in tmp:
-            self.dd_param = tmp[os_type()]
-        else:
-            raise ValueError("Nosetests are not supported on this platform.")
+        self.debug = True
 
     def tearDown(self):
-        rmtree(self.output_dir)
+        if not self.debug:
+            rmtree(self.output_dir)
 
-        for fp in self.delete_these_files:
-            if exists(fp):
-                remove(fp)
+            for fp in self.delete_these_files:
+                if exists(fp):
+                    remove(fp)
 
     def create_fake_bin(self, name, content):
         tmp = join(self.fake_bin_path, name)
@@ -285,6 +272,19 @@ class Basics(TestCase):
         for a_path in searchable_paths:
             if access(a_path, W_OK):
                 return a_path
+
+    def _generate_empty_file_cmd(self, file_path, size):
+        # the dd command takes slightly different parameters if the platform
+        # is Linux vs MacOS (Darwin). This allows for testing to run
+        # correctly on both platforms
+        types = {'Linux': 'MB', 'Darwin': 'm'}
+
+        type = get_operating_system_type()
+        if type in types:
+            return (f"dd if=/dev/zero of={file_path} bs={size}{types[type]} "
+                    "count=1 2>/dev/null")
+        else:
+            raise ValueError(f"Platform '{type}' is not supported.")
 
     def test_partial_metagenomic_pipeline(self):
         # Tests convert_raw_to_fastq() and quality_control() steps of
@@ -337,7 +337,7 @@ class Basics(TestCase):
                 # let r1 and r2 be the same size.
                 size = randint(1, 10)
                 for file_path in [r1, r2]:
-                    cmds.append(f"dd if=/dev/zero of={file_path} bs={size}{self.dd_param} count=1 2>/dev/null")
+                    cmds.append(self._generate_empty_file_cmd(file_path, size))
 
         # write all the statements out into a bash-script named 'sbatch' and
         # place it somewhere in the PATH. (It will be removed on tearDown()).
@@ -381,11 +381,36 @@ class Basics(TestCase):
         # confirm ConvertJob.sh Slurm job script looks exactly as intended by
         # confirming its digest.
 
-        # TODO: Redo this test since full path is now present
-        #exp = "8b3354068d30142ff4158cd049808afe"
-        #script_path = join(self.output_dir, 'ConvertJob', 'ConvertJob.sh')
-        #obs = md5(open(script_path, 'rb').read()).hexdigest()
-        #self.assertEqual(obs, exp)
+        exp = ['#!/bin/bash',
+               '#SBATCH --job-name None_ConvertJob',
+               '#SBATCH -p qiita',
+               '#SBATCH -N 1',
+               '#SBATCH -n 16',
+               '#SBATCH --time 216',
+               '#SBATCH --mail-type=ALL',
+               '#SBATCH --mail-user qiita.help@gmail.com',
+               '#SBATCH --mem-per-cpu 10gb',
+               'set -x',
+               'date',
+               'hostname',
+               'cd qp_klp/tests/data/211021_A00000_0000_SAMPLE',
+               'module load bclconvert_3.7.5',
+               'bcl-convert --sample-sheet "qp_klp/tests/data/sample-sheets/'
+               'metagenomic/illumina/good_sheet1.csv" --output-directory '
+               'qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/'
+               'ConvertJob --bcl-input-directory . --bcl-num-decompression-'
+               'threads 16 --bcl-num-conversion-threads 16 --bcl-num-'
+               'compression-threads 16 --bcl-num-parallel-tiles 16 '
+               '--bcl-sampleproject-subdirectories true --force']
+
+        with open("qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+                  "ConvertJob/ConvertJob.sh", 'r') as f:
+            obs = f.readlines()
+            obs = [x.strip() for x in obs]
+            obs = [re.sub('-directory .*?/qp_klp',
+                          '-directory qp_klp', x) for x in obs]
+
+        self.assertEqual(obs, exp)
 
         # ConvertJob successful.
         cmds = []
@@ -435,30 +460,23 @@ class Basics(TestCase):
         self.create_fake_bin('sbatch', "\n".join(cmds))
         audit_results = sorted(wf.quality_control())
 
+        # TODO: Add assertion tests for NuQCJob
+
         # add tests to test audit results, modify test to introduce some 'zero-length' files.
         # add some assertions to show that the post-processing step is munging the correct
         # directory structure needed for subsequent steps.
 
-        # TODO: We want to have some files end up in zero-files folder. can be random. just need to test
-        # and confirm results are returned.
+        # TODO: Test that some files end up in zero-files folder.
 
         #NuQCJob successful.
 
-        cmds = ["echo 'Submitted batch job 9999999'"]
-        cmds.append("mkdir -p %s" % join(self.output_dir, 'FastQCJob', 'logs'))
-        self.create_fake_bin('sbatch', "\n".join(cmds))
-
-        '''
-        # need to set up fake multqc bin for it to run. need to fake the results of fastqc and multiqc jobs.
-
-        audit_results = sorted(wf.generate_reports())
-
-        self.assertTrue(False)
-        '''
+        # TODO: set up fake multiqc bin to. fake results of fastqc and
+        # multiqc jobs.
+        # audit_results = sorted(wf.generate_reports())
 
     def test_partial_metatranscriptomic_pipeline(self):
         # Tests convert_raw_to_fastq() and quality_control() steps of
-        # StandardMetagenomicWorkflow(), which in turn exercises
+        # StandardMetatranscriptomicWorkflow(), which in turn exercises
         # FailedSamplesRecord, Metagenomic and Illumina mixins, and the
         # base Workflow class.
 
@@ -479,8 +497,10 @@ class Basics(TestCase):
 
         # use the list of sample_ids found in the sample-sheet to generate
         # fake fastq files for convert_raw_to_fastq() to find and manipulate.
-        sheet = load_sample_sheet("qp_klp/tests/data/sample-sheets/metagenomic/tellseq/good_sheet_draft1.csv")
+        sheet = load_sample_sheet("qp_klp/tests/data/sample-sheets/metatranscriptomic/illumina/good_sheet1.csv")
+
         exp = defaultdict(list)
+
         for sample in sheet.samples:
             sample = sample.to_json()
             exp[sample['Sample_Project']].append(sample['Sample_ID'])
@@ -506,7 +526,7 @@ class Basics(TestCase):
                 # let r1 and r2 be the same size.
                 size = randint(1, 10)
                 for file_path in [r1, r2]:
-                    cmds.append(f"dd if=/dev/zero of={file_path} bs={size}{self.dd_param} count=1 2>/dev/null")
+                    cmds.append(self._generate_empty_file_cmd(file_path, size))
 
         # write all the statements out into a bash-script named 'sbatch' and
         # place it somewhere in the PATH. (It will be removed on tearDown()).
@@ -521,9 +541,9 @@ class Basics(TestCase):
         # it is the correct one; that is confirmed in other tests. Run
         # convert_raw_to_fastq() and confirm that the directory structure and
         # the audit results match what is expected.
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/tellseq/good_sheet_draft1.csv",
+        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metatranscriptomic/illumina/good_sheet1.csv",
                   "qclient": FakeClient(),
-                  "lane_number": "1",
+                  "lane_number": "2",
                   "config_fp": "qp_klp/tests/data/configuration.json",
                   "run_identifier": '211021_A00000_0000_SAMPLE',
                   "output_dir": self.output_dir,
@@ -548,12 +568,38 @@ class Basics(TestCase):
 
         # confirm ConvertJob.sh Slurm job script looks exactly as intended by
         # confirming its digest.
+        exp = [
+            "#!/bin/bash",
+            "#SBATCH --job-name None_ConvertJob",
+            "#SBATCH -p qiita",
+            "#SBATCH -N 1",
+            "#SBATCH -n 16",
+            "#SBATCH --time 216",
+            "#SBATCH --mail-type=ALL",
+            "#SBATCH --mail-user qiita.help@gmail.com",
+            "#SBATCH --mem-per-cpu 10gb",
+            "set -x",
+            "date",
+            "hostname",
+            "cd qp_klp/tests/data/211021_A00000_0000_SAMPLE",
+            "module load bclconvert_3.7.5",
+            "bcl-convert --sample-sheet \"qp_klp/tests/data/sample-sheets/"
+            "metatranscriptomic/illumina/good_sheet1.csv\" --output-directory"
+            " qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+            "ConvertJob --bcl-input-directory . --bcl-num-decompression-"
+            "threads 16 --bcl-num-conversion-threads 16 --bcl-num-compression"
+            "-threads 16 --bcl-num-parallel-tiles 16 --bcl-sampleproject-"
+            "subdirectories true --force"
+            ]
 
-        # TODO: Redo this test since full path is now present
-        #exp = "8b3354068d30142ff4158cd049808afe"
-        #script_path = join(self.output_dir, 'ConvertJob', 'ConvertJob.sh')
-        #obs = md5(open(script_path, 'rb').read()).hexdigest()
-        #self.assertEqual(obs, exp)
+        with open("qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+                  "ConvertJob/ConvertJob.sh", 'r') as f:
+            obs = f.readlines()
+            obs = [x.strip() for x in obs]
+            obs = [re.sub('-directory .*?/qp_klp',
+                          '-directory qp_klp', x) for x in obs]
+
+        self.assertEqual(obs, exp)
 
         # ConvertJob successful.
         cmds = []
@@ -603,29 +649,12 @@ class Basics(TestCase):
         self.create_fake_bin('sbatch', "\n".join(cmds))
         audit_results = sorted(wf.quality_control())
 
-        '''
+        # TODO: Add assertion tests for NuQCJob
 
+        # NuQCJob successful.
 
-        # add tests to test audit results, modify test to introduce some 'zero-length' files.
-        # add some assertions to show that the post-processing step is munging the correct
-        # directory structure needed for subsequent steps.
-
-        # TODO: We want to have some files end up in zero-files folder. can be random. just need to test
-        # and confirm results are returned.
-
-        #NuQCJob successful.
-
-        cmds = ["echo 'Submitted batch job 9999999'"]
-        cmds.append("mkdir -p %s" % join(self.output_dir, 'FastQCJob', 'logs'))
-        self.create_fake_bin('sbatch', "\n".join(cmds))
-
-
-        # need to set up fake multqc bin for it to run. need to fake the results of fastqc and multiqc jobs.
-
-        audit_results = sorted(wf.generate_reports())
-
-         self.assertTrue(False)
-        '''
+        # TODO: Add tests for zero-files
+        # TODO: Add tests for MultiQC Job.
 
     def test_partial_amplicon_pipeline(self):
         # Tests convert_raw_to_fastq() and quality_control() steps of
@@ -655,7 +684,7 @@ class Basics(TestCase):
         # let r1 and r2 be the same size.
         size = randint(1, 10)
         for file_path in [r1, r2]:
-            cmds.append(f"dd if=/dev/zero of={file_path} bs={size}{self.dd_param} count=1 2>/dev/null")
+            cmds.append(self._generate_empty_file_cmd(file_path, size))
 
         # write all the statements out into a bash-script named 'sbatch' and
         # place it somewhere in the PATH. (It will be removed on tearDown()).
@@ -684,6 +713,7 @@ class Basics(TestCase):
 
         # Amplicon (16S) workflow doesn't demux samples, hence there is
         # nothing to audit. Just run convert_raw_to_fastq().
+
         wf.convert_raw_to_fastq()
 
         # NB: bcl2fastq's presence in ConvertJob.sh confirms it is getting
@@ -695,11 +725,37 @@ class Basics(TestCase):
         # confirm ConvertJob.sh Slurm job script looks exactly as intended by
         # confirming its digest.
 
-        # TODO: Redo this test since full path is now present
-        #exp = "8b3354068d30142ff4158cd049808afe"
-        #script_path = join(self.output_dir, 'ConvertJob', 'ConvertJob.sh')
-        #obs = md5(open(script_path, 'rb').read()).hexdigest()
-        #self.assertEqual(obs, exp)
+        # confirm ConvertJob.sh Slurm job script looks exactly as intended by
+        # confirming its digest.
+        exp = ["#!/bin/bash",
+               "#SBATCH --job-name None_ConvertJob",
+               "#SBATCH -p qiita",
+               "#SBATCH -N 2",
+               "#SBATCH -n 62",
+               "#SBATCH --time 1022",
+               "#SBATCH --mail-type=ALL",
+               "#SBATCH --mail-user qiita.help@gmail.com",
+               "#SBATCH --mem-per-cpu 100gb",
+               "set -x",
+               "date",
+               "hostname",
+               "cd qp_klp/tests/data/211021_A00000_0000_SAMPLE",
+               "module load bcl2fastq_2.20.0.222",
+               "bcl2fastq --sample-sheet \"qp_klp/tests/data/pre-preps/"
+               "good_pre_prep1.txt\" --minimum-trimmed-read-length 1 "
+               "--mask-short-adapter-reads 1 -R . -o qp_klp/tests/data/"
+               "077c4da8-74eb-4184-8860-0207f53623be/ConvertJob "
+               "--loading-threads 16 --processing-threads 16 --writing-"
+               "threads 16 --create-fastq-for-index-reads --ignore-missing-"
+               "positions"]
+
+        with open("qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+                  "ConvertJob/ConvertJob.sh", 'r') as f:
+            obs = f.readlines()
+            obs = [x.strip() for x in obs]
+            obs = [re.sub('-o .*?/qp_klp', '-o qp_klp', x) for x in obs]
+
+        self.assertEqual(obs, exp)
 
         # ConvertJob successful.
 
@@ -745,10 +801,77 @@ class Basics(TestCase):
         for _path in exp:
             self.assertTrue(exists(_path))
 
-    def atest_parital_tellseq_pipeline(self):
+        # Post-processing for absent Quality Control successful.
+
+    def test_partial_tellseq_pipeline(self):
+        cmds = ["echo 'Submitted batch job 9999999'"]
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'TellReadJob', 'logs'))
+        cmds = ["echo 'Submitted batch job 9999999'"]
+
+        # skip creating fastq files for now.
+
+        # write all the statements out into a bash-script named 'sbatch' and
+        # place it somewhere in the PATH. (It will be removed on tearDown()).
+        self.create_fake_bin('sbatch', "\n".join(cmds))
+
+        # create fake squeue binary that writes to stdout what Job() needs to
+        # see to think that bcl-convert has completed successfully.
+        self.create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
+                              "9999999,9999999,COMPLETED'")
+
+
+
+        '''
+
+
+
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'ConvertJob', 'logs'))
+
+        # use the list of sample_ids found in the sample-sheet to generate
+        # fake fastq files for convert_raw_to_fastq() to find and manipulate.
+        sheet = load_sample_sheet("qp_klp/tests/data/sample-sheets/metagenomic/"
+                                  "tellseq/good_sheet_draft1.csv")
+        exp = defaultdict(list)
+        for sample in sheet.samples:
+            sample = sample.to_json()
+            exp[sample['Sample_Project']].append(sample['Sample_ID'])
+
+        # in order to test post-process auditing, we will manually remove a
+        # single sample_id from each project in order to simulate failed
+        # conversions.
+        simulated_failed_samples = []
+
+        for project in exp:
+            # sort the list so that files are created in a predictable order.
+            exp[project].sort()
+
+            simulated_failed_samples.append(exp[project].pop())
+
+            fake_path = join(self.output_dir, 'ConvertJob', project)
+            cmds.append(f"mkdir -p {fake_path}")
+
+            for sample in exp[project]:
+                r1 = join(fake_path, f'{sample}_S123_L001_R1_001.fastq.gz')
+                r2 = join(fake_path, f'{sample}_S123_L001_R2_001.fastq.gz')
+
+                # let r1 and r2 be the same size.
+                size = randint(1, 10)
+                for file_path in [r1, r2]:
+                    cmds.append(self._generate_empty_file_cmd(file_path, size))
+
+        # write all the statements out into a bash-script named 'sbatch' and
+        # place it somewhere in the PATH. (It will be removed on tearDown()).
+        self.create_fake_bin('sbatch', "\n".join(cmds))
+
+        # create fake squeue binary that writes to stdout what Job() needs to
+        # see to think that bcl-convert has completed successfully.
+        self.create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
+                              "9999999,9999999,COMPLETED'")
+
+        '''
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/tellseq/good_sheet_draft1.csv",
                   "qclient": FakeClient(),
-                  "lane_number": "1",
+                  "lane_number": "4",
                   "config_fp": "qp_klp/tests/data/configuration.json",
                   "run_identifier": '211021_A00000_0000_SAMPLE',
                   "output_dir": self.output_dir,
@@ -758,8 +881,138 @@ class Basics(TestCase):
 
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
+        wf.convert_raw_to_fastq()
 
+        # verify job script was properly created
+        s = 'qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/TellReadJob'
+        trjob_dir = join(self.output_dir, 'TellReadJob')
+        self.assertTrue(exists(trjob_dir))
+        trjob_script = join(trjob_dir, 'tellread_test.sbatch')
+        self.assertTrue(exists(trjob_script))
 
+        def open_job_script(script_path):
+            with open(trjob_script, 'r') as f:
+                obs = f.readlines()
+                obs = [x.strip() for x in obs]
+                obs = [re.sub('-directory .*?/qp_klp',
+                            '-directory qp_klp', x) for x in obs]
+                return obs
+
+        obs = open_job_script(trjob_script)
+        exp = open_job_script("qp_klp/tests/data/tellread_test.sbatch")
+
+        self.assertEqual(obs, exp)
+
+        self.assertTrue(False)
+
+        # Illumina.convert_raw_to_fastq() calls Job.audit() after bcl-convert
+        # exists and will identify the samples that failed to process. Confirm
+        # the values are correct here.
+        audit_results = sorted(wf.convert_raw_to_fastq())
+
+        self.assertEqual(audit_results, sorted(simulated_failed_samples))
+
+        # NB: bcl-convert's presence in ConvertJob.sh confirms it is getting
+        # path and binary name from the correct configuration file. Note it
+        # doesn't check to see that the binary exists because where Job() runs
+        # is not the same location as where bcl-convert will run (compute-
+        # node.)
+
+        # confirm ConvertJob.sh Slurm job script looks exactly as intended by
+        # confirming its digest.
+
+        exp = ['#!/bin/bash',
+               '#SBATCH --job-name None_ConvertJob',
+               '#SBATCH -p qiita',
+               '#SBATCH -N 1',
+               '#SBATCH -n 16',
+               '#SBATCH --time 216',
+               '#SBATCH --mail-type=ALL',
+               '#SBATCH --mail-user qiita.help@gmail.com',
+               '#SBATCH --mem-per-cpu 10gb',
+               'set -x',
+               'date',
+               'hostname',
+               'cd qp_klp/tests/data/211021_A00000_0000_SAMPLE',
+               'module load bclconvert_3.7.5',
+               'bcl-convert --sample-sheet "qp_klp/tests/data/sample-sheets/'
+               'metagenomic/illumina/good_sheet1.csv" --output-directory '
+               'qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/'
+               'ConvertJob --bcl-input-directory . --bcl-num-decompression-'
+               'threads 16 --bcl-num-conversion-threads 16 --bcl-num-'
+               'compression-threads 16 --bcl-num-parallel-tiles 16 '
+               '--bcl-sampleproject-subdirectories true --force']
+
+        with open("qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+                  "ConvertJob/ConvertJob.sh", 'r') as f:
+            obs = f.readlines()
+            obs = [x.strip() for x in obs]
+            obs = [re.sub('-directory .*?/qp_klp',
+                          '-directory qp_klp', x) for x in obs]
+
+        self.assertEqual(obs, exp)
+
+        # ConvertJob successful.
+        cmds = []
+
+        # the lines to recreate the directories a standard Job() object creates.
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'logs'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'only-adapter-filtered'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'html'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'json'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'tmp'))
+        cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', 'tmp.564341'))
+
+        # simulate host-filtering scripts by scanning contents of ConvertJob
+        # directory and copying the files into the expected location for post-
+        # processing.
+        for root, _, files in walk(join(self.output_dir, 'ConvertJob')):
+            for _file in files:
+                # don't process anything from ConvertJob directory that isn't
+                # a simulated fastq file. Since these are fake files we can
+                # assume 'Undetermined' fastq files are not present.
+                if not _file.endswith('.fastq.gz'):
+                    continue
+
+                raw_file = join(root, _file)
+                _, project_name = split(root)
+
+                new_name = _file.replace('.fastq.gz', '.interleave.fastq.gz')
+                file_path = join(self.output_dir, 'NuQCJob', 'only-adapter-filtered', new_name)
+                cmds.append(f"cp {raw_file} {file_path}")
+
+                cmds.append("mkdir -p %s" % join(self.output_dir, 'NuQCJob', project_name, 'filtered_sequences'))
+
+                file_path = join(self.output_dir, 'NuQCJob', project_name, 'filtered_sequences', _file)
+                cmds.append(f"cp {raw_file} {file_path}")
+
+                new_name = _file.replace('.fastq.gz', '.html')
+                file_path = join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'html', new_name)
+                cmds.append(f"echo 'This is an html file.' > {file_path}")
+
+                new_name = _file.replace('.fastq.gz', '.json')
+                file_path = join(self.output_dir, 'NuQCJob', 'fastp_reports_dir', 'json', new_name)
+                cmds.append(f"echo 'This is a json file.' > {file_path}")
+
+        cmds.append("echo 'Submitted batch job 9999999'")
+        # write all the statements out into a bash-script named 'sbatch' and
+        # place it somewhere in the PATH. (It will be removed on tearDown()).
+        self.create_fake_bin('sbatch', "\n".join(cmds))
+        audit_results = sorted(wf.quality_control())
+
+        # TODO: Add assertion tests for NuQCJob
+
+        # add tests to test audit results, modify test to introduce some 'zero-length' files.
+        # add some assertions to show that the post-processing step is munging the correct
+        # directory structure needed for subsequent steps.
+
+        # TODO: Test that some files end up in zero-files folder.
+
+        #NuQCJob successful.
+
+        # TODO: set up fake multiqc bin to. fake results of fastqc and
+        # multiqc jobs.
+        # audit_results = sorted(wf.generate_reports())
 
 
 

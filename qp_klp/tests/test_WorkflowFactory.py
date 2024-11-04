@@ -8,8 +8,8 @@
 from qp_klp.Workflows import WorkflowFactory
 from unittest import TestCase
 from os import makedirs
-from qp_klp.Instruments import (INSTRUMENT_NAME_ILLUMINA,
-                                INSTRUMENT_NAME_TELLSEQ)
+from qp_klp.SequencingTech import (SEQTECH_NAME_ILLUMINA,
+                                   SEQTECH_NAME_TELLSEQ)
 from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
                            ASSAY_NAME_METATRANSCRIPTOMIC,
                            ASSAY_NAME_AMPLICON)
@@ -115,7 +115,7 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.instrument_type, INSTRUMENT_NAME_ILLUMINA)
+        self.assertEqual(wf.seqtech_type, SEQTECH_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
     def test_metatranscriptomic_workflow_creation(self):
@@ -136,7 +136,7 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.instrument_type, INSTRUMENT_NAME_ILLUMINA)
+        self.assertEqual(wf.seqtech_type, SEQTECH_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METATRANSCRIPTOMIC)
 
     def test_amplicon_workflow_creation(self):
@@ -154,7 +154,7 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.instrument_type, INSTRUMENT_NAME_ILLUMINA)
+        self.assertEqual(wf.seqtech_type, SEQTECH_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_AMPLICON)
 
     def atest_tellseq_workflow_creation(self):
@@ -175,5 +175,5 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.instrument_type, INSTRUMENT_NAME_TELLSEQ)
+        self.assertEqual(wf.seqtech_type, SEQTECH_NAME_TELLSEQ)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)

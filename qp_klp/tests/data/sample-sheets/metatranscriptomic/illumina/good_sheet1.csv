@@ -10,14 +10,11 @@ Application,FASTQ Only,,,,,,,,,,
 Assay,Metatranscriptomic,,,,,,,,,,
 Description,,,,,,,,,,,
 Chemistry,Default,,,,,,,,,,
-,,,,,,,,,,,
 [Reads],,,,,,,,,,,
 150,,,,,,,,,,,
 150,,,,,,,,,,,
-,,,,,,,,,,,
 [Settings],,,,,,,,,,,
 ReverseComplement,0,,,,,,,,,,
-,,,,,,,,,,,
 [Data],,,,,,,,,,,
 Lane,Sample_ID,Sample_Name,Sample_Plate,well_id_384,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,syndna_pool_number,Well_description
 1,CDPH-SAL_Salmonella_Typhi_MDL-143,CDPH-SAL_Salmonella_Typhi_MDL-143,Feist_11661_P40,A1,iTru7_107_07,CCGACTAT,iTru5_01_A,ACCGACAA,Feist_11661,pool1,CDPH-SAL_Salmonella Typhi_MDL-143
@@ -308,13 +305,10 @@ Lane,Sample_ID,Sample_Name,Sample_Plate,well_id_384,I7_Index_ID,index,I5_Index_I
 1,8A,8A,Gerwick_tubes,L23,iTru7_402_04,GTCCACAT,iTru5_110_H,TCCAGCAA,Gerwick_6123,pool2,8A
 1,BLANK_42_12G,BLANK_42_12G,Feist_11661_P42,N23,iTru7_402_05,CGCTAGTA,iTru5_111_H,GAATCCGT,Feist_11661,pool1,BLANK.42.12G
 1,BLANK_42_12H,BLANK_42_12H,Feist_11661_P42,P23,iTru7_402_06,GAATCCGA,iTru5_112_H,TACATCGG,Feist_11661,pool2,BLANK.42.12H
-,,,,,,,,,,,
 [Bioinformatics],,,,,,,,,,,
 Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,,,,
 Feist_11661,11661,False,AACC,GGTT,False,Nextera,Equipment,,,,
 Gerwick_6123,6123,False,AACC,GGTT,True,Nextera,Equipment,,,,
-,,,,,,,,,,,
 [Contact],,,,,,,,,,,
 Email,Sample_Project,,,,,,,,,,
 test@lol.com,Feist_11661,,,,,,,,,,
-,,,,,,,,,,,

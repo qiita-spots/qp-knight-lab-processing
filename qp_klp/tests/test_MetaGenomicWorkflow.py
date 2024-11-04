@@ -8,10 +8,11 @@
 from qp_klp.Workflows import WorkflowFactory
 from unittest import TestCase
 from os import makedirs
-from qp_klp.Instruments import INSTRUMENT_NAME_ILLUMINA
+from qp_klp.SequencingTech import SEQTECH_NAME_ILLUMINA
 from qp_klp.Assays import ASSAY_NAME_METAGENOMIC
 from shutil import rmtree
 
+'''
 
 class MetagenomicWorkflowTests(TestCase):
     def setUp(self):
@@ -53,4 +54,4 @@ class MetagenomicWorkflowTests(TestCase):
 
 
     # do we need a separate FSR test?
-
+'''

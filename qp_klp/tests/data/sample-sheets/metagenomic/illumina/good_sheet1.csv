@@ -10,14 +10,11 @@ Application,FASTQ Only,,,,,,,,,,
 Assay,Metagenomic,,,,,,,,,,
 Description,,,,,,,,,,,
 Chemistry,Default,,,,,,,,,,
-,,,,,,,,,,,
 [Reads],,,,,,,,,,,
 150,,,,,,,,,,,
 150,,,,,,,,,,,
-,,,,,,,,,,,
 [Settings],,,,,,,,,,,
 ReverseComplement,0,,,,,,,,,,
-,,,,,,,,,,,
 [Data],,,,,,,,,,,
 Lane,Sample_ID,Sample_Name,Sample_Plate,well_id_384,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,syndna_pool_number,Well_description
 1,CDPH-SAL_Salmonella_Typhi_MDL-143,CDPH-SAL.Salmonella.Typhi.MDL-143,Feist_11661_P40,A1,iTru7_107_07,CCGACTAT,iTru5_01_A,ACCGACAA,Feist_11661,pool1,CDPH-SAL_Salmonella Typhi_MDL-143
@@ -803,14 +800,11 @@ Lane,Sample_ID,Sample_Name,Sample_Plate,well_id_384,I7_Index_ID,index,I5_Index_I
 1,SP415023A02,SP415023A02,NYU_BMS_Melanoma_13059_P4,L24,iTru7_107_06,TGAACCTG,iTru5_122_H,GAACGGTT,NYU_BMS_Melanoma_13059,pool1,SP415023A02
 1,EP400448B04,EP400448B04,NYU_BMS_Melanoma_13059_P4,N24,iTru7_107_07,CCGACTAT,iTru5_123_H,CTCTTGTC,NYU_BMS_Melanoma_13059,pool2,EP400448B04
 1,EP479894B04,EP479894B04,NYU_BMS_Melanoma_13059_P4,P24,iTru7_107_08,AGCTAACC,iTru5_124_H,AACGCCTT,NYU_BMS_Melanoma_13059,pool1,EP479894B04
-,,,,,,,,,,,
 [Bioinformatics],,,,,,,,,,,
 Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,,,,
 NYU_BMS_Melanoma_13059,13059,False,AACC,GGTT,True,Nextera,Equipment,,,,
 Feist_11661,11661,False,AACC,GGTT,True,Nextera,Equipment,,,,
 Gerwick_6123,6123,False,AACC,GGTT,True,Nextera,Equipment,,,,
-,,,,,,,,,,,
 [Contact],,,,,,,,,,,
 Email,Sample_Project,,,,,,,,,,
 test@lol.com,Feist_11661,,,,,,,,,,
-,,,,,,,,,,,

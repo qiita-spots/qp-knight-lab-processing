@@ -3,6 +3,22 @@
     "instrument_type": "MiSeq",
     "assay_type": "Metagenomic",
     "configuration": {
+      "tell-read": {
+        "label": "my_label",
+        "reference_base": "/my/reference/base/path",
+        "reference_map": "/my/reference/map/path",
+        "tmp1_path": "/my/tmp1/path",
+        "sing_script_path": "/my/sing/script/path",
+        "cores_per_task": "999",
+        "nodes": 1,
+        "lane": 1,
+        "queue": "qiita",
+        "wallclock_time_in_minutes": 216,
+        "modules_to_load": [
+          "foo_module"
+        ],
+        "per_process_memory_limit": "10"
+      },
       "bcl-convert": {
         "nodes": 1,
         "nprocs": 16,

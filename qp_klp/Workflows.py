@@ -1,4 +1,4 @@
-from .Instruments import Illumina, TellSeq
+from .SequencingTech import Illumina, TellSeq
 from os.path import join, abspath, exists, split
 from os import walk, makedirs, listdir
 import pandas as pd
@@ -12,7 +12,7 @@ import logging
 from .Assays import Amplicon, Metagenomic, Metatranscriptomic
 from .Assays import (METAOMIC_ASSAY_NAMES, ASSAY_NAME_AMPLICON,
                      ASSAY_NAME_METAGENOMIC, ASSAY_NAME_METATRANSCRIPTOMIC)
-from .Instruments import INSTRUMENT_NAME_ILLUMINA, INSTRUMENT_NAME_TELLSEQ
+from .SequencingTech import SEQTECH_NAME_ILLUMINA, SEQTECH_NAME_TELLSEQ
 from .FailedSamplesRecord import FailedSamplesRecord
 
 
@@ -69,7 +69,7 @@ class Workflow():
         Returns text description of Workflow's Instrument & Assay mixins.
         :return:
         """
-        return (f"Instrument: {self.instrument_type}" + "\t" +
+        return (f"Instrument: {self.seqtech_type}" + "\t" +
                 f"Assay: {self.assay_type}")
 
     def generate_special_map(self):
@@ -369,7 +369,6 @@ class Workflow():
 
         for qiita_id in qiita_ids:
             url = f"/api/v1/study/{qiita_id}/samples/info"
-            # CHARLIE
             logging.debug(f"URL: {url}")
             categories = self.qclient.get(url)["categories"]
 
@@ -1247,11 +1246,11 @@ class WorkflowFactory():
                  StandardAmpliconWorkflow,
                  TellSeqMetagenomicWorkflow]
 
-    ST_TO_IN_MAP = {INSTRUMENT_NAME_ILLUMINA: ['standard_metag',
+    ST_TO_IN_MAP = {SEQTECH_NAME_ILLUMINA: ['standard_metag',
                                                'standard_metat',
                                                'absquant_metag',
                                                'absquant_metat'],
-                    INSTRUMENT_NAME_TELLSEQ: ['tellseq_metag',
+                    SEQTECH_NAME_TELLSEQ: ['tellseq_metag',
                                               'tellseq_absquant']}
 
     @classmethod
@@ -1279,7 +1278,9 @@ class WorkflowFactory():
             # SheetVersion will raise a ValueError() here, w/the message
             # "'{sheet}' doesn't appear to be a valid sample-sheet."
 
+
             sheet = load_sample_sheet(kwargs['uif_path'])
+
             # if we do not validate the sample-sheet now, it will be validated
             # downstream when we attempt to instantiate a Workflow(), which in
             # turn will attempt to instantiate a Pipeline(), which will load
@@ -1314,7 +1315,7 @@ class WorkflowFactory():
 
         for workflow in WorkflowFactory.WORKFLOWS:
             if workflow.assay_type == assay_type:
-                if workflow.instrument_type == instrument_type:
+                if workflow.seqtech_type == instrument_type:
                     # return instantiated workflow object
                     return workflow(**kwargs)
 
