@@ -1195,6 +1195,9 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        # TODO: For now set to False
+        self.iseq_run = False
+
         # TODO: Replace these with frozen set() or similar.
         self.mandatory_attributes = ['qclient', 'uif_path', 'config_fp',
                                      'run_identifier', 'output_dir', 'job_id',

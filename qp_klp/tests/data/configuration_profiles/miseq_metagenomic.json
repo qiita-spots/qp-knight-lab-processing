@@ -3,11 +3,10 @@
     "instrument_type": "MiSeq",
     "assay_type": "Metagenomic",
     "configuration": {
-      "tell-read": {
+      "tell-seq": {
         "label": "my_label",
         "reference_base": "/my/reference/base/path",
         "reference_map": "/my/reference/map/path",
-        "tmp1_path": "/my/tmp1/path",
         "sing_script_path": "/my/sing/script/path",
         "cores_per_task": "999",
         "nodes": 1,
@@ -17,6 +16,7 @@
         "modules_to_load": [
           "foo_module"
         ],
+        "indicies_script_path": "my/indicies/script/path",
         "per_process_memory_limit": "10"
       },
       "bcl-convert": {
