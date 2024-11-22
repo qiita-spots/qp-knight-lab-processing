@@ -20,33 +20,17 @@ METAOMIC_ASSAY_NAMES = [ASSAY_NAME_METAGENOMIC, ASSAY_NAME_METATRANSCRIPTOMIC]
 
 class Assay():
     """
-        Assay encapsulate Job()s and other functionality that varies on the
-         assay-type of the run. All Assays are mixins for Workflow() classes
-         and shouldn't define their own initialization.
+    Assay encapsulate Job()s and other functionality that varies on the
+    assay-type of the run. All Assays are mixins for Workflow() classes
+    and shouldn't define their own initialization.
 
-        Functionality specific to one assay-type is assigned to a specific
-         type. Functionality used by more than one Assay is defined in the base
-         Assay() class with a unique name and wrapped by the child classes that
-         use it. Functionality used by all children is defined in Assay() class
-         w/the name meant to be shared by all and used by the user. Helper
-         methods used by other functions in Assay() or its children begin
-         w/'_'.
-
-        Assume the following members are present in Workflow()
-        self._copy_files()
-        self._generate_artifact_name()
-        self._get_postqc_fastq_files()
-        self._load_prep_into_qiita()
-        self.has_replicates
-        self.job_pool_size
-        self.master_qiita_job_id
-        self.pipeline
-        self.prep_file_paths
-        self.qclient
-        self.run_prefixes
-        self.special_map
-        self.touched_studies_prep_info
-        self.status_update_callback (can be None)
+    Functionality specific to one assay-type is assigned to a specific
+    type. Functionality used by more than one Assay is defined in the base
+    Assay() class with a unique name and wrapped by the child classes that
+    use it. Functionality used by all children is defined in Assay() class
+    w/the name meant to be shared by all and used by the user. Helper
+    methods used by other functions in Assay() or its children begin
+    w/'_'.
     """
     assay_type = ASSAY_NAME_NONE
 
@@ -163,10 +147,9 @@ class Amplicon(Assay):
     AMPLICON_SUB_TYPES = {'16S', '18S', 'ITS'}
     assay_type = ASSAY_NAME_AMPLICON
 
-    def quality_control(self):
+    def post_process_raw_fastq_output(self):
         """
-        TODO
-        :return:
+        Post-process ConvertJob output into correct form for FastQCJob.
         """
         # Since demuxing and thus quality control occurs downstream of SPP
         # for amplicon runs, there is no QC to be performed at this time.

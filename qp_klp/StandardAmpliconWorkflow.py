@@ -75,9 +75,6 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
         :param update: Set False to prevent updates to Qiita.
         :return: None
         """
-        if not self.is_restart:
-            self.pre_check()
-
         # this is performed even in the event of a restart.
         self.generate_special_map()
 
