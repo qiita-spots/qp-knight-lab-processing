@@ -1,19 +1,12 @@
-from .SequencingTech import Illumina, TellSeq
-from os.path import join, abspath, exists, split
+from os.path import join, exists, split
 from os import walk, makedirs, listdir
 import pandas as pd
 from json import dumps
 from subprocess import Popen, PIPE
 from glob import glob
 from shutil import copyfile
-from sequence_processing_pipeline.Pipeline import Pipeline
-from metapool import load_sample_sheet
 import logging
-from .Assays import Amplicon, Metagenomic, Metatranscriptomic
-from .Assays import (METAOMIC_ASSAY_NAMES, ASSAY_NAME_AMPLICON,
-                     ASSAY_NAME_METAGENOMIC, ASSAY_NAME_METATRANSCRIPTOMIC)
-from .SequencingTech import SEQTECH_NAME_ILLUMINA, SEQTECH_NAME_TELLSEQ
-from .FailedSamplesRecord import FailedSamplesRecord
+from .Assays import ASSAY_NAME_AMPLICON
 
 
 class WorkflowError(Exception):
@@ -30,18 +23,26 @@ class Workflow():
         parameters needed for each Workflow type.
         """
         self.kwargs = kwargs
-        self.special_map = None
-        self.prep_file_paths = None
-        self.pipeline = None
-        self.qclient = None
-        self.sifs = None
+
+        # initializing member variables known to be used in class and/or in
+        # mixins.
         self.cmds_log_path = None
         self.cmds = None
-        self.tube_id_map = None
-        self.prep_copy_index = 0
-        self.samples_in_qiita = None
+        self.has_replicates = None
+        self.job_pool_size = None
         self.mandatory_attributes = []
+        self.master_qiita_job_id = None
+        self.pipeline = None
+        self.prep_copy_index = 0
+        self.prep_file_paths = None
+        self.qclient = None
+        self.run_prefixes = None
+        self.samples_in_qiita = None
+        self.sifs = None
         self.skip_steps = []
+        self.special_map = None
+        self.touched_studies_prep_info = None
+        self.tube_id_map = None
 
         if 'status_update_callback' in kwargs:
             self.status_update_callback = kwargs['status_update_callback']
@@ -49,6 +50,9 @@ class Workflow():
             self.status_update_callback = None
 
     def confirm_mandatory_attributes(self):
+        """
+        Confirms that all mandatory attributes are present in kwargs.
+        """
         absent_list = []
 
         for attribute in self.mandatory_attributes:
@@ -61,22 +65,59 @@ class Workflow():
                              + ": " + ', '.join(absent_list))
 
     def update_status(self, msg):
+        """
+        Wrapper for callback that updates the user on workflow status.
+        """
         if self.status_update_callback:
             self.status_update_callback(msg)
 
     def what_am_i(self):
         """
         Returns text description of Workflow's Instrument & Assay mixins.
-        :return:
         """
         return (f"Instrument: {self.seqtech_type}" + "\t" +
                 f"Assay: {self.assay_type}")
+
+    def pre_check(self):
+        # TODO: Note that amplicon/illumina workflows shouldn't call this
+        #  method since demuxing samples is performed downstream, hence there
+        #  isn't a list of real sample-names in the sample-sheet to check.
+        #  This check could be performed using the pre-prep sample data
+        #  however.
+
+        # since one of the objectives of SPP is to generate prep-info files
+        # and automatically load them into Qiita, confirm that all studies
+        # mentioned in the sample-sheet/pre-prep do not contain sample
+        # metadata that would cause an error in the pipeline after processing
+        # has already completed but the results have not yet been loaded.
+        self._project_metadata_check()
+
+        # compare sample-ids/tube-ids in sample-sheet/mapping file
+        # against what's in Qiita. Results are a list of dictionaries, one
+        # per project.
+        results = self._compare_samples_against_qiita()
+
+        # obtain a list of non-zero counts of samples missing in Qiita, one
+        # for each project. The names of the projects are unimportant. We
+        # want to abort early if any project in the sample-sheet/pre-prep file
+        # contains samples that aren't registered in Qiita.
+        tmp = [len(project['samples_not_in_qiita']) for project in results]
+        missing_counts = [count for count in tmp if count != 0]
+
+        if missing_counts:
+            msgs = []
+            for result in results:
+                msgs += result['messages']
+
+            if msgs:
+                raise WorkflowError('\n'.join(msgs))
 
     def generate_special_map(self):
         """
         Generates a list of tuples to support pipeline processing.
         :return: A list of triplets.
         """
+        # TODO: (see below)
         # this function should be able to be tested by passing in simulated =
         # results from qclient.
 
@@ -98,9 +139,12 @@ class Workflow():
 
     def generate_sifs(self):
         """
-        TODO
-        :return:
+        Generates sample-info files for each project, containing
+        metadata on BLANKS.
         """
+
+        # TODO: This will need to be updated and reviewed to handle recent
+        # changes. It is currently a placeholder.
         from_qiita = {}
 
         for study_id in self.prep_file_paths:
@@ -133,13 +177,18 @@ class Workflow():
         # duplicate sample-names and non-blanks will be handled properly.
         self.sifs = self.pipeline.generate_sample_info_files(add_sif_info)
 
+        # TODO: Remove returning this value if not tested directly.
         return self.sifs
 
     def update_blanks_in_qiita(self):
         """
-        TODO
+        Updates the blanks registered in a given project in Qiita.
         :return:
         """
+
+        # TODO: This will need to be updated and reviewed to handle recent
+        # changes. It is currently a placeholder.
+
         for sif_path in self.sifs:
             # get study_id from sif_file_name ...something_14385_blanks.tsv
             study_id = sif_path.split('_')[-2]
@@ -258,7 +307,6 @@ class Workflow():
     def _process_blanks(self):
         """
         Helper method for generate_commands().
-
         :return:
         """
         results = [x for x in listdir(self.pipeline.output_path) if
@@ -463,8 +511,7 @@ class Workflow():
             else:
                 # not all values were matched to sample-names.
                 # check for possible match w/tube-ids, if defined in project.
-                results_tid = self._process_tube_ids(p_name, qiita_id,
-                                                     samples)
+                results_tid = self._process_tube_ids(qiita_id, samples)
                 if results_tid:
                     msgs.append("Number of values in sheet that aren't "
                                 "tube-ids in Qiita: %s" % len(results_tid[0]))
@@ -669,662 +716,6 @@ class Workflow():
 
         return not_in_qiita, examples, number_in_project
 
-    def pre_check(self):
-        # TODO: Note that amplicon/illumina workflows shouldn't call this
-        #  method since demuxing samples is performed downstream, hence there
-        #  isn't a list of real sample-names in the sample-sheet to check.
-        #  This check could be performed using the pre-prep sample data
-        #  however.
-
-        # since one of the objectives of SPP is to generate prep-info files
-        # and automatically load them into Qiita, confirm that all studies
-        # mentioned in the sample-sheet/pre-prep do not contain sample
-        # metadata that would cause an error in the pipeline after processing
-        # has already completed but the results have not yet been loaded.
-        self._project_metadata_check()
-
-        # compare sample-ids/tube-ids in sample-sheet/mapping file
-        # against what's in Qiita. Results are a list of dictionaries, one
-        # per project.
-        results = self._compare_samples_against_qiita()
-
-        # obtain a list of non-zero counts of samples missing in Qiita, one
-        # for each project. The names of the projects are unimportant. We
-        # want to abort early if any project in the sample-sheet/pre-prep file
-        # contains samples that aren't registered in Qiita.
-        tmp = [len(project['samples_not_in_qiita']) for project in results]
-        missing_counts = [count for count in tmp if count != 0]
-
-        if missing_counts:
-            msgs = []
-            for result in results:
-                msgs += result['messages']
-
-            if msgs:
-                raise WorkflowError('\n'.join(msgs))
-
     def scan_run_directory(self):
         # TODO: Impl
         pass
-
-
-class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        self.mandatory_attributes = ['qclient', 'uif_path',
-                                     'lane_number', 'config_fp',
-                                     'run_identifier', 'output_dir', 'job_id',
-                                     'lane_number', 'is_restart']
-
-        self.confirm_mandatory_attributes()
-
-        # second stage initializer that could conceivably be pushed down into
-        # specific children requiring specific parameters.
-        self.qclient = self.kwargs['qclient']
-
-        self.pipeline = Pipeline(self.kwargs['config_fp'],
-                                 self.kwargs['run_identifier'],
-                                 self.kwargs['uif_path'],
-                                 self.kwargs['output_dir'],
-                                 self.kwargs['job_id'],
-                                 ASSAY_NAME_METAGENOMIC,
-                                 lane_number=self.kwargs['lane_number'])
-
-        self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
-                                       self.pipeline.sample_sheet.samples)
-
-        self.master_qiita_job_id = None
-
-        self.lane_number = self.kwargs['lane_number']
-        self.is_restart = bool(self.kwargs['is_restart'])
-
-        if self.is_restart is True:
-            self.determine_steps_to_skip()
-
-        self.update = True
-
-        if 'update_qiita' in kwargs:
-            if bool(kwargs['update_qiita']) is False:
-                self.update = False
-
-        # for now, hardcode this at the legacy value, since we've never
-        # changed it.
-        self.job_pool_size = 30
-
-        """
-        member variables from deprecated Step class. it may be good to
-        add one or more of these here.
-
-        self.lane_number = lane_number
-        # self.generated_artifact_name =
-        f'{self.pipeline.run_id}_{self.lane_number}'
-        self.master_qiita_job_id = master_qiita_job_id
-
-        self.is_restart = is_restart
-
-        if status_update_callback is not None:
-        self.update_callback = status_update_callback.update_job_status
-        else:
-        self.update_callback = None
-
-
-
-        # initialize other member variables so that they're always present,
-        # even when the step that populates them hasn't been run yet.
-        self.project_names = None
-        self.cmds = None
-        self.cmds_log_path = None
-        # set by child classes for use in parent class
-        self.prep_file_paths = None
-        # set by child classes for use in parent class
-        self.has_replicates = None
-        self.sifs = None
-        self.tube_id_map = None
-        self.samples_in_qiita = None
-        self.output_path = None
-        self.sample_state = None
-        self.touched_studies_prep_info = None
-        self.run_prefixes = {}
-        self.prep_copy_index = 0
-        self.use_tellread = False
-        """
-
-    def determine_steps_to_skip(self):
-        out_dir = self.pipeline.output_path
-
-        # figure out what actually needs to be skipped if restarting:
-        if exists(join(out_dir, 'NuQCJob')):
-            self.skip_steps.append('ConvertJob')
-
-        if exists(join(out_dir, 'FastQCJob')):
-            self.skip_steps.append('NuQCJob')
-
-        if exists(join(out_dir, 'GenPrepFileJob')):
-            self.skip_steps.append('FastQCJob')
-
-        # it doesn't matter if cmds.log is a valid cmds.log or just
-        # an empty file. The cmds.log will get overwritten downstream.
-        if exists(join(out_dir, 'cmds.log')):
-            self.skip_steps.append('GenPrepFileJob')
-
-    def execute_pipeline(self):
-        '''
-        Executes steps of pipeline in proper sequence.
-        :return: None
-        '''
-        if not self.is_restart:
-            self.pre_check()
-
-        # this is performed even in the event of a restart.
-        self.generate_special_map()
-
-        # even if a job is being skipped, it's being skipped because it was
-        # determined that it already completed successfully. Hence,
-        # increment the status because we are still iterating through them.
-
-        self.update_status("Converting data", 1, 9)
-        if "ConvertJob" not in self.skip_steps:
-            # converting raw data to fastq depends heavily on the instrument
-            # used to generate the run_directory. Hence this method is
-            # supplied by the instrument mixin.
-            results = self.convert_raw_to_fastq()
-            self.fsr_write(results, 'ConvertJob')
-
-        self.update_status("Performing quality control", 2, 9)
-        if "NuQCJob" not in self.skip_steps:
-            # amplicon runs do not currently perform qc as the demuxing of
-            # samples is performed downstream of SPP. It also does not depend
-            # on the instrument type since fastq files are by convention the
-            # output in either case.
-            #
-            # Hence, quality control is associated w/the assay mixin (for now).
-            self.quality_control(self.pipeline)
-
-        self.update_status("Generating reports", 3, 9)
-        if "FastQCJob" not in self.skip_steps:
-            # reports are currently implemented by the assay mixin. This is
-            # only because metagenomic runs currently require a failed-samples
-            # report to be generated. This is not done for amplicon runs since
-            # demultiplexing occurs downstream of SPP.
-            self.generate_reports()
-
-        self.update_status("Generating preps", 4, 9)
-        if "GenPrepFileJob" not in self.skip_steps:
-            # preps are currently associated with array mixin, but only
-            # because there are currently some slight differences in how
-            # FastQCJob gets instantiated(). This could get moved into a
-            # shared method, but probably still in Assay.
-            self.generate_prep_file()
-
-        # moved final component of genprepfilejob outside of object.
-        # obtain the paths to the prep-files generated by GenPrepFileJob
-        # w/out having to recover full state.
-        tmp = join(self.pipeline.output_path, 'GenPrepFileJob', 'PrepFiles')
-
-        self.has_replicates = False
-
-        prep_paths = []
-        self.prep_file_paths = {}
-
-        for root, dirs, files in walk(tmp):
-            for _file in files:
-                # breakup the prep-info-file into segments
-                # (run-id, project_qid, other) and cleave
-                # the qiita-id from the project_name.
-                qid = _file.split('.')[1].split('_')[-1]
-
-                if qid not in self.prep_file_paths:
-                    self.prep_file_paths[qid] = []
-
-                _path = abspath(join(root, _file))
-                if _path.endswith('.tsv'):
-                    prep_paths.append(_path)
-                    self.prep_file_paths[qid].append(_path)
-
-            for _dir in dirs:
-                if _dir == '1':
-                    # if PrepFiles contains the '1' directory, then it's a
-                    # given that this sample-sheet contains replicates.
-                    self.has_replicates = True
-
-        # currently imported from Assay although it is a base method. it
-        # could be imported into Workflows potentially, since it is a post-
-        # processing step. All pairings of assay and instrument type need to
-        # generate prep-info files in the same format.
-        self.overwrite_prep_files(prep_paths)
-
-        # for now, simply re-run any line below as if it was a new job, even
-        # for a restart. functionality is idempotent, except for the
-        # registration of new preps in Qiita. These will simply be removed
-        # manually.
-
-        # post-processing steps are by default associated with the Workflow
-        # class, since they deal with fastq files and Qiita, and don't depend
-        # on assay or instrument type.
-        self.update_status("Generating sample information", 5, 9)
-        self.sifs = self.generate_sifs()
-
-        # post-processing step.
-        self.update_status("Registering blanks in Qiita", 6, 9)
-        if self.update:
-            self.update_blanks_in_qiita()
-
-        self.update_status("Loading preps into Qiita", 7, 9)
-        if self.update:
-            self.update_prep_templates()
-
-        # before we load preps into Qiita we need to copy the fastq
-        # files n times for n preps and correct the file-paths each
-        # prep is pointing to.
-        self.load_preps_into_qiita()
-
-        self.update_status("Generating packaging commands", 8, 9)
-        self.generate_commands()
-
-        self.update_status("Packaging results", 9, 9)
-        if self.update:
-            self.execute_commands()
-
-
-class StandardMetatranscriptomicWorkflow(Workflow, Metatranscriptomic,
-                                         Illumina):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        self.mandatory_attributes = ['qclient', 'uif_path',
-                                     'lane_number', 'config_fp',
-                                     'run_identifier', 'output_dir', 'job_id',
-                                     'lane_number', 'is_restart']
-
-        self.confirm_mandatory_attributes()
-
-        # second stage initializer that could conceivably be pushed down into
-        # specific children requiring specific parameters.
-        self.qclient = self.kwargs['qclient']
-
-        self.pipeline = Pipeline(self.kwargs['config_fp'],
-                                 self.kwargs['run_identifier'],
-                                 self.kwargs['uif_path'],
-                                 self.kwargs['output_dir'],
-                                 self.kwargs['job_id'],
-                                 ASSAY_NAME_METATRANSCRIPTOMIC,
-                                 lane_number=self.kwargs['lane_number'])
-
-        self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
-                                       self.pipeline.sample_sheet.samples)
-
-        self.master_qiita_job_id = None
-
-        self.lane_number = self.kwargs['lane_number']
-        self.is_restart = bool(self.kwargs['is_restart'])
-
-        if self.is_restart is True:
-            self.determine_steps_to_skip()
-
-        self.update = True
-
-        if 'update_qiita' in kwargs:
-            if bool(kwargs['update_qiita']) is False:
-                self.update = False
-
-        """
-        member variables from deprecated Step class. it may be good to
-        add one or more of these here.
-
-        self.lane_number = lane_number
-        # self.generated_artifact_name =
-        f'{self.pipeline.run_id}_{self.lane_number}'
-        self.master_qiita_job_id = master_qiita_job_id
-
-        self.is_restart = is_restart
-
-        if status_update_callback is not None:
-        self.update_callback = status_update_callback.update_job_status
-        else:
-        self.update_callback = None
-
-        # for now, hardcode this at the legacy value, since we've never
-        # changed it.
-        self.job_pool_size = 30
-
-        # initialize other member variables so that they're always present,
-        # even when the step that populates them hasn't been run yet.
-        self.project_names = None
-        self.cmds = None
-        self.cmds_log_path = None
-        # set by child classes for use in parent class
-        self.prep_file_paths = None
-        # set by child classes for use in parent class
-        self.has_replicates = None
-        self.sifs = None
-        self.tube_id_map = None
-        self.samples_in_qiita = None
-        self.output_path = None
-        self.sample_state = None
-        self.touched_studies_prep_info = None
-        self.run_prefixes = {}
-        self.prep_copy_index = 0
-        self.use_tellread = False
-        """
-
-    def determine_steps_to_skip(self):
-        out_dir = self.pipeline.output_path
-
-        # figure out what actually needs to be skipped if restarting:
-        if exists(join(out_dir, 'NuQCJob')):
-            self.skip_steps.append('ConvertJob')
-
-        if exists(join(out_dir, 'FastQCJob')):
-            self.skip_steps.append('NuQCJob')
-
-        if exists(join(out_dir, 'GenPrepFileJob')):
-            self.skip_steps.append('FastQCJob')
-
-        # it doesn't matter if cmds.log is a valid cmds.log or just
-        # an empty file. The cmds.log will get overwritten downstream.
-        if exists(join(out_dir, 'cmds.log')):
-            self.skip_steps.append('GenPrepFileJob')
-
-    def execute_pipeline(self):
-        '''
-        Executes steps of pipeline in proper sequence.
-        :return: None
-        '''
-        if not self.is_restart:
-            self.pre_check()
-
-        # this is performed even in the event of a restart.
-        self.generate_special_map()
-
-        # even if a job is being skipped, it's being skipped because it was
-        # determined that it already completed successfully. Hence,
-        # increment the status because we are still iterating through them.
-
-        self.update_status("Converting data", 1, 9)
-        if "ConvertJob" not in self.skip_steps:
-            # converting raw data to fastq depends heavily on the instrument
-            # used to generate the run_directory. Hence this method is
-            # supplied by the instrument mixin.
-            results = self.convert_raw_to_fastq()
-            self.fsr_write(results, 'ConvertJob')
-
-        self.update_status("Performing quality control", 2, 9)
-        if "NuQCJob" not in self.skip_steps:
-            # amplicon runs do not currently perform qc as the demuxing of
-            # samples is performed downstream of SPP. It also does not depend
-            # on the instrument type since fastq files are by convention the
-            # output in either case.
-            #
-            # Hence, quality control is associated w/the assay mixin (for now).
-            self.quality_control(self.pipeline)
-
-        self.update_status("Generating reports", 3, 9)
-        if "FastQCJob" not in self.skip_steps:
-            # reports are currently implemented by the assay mixin. This is
-            # only because metagenomic runs currently require a failed-samples
-            # report to be generated. This is not done for amplicon runs since
-            # demultiplexing occurs downstream of SPP.
-            self.generate_reports()
-
-        self.update_status("Generating preps", 4, 9)
-        if "GenPrepFileJob" not in self.skip_steps:
-            # preps are currently associated with array mixin, but only
-            # because there are currently some slight differences in how
-            # FastQCJob gets instantiated(). This could get moved into a
-            # shared method, but probably still in Assay.
-            self.generate_prep_file()
-
-        # moved final component of genprepfilejob outside of object.
-        # obtain the paths to the prep-files generated by GenPrepFileJob
-        # w/out having to recover full state.
-        tmp = join(self.pipeline.output_path, 'GenPrepFileJob', 'PrepFiles')
-
-        self.has_replicates = False
-
-        prep_paths = []
-        self.prep_file_paths = {}
-
-        for root, dirs, files in walk(tmp):
-            for _file in files:
-                # breakup the prep-info-file into segments
-                # (run-id, project_qid, other) and cleave
-                # the qiita-id from the project_name.
-                qid = _file.split('.')[1].split('_')[-1]
-
-                if qid not in self.prep_file_paths:
-                    self.prep_file_paths[qid] = []
-
-                _path = abspath(join(root, _file))
-                if _path.endswith('.tsv'):
-                    prep_paths.append(_path)
-                    self.prep_file_paths[qid].append(_path)
-
-            for _dir in dirs:
-                if _dir == '1':
-                    # if PrepFiles contains the '1' directory, then it's a
-                    # given that this sample-sheet contains replicates.
-                    self.has_replicates = True
-
-        # currently imported from Assay although it is a base method. it
-        # could be imported into Workflows potentially, since it is a post-
-        # processing step. All pairings of assay and instrument type need to
-        # generate prep-info files in the same format.
-        self.overwrite_prep_files(prep_paths)
-
-        # for now, simply re-run any line below as if it was a new job, even
-        # for a restart. functionality is idempotent, except for the
-        # registration of new preps in Qiita. These will simply be removed
-        # manually.
-
-        # post-processing steps are by default associated with the Workflow
-        # class, since they deal with fastq files and Qiita, and don't depend
-        # on assay or instrument type.
-        self.update_status("Generating sample information", 5, 9)
-        self.sifs = self.generate_sifs()
-
-        # post-processing step.
-        self.update_status("Registering blanks in Qiita", 6, 9)
-        if self.update:
-            self.update_blanks_in_qiita()
-
-        self.update_status("Loading preps into Qiita", 7, 9)
-        if self.update:
-            self.update_prep_templates()
-
-        # before we load preps into Qiita we need to copy the fastq
-        # files n times for n preps and correct the file-paths each
-        # prep is pointing to.
-        self.load_preps_into_qiita()
-
-        self.update_status("Generating packaging commands", 8, 9)
-        self.generate_commands()
-
-        self.update_status("Packaging results", 9, 9)
-        if self.update:
-            self.execute_commands()
-
-
-class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        # TODO: Replace these with frozen set() or similar.
-        self.mandatory_attributes = ['qclient', 'uif_path', 'config_fp',
-                                     'run_identifier', 'output_dir', 'job_id',
-                                     'is_restart']
-
-        self.confirm_mandatory_attributes()
-
-        # second stage initializer that could conceivably be pushed down into
-        # specific children requiring specific parameters.
-        self.qclient = self.kwargs['qclient']
-
-        self.pipeline = Pipeline(self.kwargs['config_fp'],
-                                 self.kwargs['run_identifier'],
-                                 self.kwargs['uif_path'],
-                                 self.kwargs['output_dir'],
-                                 self.kwargs['job_id'],
-                                 ASSAY_NAME_AMPLICON,
-                                 lane_number=self.kwargs['lane_number'])
-
-        self.master_qiita_job_id = None
-
-        self.lane_number = self.kwargs['lane_number']
-        self.is_restart = bool(self.kwargs['is_restart'])
-
-        if self.is_restart is True:
-            self.determine_steps_to_skip()
-
-        self.update = True
-
-        if 'update_qiita' in kwargs:
-            if bool(kwargs['update_qiita']) is False:
-                self.update = False
-
-    def determine_steps_to_skip(self):
-        pass
-        # TODO: Fill in. It's largely the same as for Meta*Omic.
-
-    def execute_pipeline(self):
-        pass
-        # TODO: Fill in. It's largely the same as in the old impl.
-
-
-class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        # TODO: For now set to False
-        self.iseq_run = False
-
-        # TODO: Replace these with frozen set() or similar.
-        self.mandatory_attributes = ['qclient', 'uif_path', 'config_fp',
-                                     'run_identifier', 'output_dir', 'job_id',
-                                     'is_restart']
-
-        self.confirm_mandatory_attributes()
-
-        # second stage initializer that could conceivably be pushed down into
-        # specific children requiring specific parameters.
-        self.qclient = self.kwargs['qclient']
-
-        self.pipeline = Pipeline(self.kwargs['config_fp'],
-                                 self.kwargs['run_identifier'],
-                                 self.kwargs['uif_path'],
-                                 self.kwargs['output_dir'],
-                                 self.kwargs['job_id'],
-                                 ASSAY_NAME_METAGENOMIC,
-                                 lane_number=self.kwargs['lane_number'])
-
-        self.master_qiita_job_id = None
-
-        self.lane_number = self.kwargs['lane_number']
-        self.is_restart = bool(self.kwargs['is_restart'])
-
-        if self.is_restart is True:
-            self.determine_steps_to_skip()
-
-        self.update = True
-
-        if 'update_qiita' in kwargs:
-            if bool(kwargs['update_qiita']) is False:
-                self.update = False
-
-    def execute_pipeline(self, update_status, update=True, skip_steps=[]):
-        '''
-        Executes steps of pipeline in proper sequence.
-        :param qclient: Qiita client library or equivalent.
-        :param update_status: callback function to update status.
-        :param update: Set False to prevent updates to Qiita.
-        :return: None
-        '''
-
-        pass
-
-
-class WorkflowFactory():
-    WORKFLOWS = [StandardMetagenomicWorkflow,
-                 StandardMetatranscriptomicWorkflow,
-                 StandardAmpliconWorkflow,
-                 TellSeqMetagenomicWorkflow]
-
-    ST_TO_IN_MAP = {SEQTECH_NAME_ILLUMINA: ['standard_metag',
-                                               'standard_metat',
-                                               'absquant_metag',
-                                               'absquant_metat'],
-                    SEQTECH_NAME_TELLSEQ: ['tellseq_metag',
-                                              'tellseq_absquant']}
-
-    @classmethod
-    def _get_instrument_type(cls, sheet):
-        for instrument_type in cls.ST_TO_IN_MAP:
-            if sheet.Header['SheetType'] in cls.ST_TO_IN_MAP[instrument_type]:
-                return instrument_type
-
-    @classmethod
-    def generate_workflow(cls, **kwargs):
-        msg = "kwargs must not be None and must define 'uif_path'"
-
-        if not kwargs:
-            # if kwargs is None or {}, raise an Error
-            raise ValueError(msg)
-
-        if 'uif_path' not in kwargs:
-            raise ValueError(msg)
-
-        if Pipeline.is_sample_sheet(kwargs['uif_path']):
-            # NB: The Pipeline() determines an input-file is a sample-sheet
-            # if the first line begins with "[Header]" followed by any number
-            # of ','. A file that begins this way but fails to load
-            # successfully because of an undefined SheetType and/or
-            # SheetVersion will raise a ValueError() here, w/the message
-            # "'{sheet}' doesn't appear to be a valid sample-sheet."
-
-
-            sheet = load_sample_sheet(kwargs['uif_path'])
-
-            # if we do not validate the sample-sheet now, it will be validated
-            # downstream when we attempt to instantiate a Workflow(), which in
-            # turn will attempt to instantiate a Pipeline(), which will load
-            # and validate the sample-sheet on its own. This is an early
-            # abort. Expect the user/caller to diagnose the sample-sheet in a
-            # notebook or by other means.
-            if sheet.validate_and_scrub_sample_sheet():
-                assay_type = sheet.Header['Assay']
-                if assay_type not in METAOMIC_ASSAY_NAMES:
-                    # NB: This Error is not likely to be raised unless an
-                    # assay type is defined in metapool but not in Assays.
-                    raise WorkflowError("Can't determine workflow from assay "
-                                        "type: %s" % assay_type)
-                instrument_type = cls._get_instrument_type(sheet)
-            else:
-                raise WorkflowError(f"'{kwargs['uif_path']} doesn't appear to "
-                                    "be a valid sample-sheet.")
-        elif Pipeline.is_mapping_file(kwargs['uif_path']):
-            # if file is readable as a basic TSV and contains all the required
-            # headers, then treat this as a mapping file, even if it's an
-            # invalid one.
-            assay_type = ASSAY_NAME_AMPLICON
-            # for Amplicon runs, the lane_number is always one, even if the
-            # user supplies another value in the UI.
-            kwargs['lane_number'] = 1
-            # NB: For now, let's assume all Amplicon runs are Illumina, since
-            # the entire Amplicon pipeline assumes as much.
-            instrument_type = 'Illumina'
-        else:
-            raise ValueError("Your uploaded file doesn't appear to be a "
-                             "sample-sheet or a mapping-file.")
-
-        for workflow in WorkflowFactory.WORKFLOWS:
-            if workflow.assay_type == assay_type:
-                if workflow.seqtech_type == instrument_type:
-                    # return instantiated workflow object
-                    return workflow(**kwargs)
-
-        # This Error will only be raised if a sample-sheet passes metapool's
-        # validation method but a Workflow() for its instrument-type and
-        # assay-type doesn't exist.
-        raise ValueError(f"Assay type '{assay_type}' and Instrument type "
-                         f"'{instrument_type}' did not match any known "
-                         "workflow configuration")

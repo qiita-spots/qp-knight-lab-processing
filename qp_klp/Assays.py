@@ -379,7 +379,7 @@ class MetaOmic(Assay):
         config = self.pipeline.get_software_configuration('nu-qc')
 
         # base quality control used by multiple Assay types.
-        job = NuQCJob(join(self.pipeline.output_path, 'ConvertJob'),
+        job = NuQCJob(self.raw_fastq_files_path,
                       self.pipeline.output_path,
                       self.pipeline.sample_sheet.path,
                       config['minimap2_databases'],
