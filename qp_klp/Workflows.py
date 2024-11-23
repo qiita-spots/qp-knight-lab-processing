@@ -32,12 +32,14 @@ class Workflow():
         self.job_pool_size = None
         self.mandatory_attributes = []
         self.master_qiita_job_id = None
+        self.output_path = None
         self.pipeline = None
         self.prep_copy_index = 0
         self.prep_file_paths = None
         self.qclient = None
         self.run_prefixes = None
         self.samples_in_qiita = None
+        self.sample_state = None
         self.sifs = None
         self.skip_steps = []
         self.special_map = None

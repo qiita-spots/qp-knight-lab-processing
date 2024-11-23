@@ -104,6 +104,10 @@ class TellSeq(SequencingTech):
                           config['sing_script_path'],
                           config['tellread_cores'])
 
+        # TODO: Set this path just liek for oillumina and then have subsequent steps use it
+        # instead of hardcode assuming.
+        self.raw_fastq_files_path = join(self.pipeline.output_path, 'ConvertJob')
+
         job.run(callback=self.status_update_callback)
 
         # audit the results to determine which samples failed to convert
@@ -133,6 +137,7 @@ class TellSeq(SequencingTech):
                               config['integrate_script_path'],
                               self.qiita_job_id)
 
+        # TODO: Maybe the output from this should be set to a membver too.
         job.run(callback=self.status_update_callback)
 
         # audit the results to determine which samples failed to convert
@@ -175,6 +180,7 @@ class TellSeq(SequencingTech):
                              "",
                              config['integrate_cores'])
 
+        # TODO: ditto as above
         job.run(callback=self.status_update_callback)
 
         # raw_fastq_files_path is used by downstream processes to know

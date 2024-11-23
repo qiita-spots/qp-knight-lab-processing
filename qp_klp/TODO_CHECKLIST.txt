@@ -1,0 +1,10 @@
+Add additional tests for all workflows.
+Ensure sifs behavior updated to use Amanda's KATHAROseq controls.
+
+MG-SCRIPTS TODOS:
+mg-scripts Job objects may need their audits() redone.
+Fix metadata bug in mg-scripts observed when using NuQCJob.
+
+METAPOOL TODOS:
+Update seqpro to generate the prep-info files based on Amanda's updates.
+

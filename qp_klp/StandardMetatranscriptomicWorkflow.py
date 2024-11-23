@@ -1,24 +1,12 @@
-
-
-from .SequencingTech import Illumina, TellSeq
-from os.path import join, abspath, exists, split
-from os import walk, makedirs, listdir
-import pandas as pd
-from json import dumps
-from subprocess import Popen, PIPE
-from glob import glob
-from shutil import copyfile, rmtree
+from .SequencingTech import Illumina
+from os.path import join, abspath, exists
+from os import walk
+from shutil import rmtree
 from sequence_processing_pipeline.Pipeline import Pipeline
-from metapool import load_sample_sheet
-import logging
-from .Assays import Amplicon, Metagenomic, Metatranscriptomic
-from .Assays import (METAOMIC_ASSAY_NAMES, ASSAY_NAME_AMPLICON,
-                     ASSAY_NAME_METAGENOMIC, ASSAY_NAME_METATRANSCRIPTOMIC)
-from .SequencingTech import SEQTECH_NAME_ILLUMINA, SEQTECH_NAME_TELLSEQ
+from .Assays import Metatranscriptomic
+from .Assays import ASSAY_NAME_METATRANSCRIPTOMIC
 from .FailedSamplesRecord import FailedSamplesRecord
-from .Workflows import Workflow, WorkflowError
-
-
+from .Workflows import Workflow
 
 
 class StandardMetatranscriptomicWorkflow(Workflow, Metatranscriptomic,
@@ -56,56 +44,22 @@ class StandardMetatranscriptomicWorkflow(Workflow, Metatranscriptomic,
         if self.is_restart is True:
             self.determine_steps_to_skip()
 
+        # this is a convenience member to allow testing w/out updating Qiita.
         self.update = True
 
         if 'update_qiita' in kwargs:
             if bool(kwargs['update_qiita']) is False:
                 self.update = False
 
-        """
-        member variables from deprecated Step class. it may be good to
-        add one or more of these here.
-
-        self.lane_number = lane_number
-        # self.generated_artifact_name =
-        f'{self.pipeline.run_id}_{self.lane_number}'
-        self.master_qiita_job_id = master_qiita_job_id
-
-        self.is_restart = is_restart
-
-        if status_update_callback is not None:
-        self.update_callback = status_update_callback.update_job_status
-        else:
-        self.update_callback = None
-
         # for now, hardcode this at the legacy value, since we've never
         # changed it.
         self.job_pool_size = 30
 
-        # initialize other member variables so that they're always present,
-        # even when the step that populates them hasn't been run yet.
-        self.project_names = None
-        self.cmds = None
-        self.cmds_log_path = None
-        # set by child classes for use in parent class
-        self.prep_file_paths = None
-        # set by child classes for use in parent class
-        self.has_replicates = None
-        self.sifs = None
-        self.tube_id_map = None
-        self.samples_in_qiita = None
-        self.output_path = None
-        self.sample_state = None
-        self.touched_studies_prep_info = None
-        self.run_prefixes = {}
-        self.prep_copy_index = 0
-        self.use_tellread = False
-        """
-
     def determine_steps_to_skip(self):
         out_dir = self.pipeline.output_path
 
-        directories_to_check = ['ConvertJob', 'NuQCJob', 'FastQCJob', 'GenPrepFileJob']
+        directories_to_check = ['ConvertJob', 'NuQCJob',
+                                'FastQCJob', 'GenPrepFileJob']
 
         for directory in directories_to_check:
             if exists(join(out_dir, directory)):
@@ -141,21 +95,17 @@ class StandardMetatranscriptomicWorkflow(Workflow, Metatranscriptomic,
 
         self.update_status("Performing quality control", 2, 9)
         if "NuQCJob" not in self.skip_steps:
-            # amplicon runs do not currently perform qc as the demuxing of
-            # samples is performed downstream of SPP. It also does not depend
-            # on the instrument type since fastq files are by convention the
-            # output in either case.
-            #
-            # Hence, quality control is associated w/the assay mixin (for now).
-            self.quality_control(self.pipeline)
+            results = self.quality_control(self.pipeline)
+            self.fsr_write(results, 'NuQCJob')
 
         self.update_status("Generating reports", 3, 9)
         if "FastQCJob" not in self.skip_steps:
             # reports are currently implemented by the assay mixin. This is
-            # only because metagenomic runs currently require a failed-samples
-            # report to be generated. This is not done for amplicon runs since
-            # demultiplexing occurs downstream of SPP.
-            self.generate_reports()
+            # only because metaranscriptomic runs currently require a failed-
+            # samples report to be generated. This is not done for amplicon
+            # runs since demultiplexing occurs downstream of SPP.
+            results = self.generate_reports()
+            self.fsr_write(results, 'FastQCJob')
 
         self.update_status("Generating preps", 4, 9)
         if "GenPrepFileJob" not in self.skip_steps:
@@ -233,3 +183,4 @@ class StandardMetatranscriptomicWorkflow(Workflow, Metatranscriptomic,
         self.update_status("Packaging results", 9, 9)
         if self.update:
             self.execute_commands()
+

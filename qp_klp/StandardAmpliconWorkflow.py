@@ -1,29 +1,22 @@
-from .SequencingTech import Illumina, TellSeq
-from os.path import join, abspath, exists, split
-from os import walk, makedirs, listdir
-import pandas as pd
-from json import dumps
-from subprocess import Popen, PIPE
-from glob import glob
-from shutil import copyfile, rmtree
+from .SequencingTech import Illumina
+from os.path import join, abspath, exists
+from os import walk
+from shutil import rmtree
 from sequence_processing_pipeline.Pipeline import Pipeline
-from metapool import load_sample_sheet
-import logging
-from .Assays import Amplicon, Metagenomic, Metatranscriptomic
-from .Assays import (METAOMIC_ASSAY_NAMES, ASSAY_NAME_AMPLICON,
-                     ASSAY_NAME_METAGENOMIC, ASSAY_NAME_METATRANSCRIPTOMIC)
-from .SequencingTech import SEQTECH_NAME_ILLUMINA, SEQTECH_NAME_TELLSEQ
+from .Assays import Amplicon
+from .Assays import ASSAY_NAME_AMPLICON
 from .FailedSamplesRecord import FailedSamplesRecord
-from .Workflows import Workflow, WorkflowError
+from .Workflows import Workflow
 
 
 class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.mandatory_attributes = ['qclient', 'uif_path', 'config_fp',
+        self.mandatory_attributes = ['qclient', 'uif_path',
+                                     'lane_number', 'config_fp',
                                      'run_identifier', 'output_dir', 'job_id',
-                                     'is_restart']
+                                     'lane_number', 'is_restart']
 
         self.confirm_mandatory_attributes()
 
@@ -37,7 +30,11 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
                                  self.kwargs['output_dir'],
                                  self.kwargs['job_id'],
                                  ASSAY_NAME_AMPLICON,
-                                 lane_number=self.kwargs['lane_number'])
+                                 # amplicon runs always use lane 1.
+                                 lane_number=1)
+
+        self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
+                                       self.pipeline.sample_sheet.samples)
 
         self.master_qiita_job_id = None
 
@@ -47,16 +44,26 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
         if self.is_restart is True:
             self.determine_steps_to_skip()
 
+        # this is a convenience member to allow testing w/out updating Qiita.
         self.update = True
 
         if 'update_qiita' in kwargs:
             if bool(kwargs['update_qiita']) is False:
                 self.update = False
 
+        # for now, hardcode this at the legacy value, since we've never
+        # changed it.
+        self.job_pool_size = 30
+
     def determine_steps_to_skip(self):
         out_dir = self.pipeline.output_path
 
-        directories_to_check = ['ConvertJob', 'NuQCJob', 'FastQCJob', 'GenPrepFileJob']
+        # Although amplicon runs don't perform host-filtering,
+        # the output from ConvertJob is still copied and organized into
+        # a form suitable for FastQCJob to process. Hence the presence or
+        # absence of a 'NuQCJob' directory is still a thing (for now)
+        directories_to_check = ['ConvertJob', 'NuQCJob',
+                                'FastQCJob', 'GenPrepFileJob']
 
         for directory in directories_to_check:
             if exists(join(out_dir, directory)):
@@ -68,13 +75,13 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
                     rmtree(join(out_dir, directory))
 
     def execute_pipeline(self):
-        """
+        '''
         Executes steps of pipeline in proper sequence.
-        :param qclient: Qiita client library or equivalent.
-        :param update_status: callback function to update status.
-        :param update: Set False to prevent updates to Qiita.
         :return: None
-        """
+        '''
+        if not self.is_restart:
+            self.pre_check()
+
         # this is performed even in the event of a restart.
         self.generate_special_map()
 
@@ -82,21 +89,102 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
         # determined that it already completed successfully. Hence,
         # increment the status because we are still iterating through them.
 
-        self.update_status("Step 1 of 9: Converting data")
-
-        if 'ConvertJob' not in self.skip_steps:
+        self.update_status("Converting data", 1, 9)
+        if "ConvertJob" not in self.skip_steps:
+            # converting raw data to fastq depends heavily on the instrument
+            # used to generate the run_directory. Hence this method is
+            # supplied by the instrument mixin.
             results = self.convert_raw_to_fastq()
             self.fsr_write(results, 'ConvertJob')
 
-        self.update_status("Step 2 of 9: Performing quality control")
+        self.update_status("Post-processing raw fasq output", 2, 9)
+        if "NuQCJob" not in self.skip_steps:
+            # there is no failed samples reporting for amplicon runs.
+            self.post_process_raw_fastq_output()
 
-        # Amplicon workflows do not perform human filtering (quality control)
-        # as the fastq files will not be demuxed. Human filtering will instead
-        # be performed downstream by Qiita. In this case, we don't seek to
-        # perform quality control. Instead we want to simulate the output of
-        # NuQCJob as needed for downstream steps like FastQCJob to be able
-        # to process w/out modification.
+        self.update_status("Generating reports", 3, 9)
+        if "FastQCJob" not in self.skip_steps:
+            # reports are currently implemented by the assay mixin. This is
+            # only because metagenomic runs currently require a failed-samples
+            # report to be generated. This is not done for amplicon runs since
+            # demultiplexing occurs downstream of SPP.
+            results = self.generate_reports()
+            self.fsr_write(results, 'FastQCJob')
 
-        if 'NuQCJob' not in self.skip_steps:
-            results = self.post_process_raw_fastq_output()
-            self.fsr_write(results, 'NuQCJob')
+        self.update_status("Generating preps", 4, 9)
+        if "GenPrepFileJob" not in self.skip_steps:
+            # preps are currently associated with array mixin, but only
+            # because there are currently some slight differences in how
+            # FastQCJob gets instantiated(). This could get moved into a
+            # shared method, but probably still in Assay.
+            self.generate_prep_file()
+
+        # moved final component of genprepfilejob outside of object.
+        # obtain the paths to the prep-files generated by GenPrepFileJob
+        # w/out having to recover full state.
+        tmp = join(self.pipeline.output_path, 'GenPrepFileJob', 'PrepFiles')
+
+        self.has_replicates = False
+
+        prep_paths = []
+        self.prep_file_paths = {}
+
+        for root, dirs, files in walk(tmp):
+            for _file in files:
+                # breakup the prep-info-file into segments
+                # (run-id, project_qid, other) and cleave
+                # the qiita-id from the project_name.
+                qid = _file.split('.')[1].split('_')[-1]
+
+                if qid not in self.prep_file_paths:
+                    self.prep_file_paths[qid] = []
+
+                _path = abspath(join(root, _file))
+                if _path.endswith('.tsv'):
+                    prep_paths.append(_path)
+                    self.prep_file_paths[qid].append(_path)
+
+            for _dir in dirs:
+                if _dir == '1':
+                    # if PrepFiles contains the '1' directory, then it's a
+                    # given that this sample-sheet contains replicates.
+                    self.has_replicates = True
+
+        # currently imported from Assay although it is a base method. it
+        # could be imported into Workflows potentially, since it is a post-
+        # processing step. All pairings of assay and instrument type need to
+        # generate prep-info files in the same format.
+        self.overwrite_prep_files(prep_paths)
+
+        # for now, simply re-run any line below as if it was a new job, even
+        # for a restart. functionality is idempotent, except for the
+        # registration of new preps in Qiita. These will simply be removed
+        # manually.
+
+        # post-processing steps are by default associated with the Workflow
+        # class, since they deal with fastq files and Qiita, and don't depend
+        # on assay or instrument type.
+        self.update_status("Generating sample information", 5, 9)
+        self.sifs = self.generate_sifs()
+
+        # post-processing step.
+        self.update_status("Registering blanks in Qiita", 6, 9)
+        if self.update:
+            self.update_blanks_in_qiita()
+
+        self.update_status("Loading preps into Qiita", 7, 9)
+        if self.update:
+            self.update_prep_templates()
+
+        # before we load preps into Qiita we need to copy the fastq
+        # files n times for n preps and correct the file-paths each
+        # prep is pointing to.
+        self.load_preps_into_qiita()
+
+        self.update_status("Generating packaging commands", 8, 9)
+        self.generate_commands()
+
+        self.update_status("Packaging results", 9, 9)
+        if self.update:
+            self.execute_commands()
+

@@ -13,7 +13,7 @@ class QiitaPluginAdmin(QiitaPlugin):
     _plugin_type = "private"
 
 
-__version__ = '2023.05'
+__version__ = '2024.11'
 
 plugin = QiitaPluginAdmin('qp-klp', __version__, 'Knight Lab Processing')
 
