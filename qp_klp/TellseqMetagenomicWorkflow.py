@@ -37,7 +37,8 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
         self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
                                        self.pipeline.sample_sheet.samples)
 
-        type = InstrumentUtils.get_instrument_type(run_id)
+        # given run_id, Pipeline should have found the appropriate run_dir.
+        type = InstrumentUtils.get_instrument_type(self.pipeline.run_dir)
 
         self.iseq_run = True if type == 'iSeq' else False
 

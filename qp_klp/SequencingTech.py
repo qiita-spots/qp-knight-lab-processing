@@ -58,7 +58,9 @@ class Illumina(SequencingTech):
 
         job = ConvertJob(self.pipeline.run_dir,
                          self.pipeline.output_path,
-                         self.pipeline.input_file_path,
+                         # for amplicon runs, get_sample_sheet_path() will
+                         # return the path for a generated dummy sheet.
+                         self.pipeline.get_sample_sheet_path(),
                          config['queue'],
                          config['nodes'],
                          config['nprocs'],
@@ -106,14 +108,16 @@ class TellSeq(SequencingTech):
 
         # TODO: Set this path just liek for oillumina and then have subsequent steps use it
         # instead of hardcode assuming.
-        self.raw_fastq_files_path = join(self.pipeline.output_path, 'ConvertJob')
+        self.raw_fastq_files_path = join(self.pipeline.output_path, 'Full')
 
         job.run(callback=self.status_update_callback)
 
         # audit the results to determine which samples failed to convert
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
-        failed_samples = job.audit(self.pipeline.get_sample_ids())
+        # TODO: TELLREADJOB needs an audit method
+        #failed_samples = job.audit(self.pipeline.get_sample_ids())
+        failed_samples = []
         if hasattr(self, 'fsr'):
             # NB 16S does not require a failed samples report and
             # it is not performed by SPP.
@@ -175,7 +179,7 @@ class TellSeq(SequencingTech):
                              # supplied entry or an entry in the sample
                              # sheet.
                              config['sample_index_list'],
-                             join(job.output_path, 'Full'),
+                             self.raw_fastq_files_path,
                              "",
                              "",
                              config['integrate_cores'])

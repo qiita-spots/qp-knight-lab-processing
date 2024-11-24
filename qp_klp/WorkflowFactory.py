@@ -1,13 +1,13 @@
-from StandardAmpliconWorkflow import StandardAmpliconWorkflow
-from StandardMetagenomicWorkflow import StandardMetagenomicWorkflow
-from StandardMetatranscriptomicWorkflow import \
+from .StandardAmpliconWorkflow import StandardAmpliconWorkflow
+from .StandardMetagenomicWorkflow import StandardMetagenomicWorkflow
+from .StandardMetatranscriptomicWorkflow import \
     StandardMetatranscriptomicWorkflow
-from TellseqMetagenomicWorkflow import TellSeqMetagenomicWorkflow
+from .TellseqMetagenomicWorkflow import TellSeqMetagenomicWorkflow
 from sequence_processing_pipeline.Pipeline import Pipeline
 from metapool import load_sample_sheet
 from .Assays import METAOMIC_ASSAY_NAMES, ASSAY_NAME_AMPLICON
 from .SequencingTech import SEQTECH_NAME_ILLUMINA, SEQTECH_NAME_TELLSEQ
-from Workflows import WorkflowError
+from .Workflows import WorkflowError
 
 
 class WorkflowFactory():

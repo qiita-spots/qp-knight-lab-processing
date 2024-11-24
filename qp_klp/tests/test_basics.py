@@ -11,7 +11,7 @@ from os import makedirs, chmod, access, W_OK, walk
 from shutil import rmtree
 from os import environ, remove, getcwd
 import re
-from qp_klp.Workflows import WorkflowFactory
+from qp_klp.WorkflowFactory import WorkflowFactory
 from metapool import load_sample_sheet
 from collections import defaultdict
 from hashlib import md5
@@ -235,7 +235,7 @@ class Basics(TestCase):
         # We want a clean directory, nothing from leftover runs
         makedirs(self.output_dir, exist_ok=False)
 
-        self.debug = True
+        self.debug = False
 
     def tearDown(self):
         if not self.debug:
@@ -356,8 +356,8 @@ class Basics(TestCase):
 
         # create fake squeue binary that writes to stdout what Job() needs to
         # see to think that bcl-convert has completed successfully.
-        self.create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
-                              "9999999,9999999,COMPLETED'")
+        self.create_fake_bin('squeue', "echo 'JOBID,STATE\n"
+                              "9999999,COMPLETED'")
 
         # Create a Workflow object using WorkflowFactory(). No need to confirm
         # it is the correct one; that is confirmed in other tests. Run
@@ -545,8 +545,8 @@ class Basics(TestCase):
 
         # create fake squeue binary that writes to stdout what Job() needs to
         # see to think that bcl-convert has completed successfully.
-        self.create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
-                              "9999999,9999999,COMPLETED'")
+        self.create_fake_bin('squeue', "echo 'JOBID,STATE\n"
+                              "9999999,COMPLETED'")
 
         # Create a Workflow object using WorkflowFactory(). No need to confirm
         # it is the correct one; that is confirmed in other tests. Run
@@ -703,8 +703,8 @@ class Basics(TestCase):
 
         # create fake squeue binary that writes to stdout what Job() needs to
         # see to think that bcl-convert has completed successfully.
-        self.create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
-                              "9999999,9999999,COMPLETED'")
+        self.create_fake_bin('squeue', "echo 'JOBID,STATE\n"
+                              "9999999,COMPLETED'")
 
         # Create a Workflow object using WorkflowFactory(). No need to confirm
         # it is the correct one; that is confirmed in other tests. Run
@@ -752,8 +752,7 @@ class Basics(TestCase):
                "hostname",
                "cd qp_klp/tests/data/211021_A00000_0000_SAMPLE",
                "module load bcl2fastq_2.20.0.222",
-               "bcl2fastq --sample-sheet \"qp_klp/tests/data/pre-preps/"
-               "good_pre_prep1.txt\" --minimum-trimmed-read-length 1 "
+               "bcl2fastq --sample-sheet \"qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/dummy_sample_sheet.csv\" --minimum-trimmed-read-length 1 "
                "--mask-short-adapter-reads 1 -R . -o qp_klp/tests/data/"
                "077c4da8-74eb-4184-8860-0207f53623be/ConvertJob "
                "--loading-threads 16 --processing-threads 16 --writing-"
@@ -764,8 +763,9 @@ class Basics(TestCase):
                   "ConvertJob/ConvertJob.sh", 'r') as f:
             obs = f.readlines()
             obs = [x.strip() for x in obs]
+            obs = [re.sub('bcl2fastq --sample-sheet ".*?qp_klp', 'bcl2fastq --sample-sheet "qp_klp', x) for x in obs]
             obs = [re.sub('-o .*?/qp_klp', '-o qp_klp', x) for x in obs]
-
+        
         self.assertEqual(obs, exp)
 
         # ConvertJob successful.
@@ -791,7 +791,7 @@ class Basics(TestCase):
         # pre-prep file, and copies _all_ of the Undetermined fastq files into
         # _each_ project directory.
 
-        wf.quality_control()
+        wf.post_process_raw_fastq_output()
 
         base_path = "qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be"
 
@@ -847,8 +847,8 @@ class Basics(TestCase):
 
         # create fake squeue binary that writes to stdout what Job() needs to
         # see to think that tell-read has completed successfully.
-        self.create_fake_bin('squeue', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
-                              "9999990,9999990,COMPLETED'",
+        self.create_fake_bin('squeue', "echo 'JOBID,STATE\n"
+                              "9999990,COMPLETED'",
                               chain_cmd='squeue.2')
 
         # emulate TRIntegrateJob output
@@ -871,8 +871,8 @@ class Basics(TestCase):
             cmds.append(f"touch {join(output_dir, _file)}")
 
         self.create_fake_bin('sbatch.2', "\n".join(cmds))
-        self.create_fake_bin('squeue.2', "echo 'ARRAY_JOB_ID,JOBID,STATE\n"
-                              "9999991,9999991,COMPLETED'")
+        self.create_fake_bin('squeue.2', "echo 'JOBID,STATE\n"
+                              "9999991,COMPLETED'")
 
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/tellseq/good_sheet_draft1.csv",
                   "qclient": FakeClient(),
@@ -910,8 +910,3 @@ class Basics(TestCase):
         exp = open_job_script("qp_klp/tests/data/tellread_test.sbatch")
 
         self.assertEqual(obs, exp)
-
-        self.assertTrue(False)
-
-
-

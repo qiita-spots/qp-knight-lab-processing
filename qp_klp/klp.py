@@ -13,7 +13,8 @@ from os.path import join, split, exists
 from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from metapool import load_sample_sheet
-from .Workflows import WorkflowFactory, WorkflowError
+from .Workflows import WorkflowError
+from .WorkflowFactory import WorkflowFactory
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]

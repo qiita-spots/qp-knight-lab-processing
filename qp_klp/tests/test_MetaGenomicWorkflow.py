@@ -5,7 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-from qp_klp.Workflows import WorkflowFactory
+from qp_klp.WorkflowFactory import WorkflowFactory
 from unittest import TestCase
 from os import makedirs
 from qp_klp.SequencingTech import SEQTECH_NAME_ILLUMINA

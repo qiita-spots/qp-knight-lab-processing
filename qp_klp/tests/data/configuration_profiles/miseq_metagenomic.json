@@ -4,20 +4,23 @@
     "assay_type": "Metagenomic",
     "configuration": {
       "tell-seq": {
+        "integrate_cores": "1",
+        "integrate_mem_limit": "8",
+        "integrate_script_path": "/home/qiita_test/qiita-spots/ADDITIONAL_REQUIREMENTS/integrate-indices-np.py",
         "label": "my_label",
-        "reference_base": "/my/reference/base/path",
-        "reference_map": "/my/reference/map/path",
-        "sing_script_path": "/my/sing/script/path",
-        "cores_per_task": "999",
-        "nodes": 1,
         "lane": 1,
+        "modules_to_load": ["singularity_3.6.4"],
+        "nodes": 1,
+        "normcount_cores": "1",
+        "normcount_mem_limit": "8",
         "queue": "qiita",
-        "wallclock_time_in_minutes": 216,
-        "modules_to_load": [
-          "foo_module"
-        ],
-        "indicies_script_path": "my/indicies/script/path",
-        "per_process_memory_limit": "10"
+        "reference_base": "",
+        "reference_map": "",
+        "sample_index_list": "/home/qiita_test/qiita-spots/ADDITIONAL_REQUIREMENTS/sample_index_list_1.txt",
+        "sing_script_path": "/home/qiita_test/qiita-spots/ADDITIONAL_REQUIREMENTS/tellread-release-novaseqX/run_tellread_sing.sh",
+        "tellread_cores": "4",
+        "tellread_mem_limit": "16",
+        "wallclock_time_in_minutes": 1440
       },
       "bcl-convert": {
         "nodes": 1,

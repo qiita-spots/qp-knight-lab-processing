@@ -33,8 +33,8 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
                                  # amplicon runs always use lane 1.
                                  lane_number=1)
 
-        self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
-                                       self.pipeline.sample_sheet.samples)
+        # NB: Amplicon workflows don't have failed samples records because
+        # the fastq files are not demultiplexed.
 
         self.master_qiita_job_id = None
 
@@ -95,7 +95,6 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
             # used to generate the run_directory. Hence this method is
             # supplied by the instrument mixin.
             results = self.convert_raw_to_fastq()
-            self.fsr_write(results, 'ConvertJob')
 
         self.update_status("Post-processing raw fasq output", 2, 9)
         if "NuQCJob" not in self.skip_steps:
@@ -109,7 +108,6 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
             # report to be generated. This is not done for amplicon runs since
             # demultiplexing occurs downstream of SPP.
             results = self.generate_reports()
-            self.fsr_write(results, 'FastQCJob')
 
         self.update_status("Generating preps", 4, 9)
         if "GenPrepFileJob" not in self.skip_steps:
