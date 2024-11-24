@@ -935,10 +935,7 @@ class Basics(TestCase):
                   }
 
         wf = WorkflowFactory.generate_workflow(**kwargs)
-
-        audit_results = sorted(wf.convert_raw_to_fastq())
-
-        print("AUDIT RESULTS: %s" % audit_results)
+        wf.convert_raw_to_fastq()
 
         # verify job script was properly created
         trjob_dir = join(self.output_dir, 'TellReadJob')
@@ -952,6 +949,14 @@ class Basics(TestCase):
                 obs = [x.strip() for x in obs]
                 obs = [re.sub('-directory .*?/qp_klp',
                               '-directory qp_klp', x) for x in obs]
+                obs = [re.sub('--output .*?/qp_klp', '--output qp_klp',
+                              x) for x in obs]
+                obs = [re.sub('--error .*?/qp_klp', '--error qp_klp',
+                              x) for x in obs]
+                obs = [re.sub('find .*?/qp_klp', 'find qp_klp',
+                              x) for x in obs]
+                obs = [re.sub('-o .*?/qp_klp', '-o qp_klp',
+                              x) for x in obs]
                 return obs
 
         obs = open_job_script(trjob_script)
