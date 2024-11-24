@@ -9,9 +9,8 @@ from functools import partial
 from os import environ
 from qiita_client import ArtifactInfo
 from os import makedirs
-from os.path import join, split, exists
+from os.path import join, exists
 from sequence_processing_pipeline.PipelineError import PipelineError
-from sequence_processing_pipeline.ConvertJob import ConvertJob
 from metapool import load_sample_sheet
 from .Workflows import WorkflowError
 from .WorkflowFactory import WorkflowFactory

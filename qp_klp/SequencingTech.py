@@ -32,8 +32,8 @@ class Illumina(SequencingTech):
                 return self.pipeline.get_software_configuration(command)
             except PipelineError as e:
                 if str(e) != f"'{command}' is not defined in configuration":
-                    # re-raise the Error if it's not the one we are expecting and
-                    # can properly handle here.
+                    # re-raise the Error if it's not the one we are expecting
+                    # and can properly handle here.
                     raise PipelineError(e)
 
         # The choice to use either bcl2fastq or bcl-convert is set in the
@@ -70,7 +70,8 @@ class Illumina(SequencingTech):
                          config['modules_to_load'],
                          self.master_qiita_job_id)
 
-        self.raw_fastq_files_path = join(self.pipeline.output_path, 'ConvertJob')
+        self.raw_fastq_files_path = join(self.pipeline.output_path,
+                                         'ConvertJob')
 
         job.run(callback=self.status_update_callback)
 
@@ -106,8 +107,8 @@ class TellSeq(SequencingTech):
                           config['sing_script_path'],
                           config['tellread_cores'])
 
-        # TODO: Set this path just liek for oillumina and then have subsequent steps use it
-        # instead of hardcode assuming.
+        # TODO: Set this path just liek for oillumina and then have
+        # subsequent steps use it instead of hardcode assuming.
         self.raw_fastq_files_path = join(self.pipeline.output_path, 'Full')
 
         job.run(callback=self.status_update_callback)
@@ -116,7 +117,7 @@ class TellSeq(SequencingTech):
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         # TODO: TELLREADJOB needs an audit method
-        #failed_samples = job.audit(self.pipeline.get_sample_ids())
+        # failed_samples = job.audit(self.pipeline.get_sample_ids())
         failed_samples = []
         if hasattr(self, 'fsr'):
             # NB 16S does not require a failed samples report and
@@ -245,7 +246,6 @@ class TellSeq(SequencingTech):
         sample_id = mapping[adapter_id]['Sample_ID']
         project_name = mapping[adapter_id]['Sample_Project']
         sample_index = int(mapping[adapter_id]['sample_index']) + 1
-
 
         # generate the new filename for the fastq file, and reorganize the
         # files by project.

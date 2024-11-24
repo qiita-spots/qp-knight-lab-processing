@@ -182,4 +182,3 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
         self.update_status("Packaging results", 9, 9)
         if self.update:
             self.execute_commands()
-

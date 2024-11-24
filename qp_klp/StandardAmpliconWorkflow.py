@@ -5,7 +5,6 @@ from shutil import rmtree
 from sequence_processing_pipeline.Pipeline import Pipeline
 from .Assays import Amplicon
 from .Assays import ASSAY_NAME_AMPLICON
-from .FailedSamplesRecord import FailedSamplesRecord
 from .Workflows import Workflow
 
 
@@ -94,7 +93,7 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
             # converting raw data to fastq depends heavily on the instrument
             # used to generate the run_directory. Hence this method is
             # supplied by the instrument mixin.
-            results = self.convert_raw_to_fastq()
+            self.convert_raw_to_fastq()
 
         self.update_status("Post-processing raw fasq output", 2, 9)
         if "NuQCJob" not in self.skip_steps:
@@ -107,7 +106,7 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
             # only because metagenomic runs currently require a failed-samples
             # report to be generated. This is not done for amplicon runs since
             # demultiplexing occurs downstream of SPP.
-            results = self.generate_reports()
+            self.generate_reports()
 
         self.update_status("Generating preps", 4, 9)
         if "GenPrepFileJob" not in self.skip_steps:
@@ -185,4 +184,3 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
         self.update_status("Packaging results", 9, 9)
         if self.update:
             self.execute_commands()
-

@@ -7,7 +7,6 @@ from .Assays import Metagenomic
 from .Assays import ASSAY_NAME_METAGENOMIC
 from .Workflows import Workflow
 from .FailedSamplesRecord import FailedSamplesRecord
-from .Workflows import Workflow
 
 
 class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
@@ -190,5 +189,3 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
         self.update_status("Packaging results", 9, 9)
         if self.update:
             self.execute_commands()
-
-
