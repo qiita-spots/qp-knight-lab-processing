@@ -349,7 +349,7 @@ class Basics(TestCase):
                 r2 = join(fake_path, f'{sample}_S123_L001_R2_001.fastq.gz')
 
                 # let r1 and r2 be the same size.
-                size = randint(1, 10)
+                size = randint(1, 5)
                 for file_path in [r1, r2]:
                     cmds.append(self._generate_empty_file_cmd(file_path, size))
 
@@ -555,7 +555,7 @@ class Basics(TestCase):
                 r2 = join(fake_path, f'{sample}_S123_L001_R2_001.fastq.gz')
 
                 # let r1 and r2 be the same size.
-                size = randint(1, 10)
+                size = randint(1, 5)
                 for file_path in [r1, r2]:
                     cmds.append(self._generate_empty_file_cmd(file_path, size))
 
@@ -737,7 +737,7 @@ class Basics(TestCase):
                   'Undetermined_S0_L001_R2_001.fastq.gz')
 
         # let r1 and r2 be the same size.
-        size = randint(1, 10)
+        size = randint(1, 5)
         for file_path in [r1, r2]:
             cmds.append(self._generate_empty_file_cmd(file_path, size))
 
