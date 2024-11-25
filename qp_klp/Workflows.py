@@ -81,12 +81,6 @@ class Workflow():
                 f"Assay: {self.assay_type}")
 
     def pre_check(self):
-        # TODO: Note that amplicon/illumina workflows shouldn't call this
-        #  method since demuxing samples is performed downstream, hence there
-        #  isn't a list of real sample-names in the sample-sheet to check.
-        #  This check could be performed using the pre-prep sample data
-        #  however.
-
         # since one of the objectives of SPP is to generate prep-info files
         # and automatically load them into Qiita, confirm that all studies
         # mentioned in the sample-sheet/pre-prep do not contain sample
@@ -119,10 +113,6 @@ class Workflow():
         Generates a list of tuples to support pipeline processing.
         :return: A list of triplets.
         """
-        # TODO: (see below)
-        # this function should be able to be tested by passing in simulated =
-        # results from qclient.
-
         # trimmed files are stored by qiita_id. Find the qiita_id
         # associated with each project and ensure a subdirectory exists
         # for when it comes time to move the trimmed files.
@@ -144,9 +134,6 @@ class Workflow():
         Generates sample-info files for each project, containing
         metadata on BLANKS.
         """
-
-        # TODO: This will need to be updated and reviewed to handle recent
-        # changes. It is currently a placeholder.
         from_qiita = {}
 
         for study_id in self.prep_file_paths:
@@ -179,7 +166,6 @@ class Workflow():
         # duplicate sample-names and non-blanks will be handled properly.
         self.sifs = self.pipeline.generate_sample_info_files(add_sif_info)
 
-        # TODO: Remove returning this value if not tested directly.
         return self.sifs
 
     def update_blanks_in_qiita(self):
@@ -187,9 +173,6 @@ class Workflow():
         Updates the blanks registered in a given project in Qiita.
         :return:
         """
-
-        # TODO: This will need to be updated and reviewed to handle recent
-        # changes. It is currently a placeholder.
 
         for sif_path in self.sifs:
             # get study_id from sif_file_name ...something_14385_blanks.tsv
@@ -353,10 +336,6 @@ class Workflow():
                 f.write(f'{cmd}\n')
 
     def generate_commands(self):
-        """
-        TODO
-        :return:
-        """
         cmds = self._helper_process_operations()
 
         result = self._process_fastp_report_dirs()
@@ -384,10 +363,6 @@ class Workflow():
         self._write_commands_to_output_path()
 
     def execute_commands(self):
-        """
-        TODO
-        :return:
-        """
         # execute the list of commands in order
         for cmd in self.cmds:
             p = Popen(cmd,
@@ -717,7 +692,3 @@ class Workflow():
         number_in_project = len(set(self.samples_in_qiita[qiita_id]))
 
         return not_in_qiita, examples, number_in_project
-
-    def scan_run_directory(self):
-        # TODO: Impl
-        pass

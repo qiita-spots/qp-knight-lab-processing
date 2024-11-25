@@ -100,7 +100,6 @@ class WorkflowFactoryTests(TestCase):
     def test_metagenomic_workflow_creation(self):
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
                   "illumina/good_sheet1.csv",
-                  # TODO: Fix qclient?
                   "qclient": None,
                   "lane_number": "1",
                   "config_fp": "qp_klp/tests/data/configuration.json",
@@ -121,7 +120,6 @@ class WorkflowFactoryTests(TestCase):
     def test_metatranscriptomic_workflow_creation(self):
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/"
                   "metatranscriptomic/illumina/good_sheet1.csv",
-                  # TODO: Fix qclient?
                   "qclient": None,
                   "lane_number": "1",
                   "config_fp": "qp_klp/tests/data/configuration.json",
@@ -158,8 +156,6 @@ class WorkflowFactoryTests(TestCase):
         self.assertEqual(wf.assay_type, ASSAY_NAME_AMPLICON)
 
     def atest_tellseq_workflow_creation(self):
-        # TODO: Note we will need to modify metapool enough to accept and
-        # validate these drafts. Fix Qclient
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
                   "tellseq/good_sheet_draft1.csv",
                   "qclient": None,

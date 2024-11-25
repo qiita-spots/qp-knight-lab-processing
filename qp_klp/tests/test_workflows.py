@@ -429,20 +429,12 @@ class TestWorkflows(TestCase):
         self.create_fake_bin('sbatch', "\n".join(cmds))
         audit_results = sorted(wf.quality_control())
 
-        # TODO: Add assertion tests for NuQCJob
-
         # add tests to test audit results, modify test to introduce some
         # 'zero-length' files. add some assertions to show that the post-
         # processing step is munging the correct directory structure needed
         # for subsequent steps.
 
-        # TODO: Test that some files end up in zero-files folder.
-
         # NuQCJob successful.
-
-        # TODO: set up fake multiqc bin to. fake results of fastqc and
-        # multiqc jobs.
-        # audit_results = sorted(wf.generate_reports())
 
     def test_partial_metatranscriptomic_pipeline(self):
         # Tests convert_raw_to_fastq() and quality_control() steps of
@@ -644,12 +636,7 @@ class TestWorkflows(TestCase):
         self.create_fake_bin('sbatch', "\n".join(cmds))
         audit_results = sorted(wf.quality_control())
 
-        # TODO: Add assertion tests for NuQCJob
-
         # NuQCJob successful.
-
-        # TODO: Add tests for zero-files
-        # TODO: Add tests for MultiQC Job.
 
     def test_partial_amplicon_pipeline(self):
         # Tests convert_raw_to_fastq() and quality_control() steps of

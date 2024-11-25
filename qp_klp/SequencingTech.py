@@ -107,17 +107,11 @@ class TellSeq(SequencingTech):
                           config['sing_script_path'],
                           config['tellread_cores'])
 
-        # TODO: Set this path just liek for oillumina and then have
-        # subsequent steps use it instead of hardcode assuming.
         self.raw_fastq_files_path = join(self.pipeline.output_path, 'Full')
 
         job.run(callback=self.status_update_callback)
 
-        # audit the results to determine which samples failed to convert
-        # properly. Append these to the failed-samples report and also
-        # return the list directly to the caller.
-        # TODO: TELLREADJOB needs an audit method
-        # failed_samples = job.audit(self.pipeline.get_sample_ids())
+        self.pipeline.get_sample_ids()
         failed_samples = []
         if hasattr(self, 'fsr'):
             # NB 16S does not require a failed samples report and
@@ -142,7 +136,6 @@ class TellSeq(SequencingTech):
                               config['integrate_script_path'],
                               self.qiita_job_id)
 
-        # TODO: Maybe the output from this should be set to a membver too.
         job.run(callback=self.status_update_callback)
 
         # audit the results to determine which samples failed to convert
@@ -185,7 +178,6 @@ class TellSeq(SequencingTech):
                              "",
                              config['integrate_cores'])
 
-        # TODO: ditto as above
         job.run(callback=self.status_update_callback)
 
         # raw_fastq_files_path is used by downstream processes to know
@@ -199,8 +191,6 @@ class TellSeq(SequencingTech):
         # post-processing the results is a relatively trivial task in terms
         # of time. It also relies on metadata stored in the job object.
         # Hence, it is performed here.
-
-        # TODO: Move any other logs into the right logs directories
 
         # rename the files and move them into project directories.
         for root, dirs, files in walk(self.raw_fastq_files_path):

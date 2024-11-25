@@ -215,10 +215,6 @@ class Amplicon(Assay):
                 copyfile(raw_fastq_file, new_path)
 
     def generate_reports(self):
-        """
-        TODO
-        :return:
-        """
         config = self.pipeline.get_software_configuration('fastqc')
         job = FastQCJob(self.pipeline.run_dir,
                         self.pipeline.output_path,
@@ -241,10 +237,6 @@ class Amplicon(Assay):
         job.run(callback=self.status_update_callback)
 
     def generate_prep_file(self):
-        """
-        TODO
-        :return:
-        """
         config = self.pipeline.get_software_configuration('seqpro')
 
         # NB: For amplicon runs, the executable used is currently a variant
@@ -309,10 +301,6 @@ class Amplicon(Assay):
         return results
 
     def load_preps_into_qiita(self):
-        """
-        TODO
-        :return:
-        """
         atype = 'FASTQ'
 
         data = []
