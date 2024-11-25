@@ -155,7 +155,7 @@ class WorkflowFactoryTests(TestCase):
         self.assertEqual(wf.seqtech_type, SEQTECH_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_AMPLICON)
 
-    def atest_tellseq_workflow_creation(self):
+    def test_tellseq_workflow_creation(self):
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
                   "tellseq/good_sheet_draft1.csv",
                   "qclient": None,
@@ -163,6 +163,7 @@ class WorkflowFactoryTests(TestCase):
                   "run_identifier": "211021_A00000_0000_SAMPLE",
                   "output_dir": "qp_klp/tests/test_output",
                   "job_id": "78901",
+                  "lane_number": "1",
                   "is_restart": False
                   }
 
