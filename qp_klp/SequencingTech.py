@@ -121,18 +121,18 @@ class TellSeq(SequencingTech):
     def generate_norm_counts(self):
         config = self.pipeline.get_software_configuration('tell-seq')
 
-        job = TRNormCountsJob(self.pipeline.run_dir,
-                              self.pipeline.output_path,
-                              self.pipeline.input_file_path,
-                              config['queue'],
-                              config['nodes'],
-                              config['wallclock_time_in_minutes'],
-                              config['normcount_mem_limit'],
-                              config['modules_to_load'],
-                              self.master_qiita_job_id,
-                              'foo',
-                              config['integrate_script_path'],
-                              self.qiita_job_id)
+        job = SeqCountsJob(self.pipeline.run_dir,
+                           self.pipeline.output_path,
+                           self.pipeline.input_file_path,
+                           config['queue'],
+                           config['nodes'],
+                           config['wallclock_time_in_minutes'],
+                           config['normcount_mem_limit'],
+                           config['modules_to_load'],
+                           self.master_qiita_job_id,
+                           '',
+                           config['integrate_script_path'],
+                           self.qiita_job_id)
 
         job.run(callback=self.status_update_callback)
 
