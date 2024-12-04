@@ -6,7 +6,7 @@
       "tell-seq": {
         "integrate_cores": "1",
         "integrate_mem_limit": "8",
-        "integrate_script_path": "/home/qiita_test/qiita-spots/ADDITIONAL_REQUIREMENTS/integrate-indices-np.py",
+        "integrate_script_path": "/home/user/integrate-indices-np.py",
         "label": "my_label",
         "lane": 1,
         "modules_to_load": ["singularity_3.6.4"],
@@ -16,8 +16,8 @@
         "queue": "qiita",
         "reference_base": "",
         "reference_map": "",
-        "sample_index_list": "/home/qiita_test/qiita-spots/ADDITIONAL_REQUIREMENTS/sample_index_list_1.txt",
-        "sing_script_path": "/home/qiita_test/qiita-spots/ADDITIONAL_REQUIREMENTS/tellread-release-novaseqX/run_tellread_sing.sh",
+        "sample_index_list": "/home/user/sample_index_list_1.txt",
+        "sing_script_path": "/home/user/tellread-release-novaseqX/run_tellread_sing.sh",
         "tellread_cores": "4",
         "tellread_mem_limit": "16",
         "wallclock_time_in_minutes": 1440

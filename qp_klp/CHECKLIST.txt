@@ -1,9 +1,0 @@
-Confirm sif behavior works w/new KATHAROseq controls.
-
-MG-SCRIPTS TODOS:
-Confirm NuQCJob works as intended with LS dataset + BX metadata.
-Confirm all audits work as intended in testing.
-
-METAPOOL TODOS:
-Confirm seqpro generates the prep-info files expected after Amanda's recent
-changes. Do this in testing.

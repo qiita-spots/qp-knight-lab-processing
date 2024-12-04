@@ -52,8 +52,11 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
         self.update = True
 
         if 'update_qiita' in kwargs:
-            if bool(kwargs['update_qiita']) is False:
-                self.update = False
+            if not isinstance(kwargs['update_qiita'], bool):
+                raise ValueError("value for 'update_qiita' must be of "
+                                 "type bool")
+
+            self.update = kwargs['update_qiita']
 
     def determine_steps_to_skip(self):
         out_dir = self.pipeline.output_path

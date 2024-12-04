@@ -17,6 +17,9 @@ ASSAY_NAME_METAGENOMIC = "Metagenomic"
 ASSAY_NAME_METATRANSCRIPTOMIC = "Metatranscriptomic"
 METAOMIC_ASSAY_NAMES = [ASSAY_NAME_METAGENOMIC, ASSAY_NAME_METATRANSCRIPTOMIC]
 
+ARTIFACT_TYPE_AMPLICON = "FASTQ"
+ARTIFACT_TYPE_METAOMICS = "per_sample_FASTQ"
+
 
 class Assay():
     """
@@ -301,8 +304,6 @@ class Amplicon(Assay):
         return results
 
     def load_preps_into_qiita(self):
-        atype = 'FASTQ'
-
         data = []
         for project, _, qiita_id in self.special_map:
             fastq_files = self._get_postqc_fastq_files(
@@ -326,7 +327,7 @@ class Amplicon(Assay):
 
                 data.append(self._load_prep_into_qiita(
                     self.qclient, prep_id, artifact_name, qiita_id, project,
-                    working_set, atype))
+                    working_set, ARTIFACT_TYPE_AMPLICON))
 
         df = pd.DataFrame(data)
         opath = join(self.pipeline.output_path, 'touched_studies.html')
@@ -458,8 +459,6 @@ class MetaOmic(Assay):
         return results
 
     def load_preps_into_qiita(self):
-        atype = 'per_sample_FASTQ'
-
         data = []
         for project, _, qiita_id in self.special_map:
             fastq_files = self._get_postqc_fastq_files(
@@ -482,7 +481,7 @@ class MetaOmic(Assay):
 
                 data.append(self._load_prep_into_qiita(
                     self.qclient, prep_id, artifact_name, qiita_id, project,
-                    working_set, atype))
+                    working_set, ARTIFACT_TYPE_METAOMICS))
 
         df = pd.DataFrame(data)
         opath = join(self.pipeline.output_path, 'touched_studies.html')

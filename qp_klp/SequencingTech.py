@@ -1,6 +1,6 @@
 from sequence_processing_pipeline.ConvertJob import ConvertJob
 from sequence_processing_pipeline.TellReadJob import TellReadJob
-from sequence_processing_pipeline.TRNormCountsJob import TRNormCountsJob
+from sequence_processing_pipeline.SeqCountsJob import SeqCountsJob
 from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
 from sequence_processing_pipeline.PipelineError import PipelineError
 from os.path import join, split
@@ -80,8 +80,6 @@ class Illumina(SequencingTech):
         # return the list directly to the caller.
         failed_samples = job.audit(self.pipeline.get_sample_ids())
         if hasattr(self, 'fsr'):
-            # NB 16S does not require a failed samples report and
-            # it is not performed by SPP.
             self.fsr.write(failed_samples, job.__class__.__name__)
 
         return failed_samples

@@ -12,7 +12,7 @@
 set -x
 
 module load singularity_3.6.4
-/home/qiita_test/qiita-spots/ADDITIONAL_REQUIREMENTS/tellread-release-novaseqX/run_tellread_sing.sh \
+/home/user/tellread-release-novaseqX/run_tellread_sing.sh \
     -i qp_klp/tests/data/211021_A00000_0000_SAMPLE \
     -o /home/runner/qp-knight-lab-processing/qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/TellReadJob \
     -s $(echo C591,C550,C503,C566,C556,C578,C592 | tr -d '"') \

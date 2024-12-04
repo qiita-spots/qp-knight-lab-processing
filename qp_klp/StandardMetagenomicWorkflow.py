@@ -47,8 +47,11 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
         self.update = True
 
         if 'update_qiita' in kwargs:
-            if bool(kwargs['update_qiita']) is False:
-                self.update = False
+            if not isinstance(kwargs['update_qiita'], bool):
+                raise ValueError("value for 'update_qiita' must be of "
+                                 "type bool")
+
+            self.update = kwargs['update_qiita']
 
         # for now, hardcode this at the legacy value, since we've never
         # changed it.
