@@ -6,7 +6,7 @@ from .TellseqMetagenomicWorkflow import TellSeqMetagenomicWorkflow
 from sequence_processing_pipeline.Pipeline import Pipeline
 from metapool import load_sample_sheet
 from .Assays import METAOMIC_ASSAY_NAMES, ASSAY_NAME_AMPLICON
-from .SequencingTech import SEQTECH_NAME_ILLUMINA, SEQTECH_NAME_TELLSEQ
+from .Protocol import PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ
 from .Workflows import WorkflowError
 
 
@@ -16,12 +16,12 @@ class WorkflowFactory():
                  StandardAmpliconWorkflow,
                  TellSeqMetagenomicWorkflow]
 
-    ST_TO_IN_MAP = {SEQTECH_NAME_ILLUMINA: ['standard_metag',
-                                            'standard_metat',
-                                            'absquant_metag',
-                                            'absquant_metat'],
-                    SEQTECH_NAME_TELLSEQ: ['tellseq_metag',
-                                           'tellseq_absquant']}
+    ST_TO_IN_MAP = {PROTOCOL_NAME_ILLUMINA: ['standard_metag',
+                                             'standard_metat',
+                                             'absquant_metag',
+                                             'absquant_metat'],
+                    PROTOCOL_NAME_TELLSEQ: ['tellseq_metag',
+                                            'tellseq_absquant']}
 
     @classmethod
     def _get_instrument_type(cls, sheet):

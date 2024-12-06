@@ -8,23 +8,23 @@ from re import match
 from os import makedirs, rename, walk
 
 
-SEQTECH_NAME_NONE = "None"
-SEQTECH_NAME_ILLUMINA = "Illumina"
-SEQTECH_NAME_TELLSEQ = "TellSeq"
+PROTOCOL_NAME_NONE = "None"
+PROTOCOL_NAME_ILLUMINA = "Illumina"
+PROTOCOL_NAME_TELLSEQ = "TellSeq"
 
 
-class SequencingTech():
+class Protocol():
     """
-    SequencingTechs encapsulate Job()s and other functionality that vary on
+    Protocols encapsulate Job()s and other functionality that vary on
      the nature of the Instrument used to create the raw data. All Instruments
      are mixins for Workflow() classes and shouldn't define their own
      initialization.
     """
-    seqtech_type = SEQTECH_NAME_NONE
+    seqtech_type = PROTOCOL_NAME_NONE
 
 
-class Illumina(SequencingTech):
-    seqtech_type = SEQTECH_NAME_ILLUMINA
+class Illumina(Protocol):
+    seqtech_type = PROTOCOL_NAME_ILLUMINA
 
     def convert_raw_to_fastq(self):
         def get_config(command):
@@ -85,8 +85,8 @@ class Illumina(SequencingTech):
         return failed_samples
 
 
-class TellSeq(SequencingTech):
-    seqtech_type = SEQTECH_NAME_TELLSEQ
+class TellSeq(Protocol):
+    seqtech_type = PROTOCOL_NAME_TELLSEQ
 
     def convert_raw_to_fastq(self):
         config = self.pipeline.get_software_configuration('tell-seq')

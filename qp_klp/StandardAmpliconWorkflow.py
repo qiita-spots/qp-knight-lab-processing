@@ -1,4 +1,4 @@
-from .SequencingTech import Illumina
+from .Protocol import Illumina
 from os.path import join, abspath, exists
 from os import walk
 from shutil import rmtree

@@ -8,8 +8,8 @@
 from qp_klp.WorkflowFactory import WorkflowFactory
 from unittest import TestCase
 from os import makedirs
-from qp_klp.SequencingTech import (SEQTECH_NAME_ILLUMINA,
-                                   SEQTECH_NAME_TELLSEQ)
+from qp_klp.Protocol import (PROTOCOL_NAME_ILLUMINA,
+                             PROTOCOL_NAME_TELLSEQ)
 from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
                            ASSAY_NAME_METATRANSCRIPTOMIC,
                            ASSAY_NAME_AMPLICON)
@@ -114,7 +114,7 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.seqtech_type, SEQTECH_NAME_ILLUMINA)
+        self.assertEqual(wf.seqtech_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
     def test_metatranscriptomic_workflow_creation(self):
@@ -134,7 +134,7 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.seqtech_type, SEQTECH_NAME_ILLUMINA)
+        self.assertEqual(wf.seqtech_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METATRANSCRIPTOMIC)
 
     def test_amplicon_workflow_creation(self):
@@ -152,12 +152,12 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.seqtech_type, SEQTECH_NAME_ILLUMINA)
+        self.assertEqual(wf.seqtech_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_AMPLICON)
 
     def test_tellseq_workflow_creation(self):
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
-                  "tellseq/good_sheet_draft1.csv",
+                  "tellseq/good_sheet1.csv",
                   "qclient": None,
                   "config_fp": "qp_klp/tests/data/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
@@ -172,5 +172,5 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.seqtech_type, SEQTECH_NAME_TELLSEQ)
+        self.assertEqual(wf.seqtech_type, PROTOCOL_NAME_TELLSEQ)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)

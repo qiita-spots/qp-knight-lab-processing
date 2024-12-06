@@ -853,7 +853,7 @@ class TestWorkflows(TestCase):
                              "9999991,COMPLETED'")
 
         kwargs = {"uif_path": ("qp_klp/tests/data/sample-sheets/metagenomic"
-                               "/tellseq/good_sheet_draft1.csv"),
+                               "/tellseq/good_sheet1.csv"),
                   "qclient": FakeClient(),
                   "lane_number": "4",
                   "config_fp": "qp_klp/tests/data/configuration.json",

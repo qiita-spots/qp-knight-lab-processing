@@ -1,4 +1,4 @@
-from .SequencingTech import TellSeq
+from .Protocol import TellSeq
 from os.path import join, abspath, exists
 from os import walk
 from shutil import rmtree
