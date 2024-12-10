@@ -53,10 +53,6 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
 
             self.update = kwargs['update_qiita']
 
-        # for now, hardcode this at the legacy value, since we've never
-        # changed it.
-        self.job_pool_size = 30
-
     def determine_steps_to_skip(self):
         out_dir = self.pipeline.output_path
 

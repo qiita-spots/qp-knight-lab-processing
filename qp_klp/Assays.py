@@ -232,7 +232,7 @@ class Amplicon(Assay):
                         config['nodes'],
                         config['wallclock_time_in_minutes'],
                         config['job_total_memory_limit'],
-                        self.job_pool_size,
+                        config['job_pool_size'],
                         config['multiqc_config_file_path'],
                         config['job_max_array_length'],
                         True)
@@ -398,7 +398,7 @@ class MetaOmic(Assay):
                         config['nodes'],
                         config['wallclock_time_in_minutes'],
                         config['job_total_memory_limit'],
-                        self.job_pool_size,
+                        config['job_pool_size'],
                         config['multiqc_config_file_path'],
                         config['job_max_array_length'],
                         False)
