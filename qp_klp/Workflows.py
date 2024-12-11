@@ -37,12 +37,13 @@ class Workflow():
         self.prep_copy_index = 0
         self.prep_file_paths = None
         self.qclient = None
-        self.run_prefixes = None
+        self.run_prefixes = {}
         self.samples_in_qiita = None
         self.sample_state = None
         self.sifs = None
         self.skip_steps = []
         self.special_map = None
+        self.status_msg = ''
         self.touched_studies_prep_info = None
         self.tube_id_map = None
 
@@ -66,12 +67,29 @@ class Workflow():
                              f"kwargs for {self.__class__.__name__} workflows"
                              + ": " + ', '.join(absent_list))
 
-    def update_status(self, msg):
+    def job_callback(self, jid, status):
         """
-        Wrapper for callback that updates the user on workflow status.
+        Update main status message w/current child job status.
         """
         if self.status_update_callback:
-            self.status_update_callback(msg)
+            self.status_update_callback(self.status_msg +
+                                        f" ({jid}: {status})")
+
+    def update_status(self, msg, step_number, total_steps):
+        """
+        Prettify status message before updating.
+        """
+
+        # When this method is called, a new status message is created.
+        # This is saved so that child jobs can use job_callback() to update
+        # this message.
+
+        # set self.status_msg even if self.status_update_callback() is None.
+        msg = "Step %d of %d: %s" % (step_number, total_steps, msg)
+        self.status_msg = msg
+
+        if self.status_update_callback:
+            self.status_update_callback(self.status_msg)
 
     def what_am_i(self):
         """
@@ -81,32 +99,36 @@ class Workflow():
                 f"Assay: {self.assay_type}")
 
     def pre_check(self):
-        # since one of the objectives of SPP is to generate prep-info files
-        # and automatically load them into Qiita, confirm that all studies
-        # mentioned in the sample-sheet/pre-prep do not contain sample
-        # metadata that would cause an error in the pipeline after processing
-        # has already completed but the results have not yet been loaded.
-        self._project_metadata_check()
+        if self.is_restart:
+            self._get_tube_ids_from_qiita()
+        else:
+            # since one of the objectives of SPP is to generate prep-info files
+            # and automatically load them into Qiita, confirm that all studies
+            # mentioned in the sample-sheet/pre-prep do not contain sample
+            # metadata that would cause an error in the pipeline after
+            # processing has already completed but the results have not yet
+            # been loaded.
+            self._project_metadata_check()
 
-        # compare sample-ids/tube-ids in sample-sheet/mapping file
-        # against what's in Qiita. Results are a list of dictionaries, one
-        # per project.
-        results = self._compare_samples_against_qiita()
+            # compare sample-ids/tube-ids in sample-sheet/mapping file
+            # against what's in Qiita. Results are a list of dictionaries, one
+            # per project.
+            results = self._compare_samples_against_qiita()
 
-        # obtain a list of non-zero counts of samples missing in Qiita, one
-        # for each project. The names of the projects are unimportant. We
-        # want to abort early if any project in the sample-sheet/pre-prep file
-        # contains samples that aren't registered in Qiita.
-        tmp = [len(project['samples_not_in_qiita']) for project in results]
-        missing_counts = [count for count in tmp if count != 0]
+            # obtain a list of non-zero counts of samples missing in Qiita, one
+            # for each project. The names of the projects are unimportant. We
+            # want to abort early if any project in the sample-sheet/pre-prep
+            # file contains samples that aren't registered in Qiita.
+            tmp = [len(project['samples_not_in_qiita']) for project in results]
+            missing_counts = [count for count in tmp if count != 0]
 
-        if missing_counts:
-            msgs = []
-            for result in results:
-                msgs += result['messages']
+            if missing_counts:
+                msgs = []
+                for result in results:
+                    msgs += result['messages']
 
-            if msgs:
-                raise WorkflowError('\n'.join(msgs))
+                if msgs:
+                    raise WorkflowError('\n'.join(msgs))
 
     def generate_special_map(self):
         """
@@ -450,7 +472,7 @@ class Workflow():
         results = []
         for project in projects:
             msgs = []
-            self._get_tube_ids_from_qiita(self.qclient)
+            self._get_tube_ids_from_qiita()
             p_name = project['project_name']
             qiita_id = str(project['qiita_id'])
             contains_replicates = project['contains_replicates']
@@ -646,7 +668,7 @@ class Workflow():
     def get_prep_file_paths(self):
         return self.prep_file_paths
 
-    def _get_tube_ids_from_qiita(self, qclient):
+    def _get_tube_ids_from_qiita(self):
         # Update get_project_info() so that it can return a list of
         # samples in projects['samples']. Include blanks in projects['blanks']
         # just in case there are duplicate qiita_ids
@@ -659,7 +681,7 @@ class Workflow():
         for qiita_id in qiita_ids:
             # Qiita returns a set of sample-ids in qsam and a dictionary where
             # sample-names are used as keys and tube-ids are their values.
-            qsam, tids = self.get_samples_in_qiita(qclient, qiita_id)
+            qsam, tids = self.get_samples_in_qiita(self.qclient, qiita_id)
 
             sample_names_by_qiita_id[str(qiita_id)] = qsam
 

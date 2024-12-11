@@ -793,12 +793,9 @@ class TestWorkflows(TestCase):
 
     def test_partial_tellseq_pipeline(self):
         # substitute for UI callback function.
-        def call_me_back(**kwargs):
-            jid = kwargs['jid']
-            status = kwargs['status']
-
+        def call_me_back(status):
             with open("callback.log", 'a') as f:
-                print(f"{jid}: {status}", file=f)
+                print(f"LOG: {status}", file=f)
 
         # emulate TellReadJob output
 

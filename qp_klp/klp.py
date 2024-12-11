@@ -25,32 +25,8 @@ class StatusUpdate():
         self.job_id = job_id
         self.msg = ''
 
-    def update_job_status(self, status, jid):
-        # internal function implements a callback function for Pipeline.run().
-        # :param id: PBS/Torque/or some other informative and current job id.
-        # :param status: status message
-
-        # Note that jid and self.job_id are not necessarily the same. jid is
-        # the job id of whatever child process is currently running, while
-        # self.job_id is the job id for the main, master job.
-        self.qclient.update_job_step(self.job_id,
-                                     self.msg + f" ({jid}: {status})")
-
-    def update_current_message(self, step=None):
-        # internal function that sets current_message to the new value before
-        # updating the job step in the UI.
-
-        # Note that unlike update_job_status, this function is not meant to be
-        # used as a callback function. It is meant to be called directly by
-        # the plugin and whatever else is passed this object.
-        if step:
-            msg = "Step %d of %d: " % (step[0], step[1])
-        else:
-            msg = ""
-
-        self.msg = msg + self.msgs[self.current_step]
-
-        self.qclient.update_job_step(self.job_id, self.msg)
+    def update_job_status(self, msg):
+        self.qclient.update_job_step(self.job_id, msg)
 
 
 def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
@@ -84,7 +60,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     is_restart = True if exists(out_path('restart_me')) else False
 
     if is_restart:
-        status_line.update_current_message("Restarting pipeline")
+        status_line.update_job_status("Restarting pipeline")
         with open(out_path('restart_me'), 'r') as f:
             lines = f.readlines()
             lines = [x.strip() for x in lines]
@@ -121,7 +97,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # This is a new, fresh SPP job. Get the parameters from the user and
         # create a 'restart_me' file in the working directory.
 
-        status_line.update_current_message("Setting up pipeline")
+        status_line.update_job_status("Setting up pipeline")
 
         # available fields for parameters are:
         #   run_identifier, sample_sheet, content_type, filename, lane_number
@@ -159,7 +135,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
                   'run_identifier': run_identifier,
                   'output_dir': out_dir,
                   'job_id': job_id,
-                  'status_update_callback': status_line.update_current_message,
+                  'status_update_callback': status_line.update_job_status,
                   # set 'update_qiita' to False to avoid updating Qiita DB
                   # and copying files into uploads dir. Useful for testing.
                   'update_qiita': True,
@@ -167,11 +143,11 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         workflow = WorkflowFactory().generate_workflow(**kwargs)
 
-        status_line.update_current_message("Getting project information")
+        status_line.update_job_status("Getting project information")
 
         workflow.execute_pipeline()
 
-        status_line.update_current_message("SPP finished")
+        status_line.update_job_status("SPP finished")
 
     except (PipelineError, WorkflowError) as e:
         # assume AttributeErrors are issues w/bad sample-sheets or

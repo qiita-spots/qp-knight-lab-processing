@@ -88,13 +88,13 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
             # converting raw data to fastq depends heavily on the instrument
             # used to generate the run_directory. Hence this method is
             # supplied by the instrument mixin.
-            results = self.convert_raw_to_fastq()
-            self.fsr_write(results, 'ConvertJob')
+            # NB: convert_raw_to_fastq() now generates fsr on its own.
+            self.convert_raw_to_fastq()
 
         self.update_status("Performing quality control", 2, 9)
         if "NuQCJob" not in self.skip_steps:
-            results = self.quality_control(self.pipeline)
-            self.fsr_write(results, 'NuQCJob')
+            # quality_control generates its own fsr now
+            self.quality_control(self.pipeline)
 
         self.update_status("Generating reports", 3, 9)
         if "FastQCJob" not in self.skip_steps:

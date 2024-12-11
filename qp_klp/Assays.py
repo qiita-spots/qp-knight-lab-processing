@@ -179,12 +179,9 @@ class Amplicon(Assay):
 
             makedirs(output_folder)
 
-            raw_fastq_files_path = join(self.pipeline.output_path,
-                                        'ConvertJob')
-
             # get list of all raw output files to be copied.
-            job_output = [join(raw_fastq_files_path, x) for x in
-                          listdir(raw_fastq_files_path)]
+            job_output = [join(self.raw_fastq_files_path, x) for x in
+                          listdir(self.raw_fastq_files_path)]
 
             job_output = [x for x in job_output if isfile(x)]
             job_output = [x for x in job_output if x.endswith('fastq.gz')]
@@ -205,11 +202,11 @@ class Amplicon(Assay):
             # the dummy sample-sheet, we instead perform ConvertJob once
             # and copy the output from ConvertJob's output folder into
             # ConvertJob's output folder/project1, project2 ... projectN.
-            output_folder = join(raw_fastq_files_path, project_name)
+            output_folder = join(self.raw_fastq_files_path, project_name)
             makedirs(output_folder)
 
-            job_output = [join(raw_fastq_files_path, x) for x in
-                          listdir(raw_fastq_files_path)]
+            job_output = [join(self.raw_fastq_files_path, x) for x in
+                          listdir(self.raw_fastq_files_path)]
             job_output = [x for x in job_output if isfile(x) and x.endswith(
                 'fastq.gz') and not basename(x).startswith('Undetermined')]
 
@@ -221,7 +218,7 @@ class Amplicon(Assay):
         config = self.pipeline.get_software_configuration('fastqc')
         job = FastQCJob(self.pipeline.run_dir,
                         self.pipeline.output_path,
-                        join(self.pipeline.output_path, 'ConvertJob'),
+                        self.raw_fastq_files_path,
                         join(self.pipeline.output_path, 'NuQCJob'),
                         config['nprocs'],
                         config['nthreads'],
@@ -237,7 +234,8 @@ class Amplicon(Assay):
                         config['job_max_array_length'],
                         True)
 
-        job.run(callback=self.status_update_callback)
+        if 'FastQCJob' not in self.skip_steps:
+            job.run(callback=self.job_callback)
 
     def generate_prep_file(self):
         config = self.pipeline.get_software_configuration('seqpro')
@@ -248,16 +246,18 @@ class Amplicon(Assay):
         seqpro_path = config['seqpro_path'].replace('seqpro', 'seqpro_mf')
 
         job = GenPrepFileJob(self.pipeline.run_dir,
-                             join(self.pipeline.output_path, 'ConvertJob'),
+                             self.raw_fastq_files_path,
                              join(self.pipeline.output_path, 'NuQCJob'),
                              self.pipeline.output_path,
                              self.pipeline.input_file_path,
                              seqpro_path,
                              config['modules_to_load'],
                              self.master_qiita_job_id,
+                             join(self.pipeline.output_path, 'ConvertJob'),
                              is_amplicon=True)
 
-        job.run(callback=self.status_update_callback)
+        if 'GenPrepFileJob' not in self.skip_steps:
+            job.run(callback=self.job_callback)
 
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates
@@ -374,20 +374,22 @@ class MetaOmic(Assay):
                       length_limit=config['length_limit'],
                       cores_per_task=config['cores_per_task'])
 
-        job.run(callback=self.status_update_callback)
+        if 'NuQCJob' not in self.skip_steps:
+            job.run(callback=self.job_callback)
 
         # audit the results to determine which samples failed to convert
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         failed_samples = job.audit(self.pipeline.get_sample_ids())
-        self.fsr.write(failed_samples, job.__class__.__name__)
+        if hasattr(self, 'fsr'):
+            self.fsr.write(failed_samples, job.__class__.__name__)
         return failed_samples
 
     def generate_reports(self):
         config = self.pipeline.get_software_configuration('fastqc')
         job = FastQCJob(self.pipeline.run_dir,
                         self.pipeline.output_path,
-                        join(self.pipeline.output_path, 'ConvertJob'),
+                        self.raw_fastq_files_path,
                         join(self.pipeline.output_path, 'NuQCJob'),
                         config['nprocs'],
                         config['nthreads'],
@@ -403,28 +405,34 @@ class MetaOmic(Assay):
                         config['job_max_array_length'],
                         False)
 
-        job.run(callback=self.status_update_callback)
+        if 'FastQCJob' not in self.skip_steps:
+            job.run(callback=self.job_callback)
 
-        self.fsr.write(job.audit(self.pipeline.get_sample_ids()), 'FastQCJob')
-
-        # as generate_reports is the final step that updates self.fsr,
-        # we can generate the final human-readable report following this step.
-        self.fsr.generate_report()
+        failed_samples = job.audit(self.pipeline.get_sample_ids())
+        if hasattr(self, 'fsr'):
+            self.fsr.write(failed_samples, job.__class__.__name__)
+        return failed_samples
 
     def generate_prep_file(self):
         config = self.pipeline.get_software_configuration('seqpro')
 
+        if 'ConvertJob' in self.raw_fastq_files_path:
+            reports_dir = join(self.pipeline.output_path, 'ConvertJob')
+        elif 'TRIntegrateJob' in self.raw_fastq_files_path:
+            reports_dir = join(self.pipeline.output_path, 'SeqCountsJob')
+
         job = GenPrepFileJob(self.pipeline.run_dir,
-                             join(self.pipeline.output_path, 'ConvertJob'),
+                             self.raw_fastq_files_path,
                              join(self.pipeline.output_path, 'NuQCJob'),
                              self.pipeline.output_path,
                              self.pipeline.input_file_path,
                              config['seqpro_path'],
                              config['modules_to_load'],
                              self.master_qiita_job_id,
-                             is_amplicon=False)
+                             reports_dir)
 
-        job.run(callback=self.status_update_callback)
+        if 'GenPrepFileJob' not in self.skip_steps:
+            job.run(callback=self.job_callback)
 
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates

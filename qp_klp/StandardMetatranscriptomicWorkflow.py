@@ -89,13 +89,13 @@ class StandardMetatranscriptomicWorkflow(Workflow, Metatranscriptomic,
             # converting raw data to fastq depends heavily on the instrument
             # used to generate the run_directory. Hence this method is
             # supplied by the instrument mixin.
+            # NB: convert_raw_to_fastq() now generates fsr on its own
             results = self.convert_raw_to_fastq()
-            self.fsr_write(results, 'ConvertJob')
 
         self.update_status("Performing quality control", 2, 9)
         if "NuQCJob" not in self.skip_steps:
-            results = self.quality_control(self.pipeline)
-            self.fsr_write(results, 'NuQCJob')
+            # NB: quality_control generates its own fsr
+            self.quality_control(self.pipeline)
 
         self.update_status("Generating reports", 3, 9)
         if "FastQCJob" not in self.skip_steps:

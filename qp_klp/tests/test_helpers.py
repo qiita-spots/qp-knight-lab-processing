@@ -310,7 +310,7 @@ class TestHelpers(TestCase):
 
     def test_get_tube_ids_from_qiita(self):
         wf = WorkflowFactory.generate_workflow(**self.kwargs)
-        wf._get_tube_ids_from_qiita(self.fake_client)
+        wf._get_tube_ids_from_qiita()
 
         obs = wf.tube_id_map
         exp = {'13059': {'SP331130A04': 'SP331130A-4',
