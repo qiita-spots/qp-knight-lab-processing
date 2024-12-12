@@ -3,6 +3,25 @@
     "instrument_type": "MiSeq",
     "assay_type": "Metagenomic",
     "configuration": {
+      "tell-seq": {
+        "integrate_cores": "1",
+        "integrate_mem_limit": "8",
+        "integrate_script_path": "/home/user/integrate-indices-np.py",
+        "label": "my_label",
+        "lane": 1,
+        "modules_to_load": ["singularity_3.6.4"],
+        "nodes": 1,
+        "normcount_cores": "1",
+        "normcount_mem_limit": "8",
+        "queue": "qiita",
+        "reference_base": "",
+        "reference_map": "",
+        "sample_index_list": "/home/user/sample_index_list_1.txt",
+        "sing_script_path": "/home/user/tellread-release-novaseqX/run_tellread_sing.sh",
+        "tellread_cores": "4",
+        "tellread_mem_limit": "16",
+        "wallclock_time_in_minutes": 1440
+      },
       "bcl-convert": {
         "nodes": 1,
         "nprocs": 16,
@@ -42,11 +61,12 @@
         "job_total_memory_limit": "20",
         "job_max_array_length": 1000,
         "known_adapters_path": "fastp_known_adapters_formatted.fna",
-        "bucket_size": 8,
+        "bucket_size": 2,
         "length_limit": 100,
         "cores_per_task": 2,
         "movi_executable_path": "/home/user/user_dir/Movi/build/movi-default",
         "gres_value": 2,
+        "additional_fastq_tags": ["BX"],
         "pmls_path": "/home/user/user_dir/human_host_filtration/scripts/qiita_filter_pmls.py"
       },
       "seqpro": {
@@ -64,7 +84,7 @@
         ],
         "fastqc_executable_path": "fastqc",
         "multiqc_executable_path": "multiqc",
-        "multiqc_config_file_path": "sequence_processing_pipeline/multiqc-bclconvert-config.yaml",
+        "multiqc_config_file_path": "/home/user/qp_klp/tests/data/multiqc-bclconvert-config.yaml",
         "job_total_memory_limit": "20gb",
         "job_pool_size": 120,
         "job_max_array_length": 2000
