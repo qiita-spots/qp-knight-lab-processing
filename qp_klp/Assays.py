@@ -343,7 +343,8 @@ class MetaOmic(Assay):
     MetaOmic() is a base class for Metagenomic() and Metatranscriptomic(),
     which are currently identical in functionality.
     """
-    assay_type = ASSAY_NAME_NONE
+    # MetaOmic does not have an assay_type of its own. It is defined by its
+    # children.
 
     def quality_control(self):
         # because this is a mixin, assume containing object will contain
@@ -507,5 +508,4 @@ class Metagenomic(MetaOmic):
 
 class Metatranscriptomic(MetaOmic):
     METATRANSCRIPTOMIC_TYPE = 'Metatranscriptomic'
-
     assay_type = ASSAY_NAME_METATRANSCRIPTOMIC

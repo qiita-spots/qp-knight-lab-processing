@@ -21,11 +21,11 @@ class Protocol():
      are mixins for Workflow() classes and shouldn't define their own
      initialization.
     """
-    seqtech_type = PROTOCOL_NAME_NONE
+    protocol_type = PROTOCOL_NAME_NONE
 
 
 class Illumina(Protocol):
-    seqtech_type = PROTOCOL_NAME_ILLUMINA
+    protocol_type = PROTOCOL_NAME_ILLUMINA
 
     def convert_raw_to_fastq(self):
         def get_config(command):
@@ -88,7 +88,7 @@ class Illumina(Protocol):
 
 
 class TellSeq(Protocol):
-    seqtech_type = PROTOCOL_NAME_TELLSEQ
+    protocol_type = PROTOCOL_NAME_TELLSEQ
 
     def convert_raw_to_fastq(self):
         config = self.pipeline.get_software_configuration('tell-seq')

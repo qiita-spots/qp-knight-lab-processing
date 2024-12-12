@@ -84,7 +84,7 @@ class WorkflowFactory():
 
         for workflow in WorkflowFactory.WORKFLOWS:
             if workflow.assay_type == assay_type:
-                if workflow.seqtech_type == instrument_type:
+                if workflow.protocol_type == instrument_type:
                     # return instantiated workflow object
                     return workflow(**kwargs)
 

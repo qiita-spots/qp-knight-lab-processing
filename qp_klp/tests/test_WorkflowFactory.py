@@ -114,7 +114,7 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.seqtech_type, PROTOCOL_NAME_ILLUMINA)
+        self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
     def test_metatranscriptomic_workflow_creation(self):
@@ -134,7 +134,7 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.seqtech_type, PROTOCOL_NAME_ILLUMINA)
+        self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METATRANSCRIPTOMIC)
 
     def test_amplicon_workflow_creation(self):
@@ -152,7 +152,7 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.seqtech_type, PROTOCOL_NAME_ILLUMINA)
+        self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_AMPLICON)
 
     def test_tellseq_workflow_creation(self):
@@ -172,5 +172,5 @@ class WorkflowFactoryTests(TestCase):
         wf = WorkflowFactory.generate_workflow(**kwargs)
 
         # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.seqtech_type, PROTOCOL_NAME_TELLSEQ)
+        self.assertEqual(wf.protocol_type, PROTOCOL_NAME_TELLSEQ)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)

@@ -95,7 +95,7 @@ class Workflow():
         """
         Returns text description of Workflow's Instrument & Assay mixins.
         """
-        return (f"Instrument: {self.seqtech_type}" + "\t" +
+        return (f"Instrument: {self.protocol_type}" + "\t" +
                 f"Assay: {self.assay_type}")
 
     def pre_check(self):
