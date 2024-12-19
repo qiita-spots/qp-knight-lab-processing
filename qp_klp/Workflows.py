@@ -584,6 +584,40 @@ class Workflow():
 
         return (samples, tids)
 
+    @classmethod
+    def _determine_orientation(cls, file_name):
+        # aka forward, reverse, and indexed reads
+        orientations = ['R1', 'R2', 'I1', 'I2']
+
+        results = []
+
+        # assume orientation is always present in the file's name.
+        # assume that it is of one of the four forms above.
+        # assume that it is always the right-most occurance of the four
+        # orientations above.
+        # assume that orientation is encapsulated with either '_' or '.'
+        # e.g.: '_R1_', '.I2.'.
+        # assume users can and will include any or all of the four
+        # orientation as part of their filenames as well. e.g.:
+        # ABC_7_04_1776_R1_SRE_S3_L007_R2_001.trimmed.fastq.gz
+        for o in orientations:
+            variations = [f"_{o}_", f".{o}."]
+            for v in variations:
+                # rfind searches from the end of the string, rather than
+                # its beginning. It returns the position in the string
+                # where the substring begins.
+                results.append((file_name.rfind(v), o))
+
+        # the orientation will be the substring found with the maximum
+        # found value for pos. That is, it will be the substring that
+        # begins at the rightest most position in the file name.
+        results.sort(reverse=True)
+
+        pos, orientation = results[0]
+
+        # if no orientations were found, then return None.
+        return None if pos == -1 else orientation
+
     def _get_postqc_fastq_files(self, out_dir, project):
         af = None
         sub_folders = ['amplicon', 'filtered_sequences', 'trimmed_sequences']
@@ -599,11 +633,13 @@ class Workflow():
                  'raw_reverse_seqs': []}
 
         for fastq_file in af:
-            if '_I1_' in fastq_file or '_I2_' in fastq_file:
+            _, file_name = split(fastq_file)
+            orientation = self._determine_orientation(file_name)
+            if orientation in ['I1', 'I2']:
                 files['raw_barcodes'].append(fastq_file)
-            elif '_R1_' in fastq_file:
+            elif orientation == 'R1':
                 files['raw_forward_seqs'].append(fastq_file)
-            elif '_R2_' in fastq_file:
+            elif orientation == 'R2':
                 files['raw_reverse_seqs'].append(fastq_file)
             else:
                 raise ValueError(f"Unrecognized file: {fastq_file}")
