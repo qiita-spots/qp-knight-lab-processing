@@ -118,8 +118,10 @@ class TellSeq(Protocol):
         if 'TellReadJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
 
-        self.pipeline.get_sample_ids()
-        failed_samples = []
+        # audit the results to determine which samples failed to convert
+        # properly. Append these to the failed-samples report and also
+        # return the list directly to the caller.
+        failed_samples = job.audit()
         if hasattr(self, 'fsr'):
             # NB 16S does not require a failed samples report and
             # it is not performed by SPP.
@@ -129,33 +131,39 @@ class TellSeq(Protocol):
 
     def generate_sequence_counts(self):
         config = self.pipeline.get_software_configuration('tell-seq')
+        # filter on corrected.err_barcode_removed
+
+        files_to_count_path = join(self.pipeline.output_path,
+                                   'files_to_count.txt')
+
+        with open(files_to_count_path, 'w') as f:
+            # for raw_counts_r1r2, count corrected.err_barcode_removed files
+            # (TellReadJob final output).
+            for root, dirs, files in walk(self.raw_fastq_files_path):
+                for _file in files:
+                    if 'corrected.err_barcode_removed' in _file:
+                        print(join(root, _file), file=f)
 
         job = SeqCountsJob(self.pipeline.run_dir,
                            self.pipeline.output_path,
-                           self.pipeline.input_file_path,
                            config['queue'],
                            config['nodes'],
                            config['wallclock_time_in_minutes'],
                            config['normcount_mem_limit'],
                            config['modules_to_load'],
                            self.master_qiita_job_id,
-                           '',
-                           config['integrate_script_path'],
-                           self.pipeline.qiita_job_id)
+                           config['job_max_array_length'],
+                           files_to_count_path,
+                           self.pipeline.get_sample_sheet_path(),
+                           cores_per_task=config['tellread_cores'])
 
         if 'SeqCountsJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
 
-        # audit the results to determine which samples failed to convert
-        # properly. Append these to the failed-samples report and also
-        # return the list directly to the caller.
-        failed_samples = job.audit_me(self.pipeline.get_sample_ids())
-        if hasattr(self, 'fsr'):
-            # NB 16S does not require a failed samples report and
-            # it is not performed by SPP.
-            self.fsr.write(failed_samples, job.__class__.__name__)
-
-        return failed_samples
+        # Do not add an entry to fsr because w/respect to counting, either
+        # all jobs are going to fail or none are going to fail. It's not
+        # likely that we're going to fail to count sequences for only some
+        # of the samples.
 
     def integrate_results(self):
         config = self.pipeline.get_software_configuration('tell-seq')
@@ -173,7 +181,6 @@ class TellSeq(Protocol):
                              config['integrate_mem_limit'],
                              config['modules_to_load'],
                              self.master_qiita_job_id,
-                             "foo",
                              config['integrate_script_path'],
                              # NB: sample_index_list used may vary
                              # from project to project in the future.
@@ -224,7 +231,7 @@ class TellSeq(Protocol):
         # audit the results to determine which samples failed to convert
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
-        failed_samples = job.audit_me(self.pipeline.get_sample_ids())
+        failed_samples = job.audit()
 
         if hasattr(self, 'fsr'):
             # NB 16S does not require a failed samples report and
