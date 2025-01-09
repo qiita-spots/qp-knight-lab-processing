@@ -101,9 +101,9 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
         # This means fsr reports will be accurate even on restarts.
         self.convert_raw_to_fastq()
 
-        self.generate_sequence_counts()
-
         self.integrate_results()
+
+        self.generate_sequence_counts()
 
         self.update_status("Performing quality control", 2, 9)
         self.quality_control()

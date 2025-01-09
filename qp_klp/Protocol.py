@@ -131,17 +131,14 @@ class TellSeq(Protocol):
 
     def generate_sequence_counts(self):
         config = self.pipeline.get_software_configuration('tell-seq')
-        # filter on corrected.err_barcode_removed
 
         files_to_count_path = join(self.pipeline.output_path,
                                    'files_to_count.txt')
 
         with open(files_to_count_path, 'w') as f:
-            # for raw_counts_r1r2, count corrected.err_barcode_removed files
-            # (TellReadJob final output).
-            for root, dirs, files in walk(self.raw_fastq_files_path):
+            for root, _, files in walk(self.raw_fastq_files_path):
                 for _file in files:
-                    if 'corrected.err_barcode_removed' in _file:
+                    if self._determine_orientation(_file) in ['R1', 'R2']:
                         print(join(root, _file), file=f)
 
         job = SeqCountsJob(self.pipeline.run_dir,
