@@ -106,6 +106,14 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         user_input_file = parameters.pop('sample_sheet')
         lane_number = parameters.pop('lane_number')
 
+        if {'body', 'content_type', 'filename'} != set(user_input_file):
+            return False, None, ("This doesn't appear to be a valid sample "
+                                 "sheet or mapping file; please review.")
+        uif_path = out_path(user_input_file['filename'].replace(' ', '_'))
+        # save raw data to file
+        with open(uif_path, 'w') as f:
+            f.write(user_input_file['body'])
+
         # the run_identifier must be saved because it is not always preserved
         # in a dependable location downstream. The user input file must be
         # saved because it is always a unique name and it cannot be guaranteed
@@ -114,15 +122,7 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
         # the user_input file on the first run.
         restart_file_path = out_path('restart_me')
         with open(restart_file_path, 'w') as f:
-            f.write(f"{run_identifier}\n{user_input_file}")
-
-        if {'body', 'content_type', 'filename'} != set(user_input_file):
-            return False, None, ("This doesn't appear to be a valid sample "
-                                 "sheet or mapping file; please review.")
-        uif_path = out_path(user_input_file['filename'].replace(' ', '_'))
-        # save raw data to file
-        with open(uif_path, 'w') as f:
-            f.write(user_input_file['body'])
+            f.write(f"{run_identifier}\n{uif_path}")
 
     final_results_path = out_path('final_results')
     makedirs(final_results_path, exist_ok=True)
