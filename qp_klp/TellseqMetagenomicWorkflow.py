@@ -41,7 +41,7 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
 
         self.iseq_run = True if type == 'iSeq' else False
 
-        self.master_qiita_job_id = None
+        self.master_qiita_job_id = self.kwargs['job_id']
 
         self.lane_number = self.kwargs['lane_number']
         self.is_restart = bool(self.kwargs['is_restart'])
