@@ -77,6 +77,14 @@ class Illumina(Protocol):
         if 'ConvertJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
 
+        # if successful, set self.reports_path
+        self.reports_path = join(self.pipeline.output_path,
+                                 'ConvertJob',
+                                 'Reports',
+                                 'Demultiplex_Stats.csv')
+        # TODO: Include alternative path when using bcl2fastq instead of
+        # bcl-convert.
+
         # audit the results to determine which samples failed to convert
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
@@ -156,6 +164,11 @@ class TellSeq(Protocol):
 
         if 'SeqCountsJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
+
+        # if successful, set self.reports_path
+        self.reports_path = join(self.pipeline.output_path,
+                                 'SeqCountsJob',
+                                 'SeqCounts.csv')
 
         # Do not add an entry to fsr because w/respect to counting, either
         # all jobs are going to fail or none are going to fail. It's not

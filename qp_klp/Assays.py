@@ -253,7 +253,7 @@ class Amplicon(Assay):
                              seqpro_path,
                              config['modules_to_load'],
                              self.master_qiita_job_id,
-                             join(self.pipeline.output_path, 'ConvertJob'),
+                             self.reports_path,
                              is_amplicon=True)
 
         if 'GenPrepFileJob' not in self.skip_steps:
@@ -417,11 +417,6 @@ class MetaOmic(Assay):
     def generate_prep_file(self):
         config = self.pipeline.get_software_configuration('seqpro')
 
-        if 'ConvertJob' in self.raw_fastq_files_path:
-            reports_dir = join(self.pipeline.output_path, 'ConvertJob')
-        elif 'TRIntegrateJob' in self.raw_fastq_files_path:
-            reports_dir = join(self.pipeline.output_path, 'SeqCountsJob')
-
         job = GenPrepFileJob(self.pipeline.run_dir,
                              self.raw_fastq_files_path,
                              join(self.pipeline.output_path, 'NuQCJob'),
@@ -430,7 +425,7 @@ class MetaOmic(Assay):
                              config['seqpro_path'],
                              config['modules_to_load'],
                              self.master_qiita_job_id,
-                             reports_dir)
+                             self.reports_path)
 
         if 'GenPrepFileJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
