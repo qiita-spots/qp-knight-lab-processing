@@ -62,7 +62,7 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
         out_dir = self.pipeline.output_path
 
         directories_to_check = ['TellReadJob', 'TRIntegrateJob', 'NuQCJob',
-                                'FastQCJob', 'GenPrepFileJob']
+                                'FastQCJob', 'SeqCountsJob', 'GenPrepFileJob']
 
         for directory in directories_to_check:
             if exists(join(out_dir, directory)):
