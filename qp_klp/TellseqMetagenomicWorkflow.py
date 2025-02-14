@@ -173,6 +173,8 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
         # prep is pointing to.
         self.load_preps_into_qiita()
 
+        self.fsr.generate_report()
+
         self.update_status("Generating packaging commands", 8, 9)
         self.generate_commands()
 
