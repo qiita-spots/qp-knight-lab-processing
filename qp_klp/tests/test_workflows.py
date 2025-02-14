@@ -437,6 +437,16 @@ class TestWorkflows(TestCase):
 
         # NuQCJob successful.
 
+        # we have specific code to test FailedSamplesReport() itself. All
+        # we need to do here is confirm that the workflow used has
+        # instantiated a valid FailedSamplesReport() object, attached it to
+        # wf.fsr, generate_report() can be run, and that the following two
+        # files were generated at the location below.
+        wf.fsr.generate_report()
+
+        self.assertTrue(exists(join(self.output_dir, 'failed_samples.json')))
+        self.assertTrue(exists(join(self.output_dir, 'failed_samples.html')))
+
     def test_partial_metatranscriptomic_pipeline(self):
         # Tests convert_raw_to_fastq() and quality_control() steps of
         # StandardMetatranscriptomicWorkflow(), which in turn exercises
