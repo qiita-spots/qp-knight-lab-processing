@@ -511,16 +511,17 @@ class Metagenomic(MetaOmic):
 
         self.convert_raw_to_fastq()
 
-        self.update_status("Performing quality control", 2, 9)
+        self.integrate_results()
 
+        self.generate_sequence_counts()
+
+        self.update_status("Performing quality control", 2, 9)
         self.quality_control()
 
         self.update_status("Generating reports", 3, 9)
-
         self.generate_reports()
 
         self.update_status("Generating preps", 4, 9)
-
         self.generate_prep_file()
 
         # moved final component of genprepfilejob outside of object.
