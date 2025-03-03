@@ -340,7 +340,8 @@ class TestWorkflows(TestCase):
         # confirming its digest.
 
         exp = ['#!/bin/bash',
-               '#SBATCH --job-name None_ConvertJob',
+               '#SBATCH --job-name 077c4da8-74eb-4184-8860-0207f53623be'
+               '_ConvertJob',
                '#SBATCH -p qiita',
                '#SBATCH -N 1',
                '#SBATCH -n 16',
@@ -548,7 +549,8 @@ class TestWorkflows(TestCase):
         # confirming its digest.
         exp = [
             "#!/bin/bash",
-            "#SBATCH --job-name None_ConvertJob",
+            "#SBATCH --job-name 077c4da8-74eb-4184-8860-0207f53623be"
+            "_ConvertJob",
             "#SBATCH -p qiita",
             "#SBATCH -N 1",
             "#SBATCH -n 16",
@@ -724,7 +726,8 @@ class TestWorkflows(TestCase):
         # confirm ConvertJob.sh Slurm job script looks exactly as intended by
         # confirming its digest.
         exp = ["#!/bin/bash",
-               "#SBATCH --job-name None_ConvertJob",
+               "#SBATCH --job-name 077c4da8-74eb-4184-8860-0207f53623be"
+               "_ConvertJob",
                "#SBATCH -p qiita",
                "#SBATCH -N 2",
                "#SBATCH -n 62",
