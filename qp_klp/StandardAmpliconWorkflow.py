@@ -35,7 +35,7 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
         # NB: Amplicon workflows don't have failed samples records because
         # the fastq files are not demultiplexed.
 
-        self.master_qiita_job_id = None
+        self.master_qiita_job_id = self.kwargs['job_id']
 
         self.lane_number = self.kwargs['lane_number']
         self.is_restart = bool(self.kwargs['is_restart'])
