@@ -801,7 +801,12 @@ class TestWorkflows(TestCase):
                     'Undetermined_S0_L001_R2_001.fastq.gz')]
 
         for _path in exp:
-            self.assertTrue(exists(_path))
+            # adding try/except so we can see the actual
+            # missing path
+            try:
+                self.assertTrue(exists(_path))
+            except AssertionError:
+                raise ValueEror(f'{_path} does not exist!')
 
         # Post-processing for absent Quality Control successful.
 
