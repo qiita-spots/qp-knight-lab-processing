@@ -806,7 +806,7 @@ class TestWorkflows(TestCase):
             try:
                 self.assertTrue(exists(_path))
             except AssertionError:
-                raise ValueEror(f'{_path} does not exist!')
+                raise ValueError(f'{_path} does not exist!')
 
         # Post-processing for absent Quality Control successful.
 
