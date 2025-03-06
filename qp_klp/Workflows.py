@@ -279,7 +279,7 @@ class Workflow():
                    (['GenPrepFileJob/PrepFiles'], TAR_CMD,
                     f'{PREP_PREFIX}.{TAR_EXT}', 'OUTPUT_FIRST'),
 
-                   (['failed_samples.html', 'touched_studies.html'],
+                   (['failed_samples.html', 'touched_studies.html', 'MultiQCJob/multiqc'],
                     'mv', RESULTS_DIR, 'INPUTS_FIRST'),
 
                    (['FastQCJob/multiqc'], 'mv', RESULTS_DIR, 'INPUTS_FIRST')]
