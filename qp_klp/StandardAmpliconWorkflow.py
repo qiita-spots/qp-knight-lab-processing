@@ -6,6 +6,7 @@ from sequence_processing_pipeline.Pipeline import Pipeline
 from .Assays import Amplicon
 from .Assays import ASSAY_NAME_AMPLICON
 from .Workflows import Workflow
+import re
 
 
 class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
@@ -124,13 +125,20 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
 
         prep_paths = []
         self.prep_file_paths = {}
+        rematch = re.compile(
+            r"(?P<runid>[a-zA-Z0-9_-]+)\.(?P<qname>[a-zA-Z0-9_]+)"
+            r"(?P<qid>[0-9]{5,6})\..\.tsv")
 
         for root, dirs, files in walk(tmp):
             for _file in files:
                 # breakup the prep-info-file into segments
                 # (run-id, project_qid, other) and cleave
                 # the qiita-id from the project_name.
-                qid = _file.split('.')[1].split('_')[-1]
+                rer = rematch.match(_file)
+                if rer is None:
+                    continue
+
+                _, _, qid = rer.groups()
 
                 if qid not in self.prep_file_paths:
                     self.prep_file_paths[qid] = []
