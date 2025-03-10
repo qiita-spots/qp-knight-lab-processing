@@ -17,6 +17,7 @@ from metapool import load_sample_sheet
 from collections import defaultdict
 from random import randint
 from platform import system as get_operating_system_type
+from qiita_client.util import system_call
 
 
 class FakeClient():
@@ -785,6 +786,8 @@ class TestWorkflows(TestCase):
         wf.post_process_raw_fastq_output()
 
         base_path = "qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be"
+
+        print(system_call(f"find {base_path} -iname '*.fastq.gz'"))
 
         exp = [join(base_path, 'NuQCJob'),
                join(base_path, 'NuQCJob', 'TestProj_1'),

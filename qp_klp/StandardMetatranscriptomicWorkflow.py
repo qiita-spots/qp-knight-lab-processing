@@ -1,6 +1,4 @@
 from .Protocol import Illumina
-from os.path import join, exists
-from shutil import rmtree
 from sequence_processing_pipeline.Pipeline import Pipeline
 from .Assays import Metatranscriptomic
 from .Assays import ASSAY_NAME_METATRANSCRIPTOMIC
@@ -52,18 +50,3 @@ class StandardMetatranscriptomicWorkflow(Workflow, Metatranscriptomic,
                                  "type bool")
 
             self.update = kwargs['update_qiita']
-
-    def determine_steps_to_skip(self):
-        out_dir = self.pipeline.output_path
-
-        directories_to_check = ['ConvertJob', 'NuQCJob',
-                                'FastQCJob', 'GenPrepFileJob']
-
-        for directory in directories_to_check:
-            if exists(join(out_dir, directory)):
-                if exists(join(out_dir, directory, 'job_completed')):
-                    # this step completed successfully.
-                    self.skip_steps.append(directory)
-                else:
-                    # work stopped before this job could be completed.
-                    rmtree(join(out_dir, directory))
