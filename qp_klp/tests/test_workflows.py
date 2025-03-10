@@ -5,7 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-from unittest import TestCase
+from unittest import TestCase, main
 from os.path import join, abspath, exists, split
 from os import makedirs, chmod, access, W_OK, walk
 from shutil import rmtree
@@ -17,7 +17,6 @@ from metapool import load_sample_sheet
 from collections import defaultdict
 from random import randint
 from platform import system as get_operating_system_type
-from qiita_client.util import system_call
 
 
 class FakeClient():
@@ -675,10 +674,11 @@ class TestWorkflows(TestCase):
         cmds.append("mkdir -p %s" % join(self.output_dir, 'ConvertJob',
                                          'Reports'))
 
+        run_id = '211021_A00000_0000_SAMPLE'
         r1 = join(join(self.output_dir, 'ConvertJob'),
-                  'Undetermined_S0_L001_R1_001.fastq.gz')
+                  f'{run_id}_S0_L001_R1_001.fastq.gz')
         r2 = join(join(self.output_dir, 'ConvertJob'),
-                  'Undetermined_S0_L001_R2_001.fastq.gz')
+                  f'{run_id}_S0_L001_R2_001.fastq.gz')
 
         # let r1 and r2 be the same size.
         size = randint(1, 5)
@@ -702,7 +702,7 @@ class TestWorkflows(TestCase):
                   "qclient": FakeClient(),
                   "lane_number": "1",
                   "config_fp": "qp_klp/tests/data/configuration.json",
-                  "run_identifier": '211021_A00000_0000_SAMPLE',
+                  "run_identifier": run_id,
                   "output_dir": self.output_dir,
                   "job_id": "077c4da8-74eb-4184-8860-0207f53623be",
                   "is_restart": False
@@ -739,7 +739,7 @@ class TestWorkflows(TestCase):
                "set -x",
                "date",
                "hostname",
-               "cd qp_klp/tests/data/211021_A00000_0000_SAMPLE",
+               f"cd qp_klp/tests/data/{run_id}",
                "module load bcl2fastq_2.20.0.222",
                "bcl2fastq --sample-sheet \"qp_klp/tests/data/077c4da8-74eb"
                "-4184-8860-0207f53623be/dummy_sample_sheet.csv\" --minimum-"
@@ -787,21 +787,19 @@ class TestWorkflows(TestCase):
 
         base_path = "qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be"
 
-        print(system_call(f"find {base_path} -iname '*.fastq.gz'"))
-
         exp = [join(base_path, 'NuQCJob'),
                join(base_path, 'NuQCJob', 'TestProj_1'),
                join(base_path, 'NuQCJob', 'TestProj_2'),
                join(base_path, 'NuQCJob', 'TestProj_1', 'amplicon'),
                join(base_path, 'NuQCJob', 'TestProj_2', 'amplicon'),
                join(base_path, 'NuQCJob', 'TestProj_1', 'amplicon',
-                    'Undetermined_S0_L001_R1_001.fastq.gz'),
+                    f'{run_id}_S0_L001_R1_001.fastq.gz'),
                join(base_path, 'NuQCJob', 'TestProj_1', 'amplicon',
-                    'Undetermined_S0_L001_R2_001.fastq.gz'),
+                    f'{run_id}_S0_L001_R2_001.fastq.gz'),
                join(base_path, 'NuQCJob', 'TestProj_2', 'amplicon',
-                    'Undetermined_S0_L001_R1_001.fastq.gz'),
+                    f'{run_id}_S0_L001_R1_001.fastq.gz'),
                join(base_path, 'NuQCJob', 'TestProj_1', 'amplicon',
-                    'Undetermined_S0_L001_R2_001.fastq.gz')]
+                    f'{run_id}_S0_L001_R2_001.fastq.gz')]
 
         for _path in exp:
             # adding try/except so we can see the actual
@@ -954,3 +952,7 @@ class TestWorkflows(TestCase):
 
         for file_name, exp in test_names:
             self.assertEqual(Workflow._determine_orientation(file_name), exp)
+
+
+if __name__ == '__main__':
+    main()
