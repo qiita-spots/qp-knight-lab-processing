@@ -4,9 +4,11 @@ from shutil import copyfile
 from sequence_processing_pipeline.NuQCJob import NuQCJob
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
+from sequence_processing_pipeline.MultiQCJob import MultiQCJob
 import pandas as pd
 from json import dumps
 from collections import defaultdict
+import re
 
 
 ASSAY_NAME_NONE = "Assay"
@@ -163,37 +165,6 @@ class Amplicon(Assay):
         projects = [x['project_name'] for x in projects]
 
         for project_name in projects:
-            # copy the files from ConvertJob output to faked NuQCJob output
-            # folder: $WKDIR/$RUN_ID/NuQCJob/$PROJ_NAME/amplicon
-            output_folder = join(self.pipeline.output_path,
-                                 'NuQCJob',
-                                 project_name,
-                                 # for legacy purposes, output folders are
-                                 # either 'trimmed_sequences', 'amplicon', or
-                                 # 'filtered_sequences'. Hence, this folder
-                                 # is not defined using AMPLICON_TYPE as that
-                                 # value may or may not equal the needed value.
-                                 'amplicon')
-
-            makedirs(output_folder)
-
-            # get list of all raw output files to be copied.
-            job_output = [join(self.raw_fastq_files_path, x) for x in
-                          listdir(self.raw_fastq_files_path)]
-
-            job_output = [x for x in job_output if isfile(x)]
-            job_output = [x for x in job_output if x.endswith('fastq.gz')]
-
-            # NB: In this case, ensure the ONLY files that get copied are
-            # Undetermined files, and this is what we expect for 16S runs.
-            job_output = [x for x in job_output if
-                          basename(x).startswith('Undetermined')]
-
-            # copy the file
-            for fastq_file in job_output:
-                new_path = join(output_folder, basename(fastq_file))
-                copyfile(fastq_file, new_path)
-
             # FastQC expects the ConvertJob output to also be organized by
             # project. Since this would entail running the same ConvertJob
             # multiple times on the same input with just a name-change in
@@ -212,28 +183,66 @@ class Amplicon(Assay):
                 new_path = join(output_folder, basename(raw_fastq_file))
                 copyfile(raw_fastq_file, new_path)
 
+            # copy the files from ConvertJob output to faked NuQCJob output
+            # folder: $WKDIR/$RUN_ID/NuQCJob/$PROJ_NAME/amplicon
+            output_folder = join(self.pipeline.output_path,
+                                 'NuQCJob',
+                                 project_name,
+                                 # for legacy purposes, output folders are
+                                 # either 'trimmed_sequences', 'amplicon', or
+                                 # 'filtered_sequences'. Hence, this folder
+                                 # is not defined using AMPLICON_TYPE as that
+                                 # value may or may not equal the needed value.
+                                 'amplicon')
+            makedirs(output_folder)
+
+            # copy the file
+            for fastq_file in job_output:
+                new_path = join(output_folder, basename(fastq_file))
+                copyfile(fastq_file, new_path)
+
     def generate_reports(self):
         config = self.pipeline.get_software_configuration('fastqc')
-        job = FastQCJob(self.pipeline.run_dir,
-                        self.pipeline.output_path,
-                        self.raw_fastq_files_path,
-                        join(self.pipeline.output_path, 'NuQCJob'),
-                        config['nprocs'],
-                        config['nthreads'],
-                        config['fastqc_executable_path'],
-                        config['modules_to_load'],
-                        self.master_qiita_job_id,
-                        config['queue'],
-                        config['nodes'],
-                        config['wallclock_time_in_minutes'],
-                        config['job_total_memory_limit'],
-                        config['job_pool_size'],
-                        config['multiqc_config_file_path'],
-                        config['job_max_array_length'],
-                        True)
+        fcjob = FastQCJob(self.pipeline.run_dir,
+                          self.pipeline.output_path,
+                          self.raw_fastq_files_path,
+                          join(self.pipeline.output_path, 'NuQCJob'),
+                          config['nprocs'],
+                          config['nthreads'],
+                          config['fastqc_executable_path'],
+                          config['modules_to_load'],
+                          self.master_qiita_job_id,
+                          config['queue'],
+                          config['nodes'],
+                          config['wallclock_time_in_minutes'],
+                          config['job_total_memory_limit'],
+                          config['job_pool_size'],
+                          config['job_max_array_length'],
+                          True)
+        mqcjob = MultiQCJob(self.pipeline.run_dir,
+                            self.pipeline.output_path,
+                            self.raw_fastq_files_path,
+                            join(self.pipeline.output_path, 'NuQCJob'),
+                            config['nprocs'],
+                            config['nthreads'],
+                            config['multiqc_executable_path'],
+                            config['modules_to_load'],
+                            self.master_qiita_job_id,
+                            config['queue'],
+                            config['nodes'],
+                            config['wallclock_time_in_minutes'],
+                            config['job_total_memory_limit'],
+                            config['job_pool_size'],
+                            join(self.pipeline.output_path, 'FastQCJob'),
+                            config['job_max_array_length'],
+                            config['multiqc_config_file_path'],
+                            True)
 
         if 'FastQCJob' not in self.skip_steps:
-            job.run(callback=self.job_callback)
+            fcjob.run(callback=self.job_callback)
+
+        if 'MultiQCJob' not in self.skip_steps:
+            mqcjob.run(callback=self.job_callback)
 
     def generate_prep_file(self):
         config = self.pipeline.get_software_configuration('seqpro')
@@ -386,30 +395,49 @@ class MetaOmic(Assay):
 
     def generate_reports(self):
         config = self.pipeline.get_software_configuration('fastqc')
-        job = FastQCJob(self.pipeline.run_dir,
-                        self.pipeline.output_path,
-                        self.raw_fastq_files_path,
-                        join(self.pipeline.output_path, 'NuQCJob'),
-                        config['nprocs'],
-                        config['nthreads'],
-                        config['fastqc_executable_path'],
-                        config['modules_to_load'],
-                        self.master_qiita_job_id,
-                        config['queue'],
-                        config['nodes'],
-                        config['wallclock_time_in_minutes'],
-                        config['job_total_memory_limit'],
-                        config['job_pool_size'],
-                        config['multiqc_config_file_path'],
-                        config['job_max_array_length'],
-                        False)
+        fqjob = FastQCJob(self.pipeline.run_dir,
+                          self.pipeline.output_path,
+                          self.raw_fastq_files_path,
+                          join(self.pipeline.output_path, 'NuQCJob'),
+                          config['nprocs'],
+                          config['nthreads'],
+                          config['fastqc_executable_path'],
+                          config['modules_to_load'],
+                          self.master_qiita_job_id,
+                          config['queue'],
+                          config['nodes'],
+                          config['wallclock_time_in_minutes'],
+                          config['job_total_memory_limit'],
+                          config['job_pool_size'],
+                          config['job_max_array_length'],
+                          False)
+        mqcjob = MultiQCJob(self.pipeline.run_dir,
+                            self.pipeline.output_path,
+                            self.raw_fastq_files_path,
+                            join(self.pipeline.output_path, 'NuQCJob'),
+                            config['nprocs'],
+                            config['nthreads'],
+                            config['multiqc_executable_path'],
+                            config['modules_to_load'],
+                            self.master_qiita_job_id,
+                            config['queue'],
+                            config['nodes'],
+                            config['wallclock_time_in_minutes'],
+                            config['job_total_memory_limit'],
+                            config['job_pool_size'],
+                            join(self.pipeline.output_path, 'FastQCJob'),
+                            config['job_max_array_length'],
+                            config['multiqc_config_file_path'],
+                            False)
 
         if 'FastQCJob' not in self.skip_steps:
-            job.run(callback=self.job_callback)
+            fqjob.run(callback=self.job_callback)
+        if 'MultiQCJob' not in self.skip_steps:
+            mqcjob.run(callback=self.job_callback)
 
-        failed_samples = job.audit(self.pipeline.get_sample_ids())
+        failed_samples = fqjob.audit(self.pipeline.get_sample_ids())
         if hasattr(self, 'fsr'):
-            self.fsr.write(failed_samples, job.__class__.__name__)
+            self.fsr.write(failed_samples, fqjob.__class__.__name__)
         return failed_samples
 
     def generate_prep_file(self):
@@ -534,12 +562,20 @@ class Metagenomic(MetaOmic):
         prep_paths = []
         self.prep_file_paths = {}
 
+        rematch = re.compile(
+            r"(?P<runid>[a-zA-Z0-9_-]+)\.(?P<qname>[a-zA-Z0-9_]+)"
+            r"(?P<qid>[0-9]{5,6})\..\.tsv")
+
         for root, dirs, files in walk(tmp):
             for _file in files:
                 # breakup the prep-info-file into segments
                 # (run-id, project_qid, other) and cleave
                 # the qiita-id from the project_name.
-                qid = _file.split('.')[1].split('_')[-1]
+                rer = rematch.match(_file)
+                if rer is None:
+                    continue
+
+                _, _, qid = rer.groups()
 
                 if qid not in self.prep_file_paths:
                     self.prep_file_paths[qid] = []

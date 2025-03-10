@@ -94,6 +94,12 @@ class Illumina(Protocol):
 
         return failed_samples
 
+    def integrate_results(self):
+        pass
+
+    def generate_sequence_counts(self):
+        pass
+
 
 class TellSeq(Protocol):
     protocol_type = PROTOCOL_NAME_TELLSEQ

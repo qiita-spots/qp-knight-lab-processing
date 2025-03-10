@@ -1,5 +1,4 @@
 from .Protocol import TellSeq
-from os.path import join, exists
 from sequence_processing_pipeline.Pipeline import Pipeline, InstrumentUtils
 from .Assays import Metagenomic
 from .Assays import ASSAY_NAME_METAGENOMIC
@@ -44,6 +43,10 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
         self.lane_number = self.kwargs['lane_number']
         self.is_restart = bool(self.kwargs['is_restart'])
 
+        self.directories_to_check = [
+            'TellReadJob', 'TRIntegrateJob', 'NuQCJob', 'FastQCJob',
+            'SeqCountsJob', 'GenPrepFileJob']
+
         if self.is_restart is True:
             self.determine_steps_to_skip()
 
@@ -55,23 +58,3 @@ class TellSeqMetagenomicWorkflow(Workflow, Metagenomic, TellSeq):
                                  "type bool")
 
             self.update = kwargs['update_qiita']
-
-    def determine_steps_to_skip(self):
-        out_dir = self.pipeline.output_path
-
-        directories_to_check = ['TellReadJob', 'TRIntegrateJob', 'NuQCJob',
-                                'FastQCJob', 'SeqCountsJob', 'GenPrepFileJob']
-
-        for directory in directories_to_check:
-            if exists(join(out_dir, directory)):
-                if exists(join(out_dir, directory, 'job_completed')):
-                    # this step completed successfully.
-                    self.skip_steps.append(directory)
-                    if exists(join(out_dir, directory,
-                                   'post_processing_completed')):
-                        self.skip_steps.append('TRIJ_Post_Processing')
-                else:
-                    # work stopped before this job could be completed.
-                    msg = "%s doesn't have job completed" % join(out_dir,
-                                                                 directory)
-                    raise ValueError(msg)

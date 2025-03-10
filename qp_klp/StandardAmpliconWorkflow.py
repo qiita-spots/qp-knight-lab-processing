@@ -1,11 +1,11 @@
 from .Protocol import Illumina
-from os.path import join, abspath, exists
+from os.path import join, abspath
 from os import walk
-from shutil import rmtree
 from sequence_processing_pipeline.Pipeline import Pipeline
 from .Assays import Amplicon
 from .Assays import ASSAY_NAME_AMPLICON
 from .Workflows import Workflow
+import re
 
 
 class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
@@ -52,25 +52,6 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
                                  "type bool")
 
             self.update = kwargs['update_qiita']
-
-    def determine_steps_to_skip(self):
-        out_dir = self.pipeline.output_path
-
-        # Although amplicon runs don't perform host-filtering,
-        # the output from ConvertJob is still copied and organized into
-        # a form suitable for FastQCJob to process. Hence the presence or
-        # absence of a 'NuQCJob' directory is still a thing (for now)
-        directories_to_check = ['ConvertJob', 'NuQCJob',
-                                'FastQCJob', 'GenPrepFileJob']
-
-        for directory in directories_to_check:
-            if exists(join(out_dir, directory)):
-                if exists(join(out_dir, directory, 'job_completed')):
-                    # this step completed successfully.
-                    self.skip_steps.append(directory)
-                else:
-                    # work stopped before this job could be completed.
-                    rmtree(join(out_dir, directory))
 
     def execute_pipeline(self):
         '''
@@ -124,13 +105,20 @@ class StandardAmpliconWorkflow(Workflow, Amplicon, Illumina):
 
         prep_paths = []
         self.prep_file_paths = {}
+        rematch = re.compile(
+            r"(?P<runid>[a-zA-Z0-9_-]+)\.(?P<qname>[a-zA-Z0-9_]+)"
+            r"(?P<qid>[0-9]{5,6})\..\.tsv")
 
         for root, dirs, files in walk(tmp):
             for _file in files:
                 # breakup the prep-info-file into segments
                 # (run-id, project_qid, other) and cleave
                 # the qiita-id from the project_name.
-                qid = _file.split('.')[1].split('_')[-1]
+                rer = rematch.match(_file)
+                if rer is None:
+                    continue
+
+                _, _, qid = rer.groups()
 
                 if qid not in self.prep_file_paths:
                     self.prep_file_paths[qid] = []

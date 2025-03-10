@@ -6,6 +6,7 @@ from subprocess import Popen, PIPE
 from glob import glob
 from shutil import copyfile
 import logging
+from shutil import rmtree
 from .Assays import ASSAY_NAME_AMPLICON
 
 
@@ -46,6 +47,8 @@ class Workflow():
         self.status_msg = ''
         self.touched_studies_prep_info = None
         self.tube_id_map = None
+        self.directories_to_check = [
+            'ConvertJob', 'NuQCJob', 'FastQCJob', 'GenPrepFileJob']
 
         if 'status_update_callback' in kwargs:
             self.status_update_callback = kwargs['status_update_callback']
@@ -279,7 +282,9 @@ class Workflow():
                    (['GenPrepFileJob/PrepFiles'], TAR_CMD,
                     f'{PREP_PREFIX}.{TAR_EXT}', 'OUTPUT_FIRST'),
 
-                   (['failed_samples.html', 'touched_studies.html'],
+                   (['failed_samples.html',
+                     'touched_studies.html',
+                     'MultiQCJob/multiqc'],
                     'mv', RESULTS_DIR, 'INPUTS_FIRST'),
 
                    (['FastQCJob/multiqc'], 'mv', RESULTS_DIR, 'INPUTS_FIRST')]
@@ -750,3 +755,26 @@ class Workflow():
         number_in_project = len(set(self.samples_in_qiita[qiita_id]))
 
         return not_in_qiita, examples, number_in_project
+
+    def determine_steps_to_skip(self):
+        out_dir = self.pipeline.output_path
+        # Although amplicon runs don't perform host-filtering,
+        # the output from ConvertJob is still copied and organized into
+        # a form suitable for FastQCJob to process. Hence the presence or
+        # absence of a 'NuQCJob' directory is still a thing (for now)
+        for directory in self.directories_to_check:
+            if exists(join(out_dir, directory)):
+                if exists(join(out_dir, directory, 'job_completed')):
+                    # this step completed successfully but
+                    # TRIJ_Post_Processing is a special case and we
+                    # need to look for post_processing_completed
+                    if directory == 'TRIJ_Post_Processing':
+                        if not exists(join(out_dir, directory,
+                                      'post_processing_completed')):
+                            rmtree(join(out_dir, directory))
+                            break
+                    self.skip_steps.append(directory)
+                else:
+                    # work stopped before this job could be completed.
+                    rmtree(join(out_dir, directory))
+                    break
