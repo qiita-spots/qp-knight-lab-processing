@@ -10,8 +10,10 @@ from os import environ
 from qiita_client import ArtifactInfo
 from os import makedirs
 from os.path import join, exists
+from datetime import datetime
 from sequence_processing_pipeline.PipelineError import PipelineError
-from metapool import load_sample_sheet
+from metapool import load_sample_sheet, MetagenomicSampleSheetv90
+import sample_sheet
 from .Workflows import WorkflowError
 from .WorkflowFactory import WorkflowFactory
 
@@ -158,3 +160,99 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     paths = [(f'{final_results_path}/', 'directory')]
     return (True, [ArtifactInfo('output', 'job-output-folder', paths)],
             status_line.msg)
+
+
+def prep_NuQCJob(qclient, job_id, parameters, out_dir):
+    """Sequence Processing Pipeline command
+
+    Parameters
+    ----------
+    qclient : tgp.qiita_client.QiitaClient
+        The Qiita server client
+    job_id : str
+        The job id
+    parameters : dict
+        The parameter values for this job
+    out_dir : str
+        The path to the job's output directory
+
+    Returns
+    -------
+    bool, list, str
+        The results of the job
+    """
+    status_line = StatusUpdate(qclient, job_id)
+
+    status_line.update_job_status("Setting up pipeline")
+
+    pid = parameters.pop('prep_id')
+
+    prep_info = qclient.get(f'/qiita_db/prep_template/{pid}/')
+    dt = prep_info['data_type']
+    if dt not in {'Metagenomic', 'Metatranscriptomic'}:
+        return (False, [], f'Prep {pid} has a not valid data type: {dt}')
+    aid = prep_info['artifact']
+    if not str(aid).isnumeric():
+        return (False, [], f'Prep {pid} has a not valid artifact: {aid}')
+
+    files, pt = qclient.artifact_and_preparation_files(aid)
+
+    out_path = partial(join, out_dir)
+    final_results_path = out_path('final_results')
+    makedirs(final_results_path, exist_ok=True)
+
+    sheet = MetagenomicSampleSheetv90()
+    sheet.Header['IEMFileVersion'] = '4'
+    sheet.Header['Date'] = datetime.today().strftime('%m/%d/%y')
+    sheet.Header['Workflow'] = 'GenerateFASTQ'
+    sheet.Header['Application'] = 'FASTQ Only'
+    sheet.Header['Assay'] = prep_info['data_type']
+    sheet.Header['Description'] = f'prep_NuQCJob - {pid}'
+    sheet.Header['Chemistry'] = 'Default'
+    sheet.Header['SheetType'] = 'standard_metag'
+    sheet.Header['SheetVersion'] = '90'
+
+    for k, vals in pt.iterrows():
+        sample = {'Sample_ID': k,
+                  'Sample_Plate': '',
+                  'Sample_Well': '',
+                  'I7_Index_ID': '',
+                  'index': vals['index'],
+                  'I5_Index_ID': '',
+                  'index2': vals['index2']}
+        sheet.add_sample(sample_sheet.Sample(sample))
+
+    new_sample_sheet = out_path('sample-sheet.csv')
+    with open(new_sample_sheet, 'w') as f:
+        sheet.write(f, 1)
+    try:
+        is_restart = False
+        kwargs = {'qclient': qclient,
+                  'uif_path': new_sample_sheet,
+                  'lane_number': "1",
+                  'config_fp': CONFIG_FP,
+                  'run_identifier': 'XXXXXXXX',
+                  'output_dir': out_dir,
+                  'job_id': job_id,
+                  'status_update_callback': status_line.update_job_status,
+                  # set 'update_qiita' to False to avoid updating Qiita DB
+                  # and copying files into uploads dir. Useful for testing.
+                  'update_qiita': True,
+                  'is_restart': is_restart}
+
+        workflow = WorkflowFactory().generate_workflow(**kwargs)
+
+        status_line.update_job_status("Getting project information")
+
+        workflow.execute_pipeline()
+
+        status_line.update_job_status("SPP finished")
+
+    except (PipelineError, WorkflowError) as e:
+        # assume AttributeErrors are issues w/bad sample-sheets or
+        # mapping-files.
+        return False, None, str(e)
+
+    # # return success, ainfo, and the last status message.
+    paths = [(f'{final_results_path}/', 'directory')]
+    return (True, [ArtifactInfo('output', 'job-output-folder', paths)], '')
