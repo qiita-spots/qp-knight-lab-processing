@@ -2,7 +2,7 @@
 
 on:
   push:
-    branches: [ dev ]
+    branches: [dev]
   pull_request:
 
 jobs:
@@ -83,7 +83,7 @@ jobs:
 
           conda activate klp
 
-          export QIITA_SERVER_CERT=`pwd`/qiita-dev/qiita_core/support_files/server.crt
+          export QIITA_ROOTCA_CERT=`pwd`/qiita-dev/qiita_core/support_files/ci_rootca.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           pip --quiet install -U pip
 
@@ -95,8 +95,8 @@ jobs:
 
           export QP_KLP_CONFIG_FP=`pwd`/configuration.json
 
-          configure_qtp_job_output_folder --env-script "source /home/runner/.profile; conda activate klp" --server-cert $QIITA_SERVER_CERT
-          configure_klp --env-script "source /home/runner/.profile; export QP_KLP_CONFIG_FP=$QP_KLP_CONFIG_FP; conda activate klp" --server-cert $QIITA_SERVER_CERT
+          configure_qtp_job_output_folder --env-script "source /home/runner/.profile; conda activate klp" --ca-cert $QIITA_ROOTCA_CERT
+          configure_klp --env-script "source /home/runner/.profile; export QP_KLP_CONFIG_FP=$QP_KLP_CONFIG_FP; conda activate klp" --ca-cert $QIITA_ROOTCA_CERT
 
           echo "Available Qiita plugins"
           ls ~/.qiita_plugins/
@@ -105,7 +105,7 @@ jobs:
         shell: bash -l {0}
         run: |
           conda activate qiita
-          export QIITA_SERVER_CERT=`pwd`/qiita-dev/qiita_core/support_files/server.crt
+          export QIITA_ROOTCA_CERT=`pwd`/qiita-dev/qiita_core/support_files/ci_rootca.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           sed "s#/home/runner/work/qiita/qiita#${PWD}/qiita-dev/#g" `pwd`/qiita-dev/qiita_core/support_files/config_test.cfg > ${QIITA_CONFIG_FP}
 
@@ -137,28 +137,27 @@ jobs:
           COVER_PACKAGE: ${{ matrix.cover_package }}
         run: |
           conda activate klp
-          export QIITA_SERVER_CERT=`pwd`/qiita-dev/qiita_core/support_files/server.crt
+          export QIITA_ROOTCA_CERT=`pwd`/qiita-dev/qiita_core/support_files/ci_rootca.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           export QP_KLP_CONFIG_FP=`pwd`/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
           nosetests --with-doctest --with-coverage -v --cover-package=qp_klp
       - uses: codecov/codecov-action@v3
         with:
-         token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     runs-on: ubuntu-latest
     steps:
-    - name: flake8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-    - name: install dependencies
-      run: python -m pip install --upgrade pip
-    - name: Check out repository code
-      uses: actions/checkout@v2
-    - name: lint
-      run: |
-        pip install -q flake8
-        flake8 qp_klp
-
+      - name: flake8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: install dependencies
+        run: python -m pip install --upgrade pip
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: lint
+        run: |
+          pip install -q flake8
+          flake8 qp_klp

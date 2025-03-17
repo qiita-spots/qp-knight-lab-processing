@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from qp_klp.WorkflowFactory import WorkflowFactory
-from unittest import TestCase
+from unittest import main
 from os import makedirs
 from qp_klp.Protocol import (PROTOCOL_NAME_ILLUMINA,
                              PROTOCOL_NAME_TELLSEQ)
@@ -14,9 +14,11 @@ from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
                            ASSAY_NAME_METATRANSCRIPTOMIC,
                            ASSAY_NAME_AMPLICON)
 from shutil import rmtree
+from qiita_client.testing import PluginTestCase
+from qiita_client.exceptions import NotFoundError
 
 
-class WorkflowFactoryTests(TestCase):
+class WorkflowFactoryTests(PluginTestCase):
     def setUp(self):
         self.remove_these = []
 
@@ -100,7 +102,7 @@ class WorkflowFactoryTests(TestCase):
     def test_metagenomic_workflow_creation(self):
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
                   "illumina/good_sheet1.csv",
-                  "qclient": None,
+                  "qclient": self.qclient,
                   "lane_number": "1",
                   "config_fp": "qp_klp/tests/data/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
@@ -117,10 +119,14 @@ class WorkflowFactoryTests(TestCase):
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
+        with self.assertRaisesRegex(
+                NotFoundError, '{"message": "Study not found"}'):
+            wf.execute_pipeline()
+
     def test_metatranscriptomic_workflow_creation(self):
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/"
                   "metatranscriptomic/illumina/good_sheet1.csv",
-                  "qclient": None,
+                  "qclient": self.qclient,
                   "lane_number": "1",
                   "config_fp": "qp_klp/tests/data/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
@@ -137,9 +143,13 @@ class WorkflowFactoryTests(TestCase):
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METATRANSCRIPTOMIC)
 
+        with self.assertRaisesRegex(
+                NotFoundError, '{"message": "Study not found"}'):
+            wf.execute_pipeline()
+
     def test_amplicon_workflow_creation(self):
         kwargs = {"uif_path": "qp_klp/tests/data/pre-preps/good_pre_prep1.txt",
-                  "qclient": None,
+                  "qclient": self.qclient,
                   "config_fp": "qp_klp/tests/data/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
                   "output_dir": "qp_klp/tests/test_output",
@@ -155,10 +165,14 @@ class WorkflowFactoryTests(TestCase):
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_AMPLICON)
 
+        with self.assertRaisesRegex(
+                NotFoundError, '{"message": "Study not found"}'):
+            wf.execute_pipeline()
+
     def test_tellseq_workflow_creation(self):
         kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
                   "tellseq/good_sheet1.csv",
-                  "qclient": None,
+                  "qclient": self.qclient,
                   "config_fp": "qp_klp/tests/data/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
                   "output_dir": "qp_klp/tests/test_output",
@@ -174,3 +188,11 @@ class WorkflowFactoryTests(TestCase):
         # confirm that the proper type of workflow was generated.
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_TELLSEQ)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
+
+        with self.assertRaisesRegex(
+                NotFoundError, '{"message": "Study not found"}'):
+            wf.execute_pipeline()
+
+
+if __name__ == '__main__':
+    main()
