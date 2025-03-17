@@ -521,11 +521,6 @@ class MetaOmic(Assay):
 
         return df
 
-
-class Metagenomic(MetaOmic):
-    METAGENOMIC_TYPE = 'Metagenomic'
-    assay_type = ASSAY_NAME_METAGENOMIC
-
     def execute_pipeline(self):
         '''
         Executes steps of pipeline in proper sequence.
@@ -630,6 +625,11 @@ class Metagenomic(MetaOmic):
         self.update_status("Packaging results", 9, 9)
         if self.update:
             self.execute_commands()
+
+
+class Metagenomic(MetaOmic):
+    METAGENOMIC_TYPE = 'Metagenomic'
+    assay_type = ASSAY_NAME_METAGENOMIC
 
 
 class Metatranscriptomic(MetaOmic):
