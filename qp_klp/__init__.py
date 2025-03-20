@@ -6,7 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from qiita_client import QiitaPlugin, QiitaCommand
-from .klp import sequence_processing_pipeline
+from .klp import sequence_processing_pipeline, prep_NuQCJob
 
 
 class QiitaPluginAdmin(QiitaPlugin):
@@ -16,6 +16,8 @@ class QiitaPluginAdmin(QiitaPlugin):
 __version__ = '2024.11'
 
 plugin = QiitaPluginAdmin('qp-klp', __version__, 'Knight Lab Processing')
+
+# Adding SPP job
 
 req_params = {
     'run_identifier': ('string', ['']),
@@ -33,3 +35,16 @@ sequence_processing_pipeline_cmd = QiitaCommand(
     dflt_param_set)
 
 plugin.register_command(sequence_processing_pipeline_cmd)
+
+# adding prep_NuQCJob job
+
+req_params = {
+    'prep_id': ('integer', [None]),
+}
+outputs = {'output': 'job-output-folder'}
+
+prep_NuQCJob_cmd = QiitaCommand(
+    'prep_NuQCJob', 'Apply NuQCJob to an existing Qiita prep raw data',
+    prep_NuQCJob, req_params, dict(), outputs, dict())
+
+plugin.register_command(prep_NuQCJob_cmd)

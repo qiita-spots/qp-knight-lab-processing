@@ -6,12 +6,15 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from functools import partial
-from os import environ
+from os import environ, symlink
 from qiita_client import ArtifactInfo
 from os import makedirs
-from os.path import join, exists
+from os.path import join, exists, basename
+from datetime import datetime
 from sequence_processing_pipeline.PipelineError import PipelineError
-from metapool import load_sample_sheet
+from metapool import load_sample_sheet, MetagenomicSampleSheetv90
+import sample_sheet
+import pandas as pd
 from .Workflows import WorkflowError
 from .WorkflowFactory import WorkflowFactory
 
@@ -158,3 +161,138 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     paths = [(f'{final_results_path}/', 'directory')]
     return (True, [ArtifactInfo('output', 'job-output-folder', paths)],
             status_line.msg)
+
+
+def prep_NuQCJob(qclient, job_id, parameters, out_dir):
+    """Sequence Processing Pipeline command
+
+    Parameters
+    ----------
+    qclient : tgp.qiita_client.QiitaClient
+        The Qiita server client
+    job_id : str
+        The job id
+    parameters : dict
+        The parameter values for this job
+    out_dir : str
+        The path to the job's output directory
+
+    Returns
+    -------
+    bool, list, str
+        The results of the job
+    """
+    status_line = StatusUpdate(qclient, job_id)
+
+    status_line.update_job_status("Setting up pipeline")
+
+    pid = parameters.pop('prep_id')
+
+    prep_info = qclient.get(f'/qiita_db/prep_template/{pid}/')
+    dt = prep_info['data_type']
+    sid = prep_info['study']
+    if dt not in {'Metagenomic', 'Metatranscriptomic'}:
+        return (False, [], f'Prep {pid} has a not valid data type: {dt}')
+    aid = prep_info['artifact']
+    if not str(aid).isnumeric():
+        return (False, [], f'Prep {pid} has a not valid artifact: {aid}')
+
+    files, pt = qclient.artifact_and_preparation_files(aid)
+    pt.set_index('sample_name', inplace=True)
+
+    out_path = partial(join, out_dir)
+    final_results_path = out_path('final_results')
+    makedirs(final_results_path, exist_ok=True)
+
+    project_name = f'qiita-{pid}-{aid}_{sid}'
+
+    sheet = MetagenomicSampleSheetv90()
+    sheet.Header['IEMFileVersion'] = '4'
+    sheet.Header['Date'] = datetime.today().strftime('%m/%d/%y')
+    sheet.Header['Workflow'] = 'GenerateFASTQ'
+    sheet.Header['Application'] = 'FASTQ Only'
+    sheet.Header['Assay'] = prep_info['data_type']
+    sheet.Header['Description'] = f'prep_NuQCJob - {pid}'
+    sheet.Header['Chemistry'] = 'Default'
+    sheet.Header['SheetType'] = 'standard_metag'
+    sheet.Header['SheetVersion'] = '90'
+    sheet.Header['Investigator Name'] = 'Qiita'
+    sheet.Header['Experiment Name'] = project_name
+
+    sheet.Bioinformatics = pd.DataFrame(
+        columns=['Sample_Project', 'ForwardAdapter', 'ReverseAdapter',
+                 'library_construction_protocol',
+                 'experiment_design_description',
+                 'PolyGTrimming', 'HumanFiltering', 'QiitaID'],
+        data=[[project_name, 'NA', 'NA', 'NA', 'NA', 'FALSE', 'TRUE', sid]])
+
+    for k, vals in pt.iterrows():
+        k = k.split('.', 1)[-1]
+        sample = {
+            'Sample_Name': k,
+            'Sample_ID': k.replace('.', '_'),
+            'Sample_Plate': '',
+            'well_id_384': '',
+            'I7_Index_ID': '',
+            'index': vals['index'],
+            'I5_Index_ID': '',
+            'index2': vals['index2'],
+            'Sample_Project': project_name,
+            'Well_description': '',
+            'Sample_Well': '',
+            'Lane': '1'}
+        sheet.add_sample(sample_sheet.Sample(sample))
+
+    sheet.Contact = pd.DataFrame(
+        columns=['Email', 'Sample_Project'],
+        data=[['qiita.help@gmail.com', project_name]])
+
+    new_sample_sheet = out_path('sample-sheet.csv')
+    with open(new_sample_sheet, 'w') as f:
+        sheet.write(f, 1)
+
+    # now that we have a sample_sheet we can fake the
+    # ConvertJob folder so we are ready for the restart
+    convert_path = out_path('ConvertJob')
+    project_folder = out_path('ConvertJob', project_name)
+    makedirs(project_folder, exist_ok=True)
+
+    for _, fs in files.items():
+        for f in fs:
+            bn = basename(f['filepath'])
+            symlink(f['filepath'], f'{project_folder}/{bn}')
+
+    # create job_completed file to skip this step
+    with open(f'{convert_path}/job_completed', 'w') as f:
+        f.write('')
+
+    try:
+        kwargs = {'qclient': qclient,
+                  'uif_path': new_sample_sheet,
+                  'lane_number': "1",
+                  'config_fp': CONFIG_FP,
+                  'run_identifier': '211021_A00000_0000_SAMPLE',
+                  'output_dir': out_dir,
+                  'job_id': job_id,
+                  'status_update_callback': status_line.update_job_status,
+                  # set 'update_qiita' to False to avoid updating Qiita DB
+                  # and copying files into uploads dir. Useful for testing.
+                  'update_qiita': True,
+                  'is_restart': True}
+
+        workflow = WorkflowFactory().generate_workflow(**kwargs)
+
+        status_line.update_job_status("Getting project information")
+
+        workflow.execute_pipeline()
+
+        status_line.update_job_status("SPP finished")
+
+    except (PipelineError, WorkflowError) as e:
+        # assume AttributeErrors are issues w/bad sample-sheets or
+        # mapping-files.
+        return False, None, str(e)
+
+    # # return success, ainfo, and the last status message.
+    paths = [(f'{final_results_path}/', 'directory')]
+    return (True, [ArtifactInfo('output', 'job-output-folder', paths)], '')
