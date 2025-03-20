@@ -92,11 +92,14 @@ class Test_prep_NuQCJob(PluginTestCase):
         self.assertEqual(msg, "Prep 1 has a not valid data type: 18S")
         self.assertFalse(success)
 
-        # test success
+        # test success; note that success at this point is that
+        # the job fails when submitting via sbatch
         pid, job_id = self._setup_test()
         success, ainfo, msg = prep_NuQCJob(
             self.qclient, job_id, {'prep_id': pid}, out_dir)
-        self.assertEqual(msg, "Prep XXXXX has a not valid data type: 18S")
+        self.assertTrue(
+            msg.startswith("Execute command-line statement failure:"))
+        self.assertTrue('sbatch: command not found' in msg)
         self.assertFalse(success)
 
 
