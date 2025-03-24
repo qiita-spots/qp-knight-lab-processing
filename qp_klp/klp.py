@@ -149,10 +149,12 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         status_line.update_job_status("SPP finished")
 
-    except (PipelineError, WorkflowError):
+    except (PipelineError, WorkflowError) as e:
         # assume AttributeErrors are issues w/bad sample-sheets or
         # mapping-files.
-        return False, None, traceback.format_exc()
+        with open(f'{out_dir}/error-traceback.err', 'w') as f:
+            f.write(traceback.format_exc())
+        return False, None, str(e)
 
     # return success, ainfo, and the last status message.
     paths = [(f'{final_results_path}/', 'directory')]
@@ -189,10 +191,12 @@ def prep_NuQCJob(qclient, job_id, parameters, out_dir):
     try:
         workflow = PrepNuQC(**kwargs)
         workflow.execute_pipeline()
-    except (PipelineError, WorkflowError):
+    except (PipelineError, WorkflowError) as e:
         # assume AttributeErrors are issues w/bad sample-sheets or
         # mapping-files.
-        return False, None, traceback.format_exc()
+        with open(f'{out_dir}/error-traceback.err', 'w') as f:
+            f.write(traceback.format_exc())
+        return False, None, str(e)
 
     status_line.update_job_status("SPP finished")
     # return success, ainfo, and the last status message.
