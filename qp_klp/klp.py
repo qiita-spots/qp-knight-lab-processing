@@ -9,6 +9,7 @@ from functools import partial
 from qiita_client import ArtifactInfo
 from os import makedirs, environ
 from os.path import join, exists
+import traceback
 from sequence_processing_pipeline.PipelineError import PipelineError
 from metapool import load_sample_sheet
 from .Workflows import WorkflowError
@@ -148,10 +149,10 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
 
         status_line.update_job_status("SPP finished")
 
-    except (PipelineError, WorkflowError) as e:
+    except (PipelineError, WorkflowError):
         # assume AttributeErrors are issues w/bad sample-sheets or
         # mapping-files.
-        return False, None, str(e)
+        return False, None, traceback.format_exc()
 
     # return success, ainfo, and the last status message.
     paths = [(f'{final_results_path}/', 'directory')]
@@ -188,10 +189,10 @@ def prep_NuQCJob(qclient, job_id, parameters, out_dir):
     try:
         workflow = PrepNuQC(**kwargs)
         workflow.execute_pipeline()
-    except (PipelineError, WorkflowError) as e:
+    except (PipelineError, WorkflowError):
         # assume AttributeErrors are issues w/bad sample-sheets or
         # mapping-files.
-        return False, None, str(e)
+        return False, None, traceback.format_exc()
 
     status_line.update_job_status("SPP finished")
     # return success, ainfo, and the last status message.
