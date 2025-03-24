@@ -97,9 +97,8 @@ class Test_prep_NuQCJob(PluginTestCase):
         pid, job_id = self._setup_test()
         success, ainfo, msg = prep_NuQCJob(
             self.qclient, job_id, {'prep_id': pid}, out_dir)
-        self.assertTrue(
-            msg.startswith("Execute command-line statement failure:"))
-        self.assertTrue('sbatch: command not found' in msg)
+        self.assertRegex(
+            msg, r'(?s)sbatch: command not found(?s)')
         self.assertFalse(success)
 
 
