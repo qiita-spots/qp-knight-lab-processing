@@ -160,4 +160,4 @@ jobs:
       - name: lint
         run: |
           pip install -q flake8
-          flake8 qp_klp
+          flake8 .

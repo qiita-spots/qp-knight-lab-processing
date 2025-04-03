@@ -60,13 +60,16 @@ class Test_prep_NuQCJob(PluginTestCase):
         ]
         for fp in fps:
             copyfile(source_gz, fp)
+        fp_summary = join(in_dir, 'summary.html')
+        copyfile('qp_klp/tests/data/summary.html', fp_summary)
 
         data = {
             'filepaths': dumps([
                 (fps[0], 'raw_forward_seqs'),
                 (fps[1], 'raw_reverse_seqs'),
                 (fps[2], 'raw_forward_seqs'),
-                (fps[3], 'raw_reverse_seqs')]),
+                (fps[3], 'raw_reverse_seqs'),
+                (fp_summary, 'html_summary')]),
             'type': "per_sample_FASTQ",
             'name': "Test Woltka artifact",
             'prep': pid}
@@ -97,8 +100,8 @@ class Test_prep_NuQCJob(PluginTestCase):
         pid, job_id = self._setup_test()
         success, ainfo, msg = prep_NuQCJob(
             self.qclient, job_id, {'prep_id': pid}, out_dir)
-        self.assertRegex(
-            msg, r'(?s)sbatch: command not found(?s)')
+
+        self.assertTrue('sbatch: command not found' in msg)
         self.assertFalse(success)
 
 

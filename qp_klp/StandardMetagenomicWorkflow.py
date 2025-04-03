@@ -85,6 +85,11 @@ class PrepNuQC(StandardMetagenomicWorkflow):
             raise WorkflowError(f'Prep {pid} has a not valid artifact: {aid}')
 
         files, pt = qclient.artifact_and_preparation_files(aid)
+        html_summary = qclient.get_artifact_html_summary(aid)
+        if html_summary is None:
+            raise WorkflowError(f'Artifact {aid} doesnot have a summary, '
+                                'please generate one.')
+        df_summary = pd.read_html(html_summary)[0]
         pt.set_index('sample_name', inplace=True)
 
         project_name = f'qiita-{pid}-{aid}_{sid}'
@@ -110,8 +115,11 @@ class PrepNuQC(StandardMetagenomicWorkflow):
             data=[[project_name, 'NA', 'NA', 'NA', 'NA',
                    'FALSE', 'TRUE', sid]])
 
+        df_summary = df_summary[df_summary.file_type == 'raw_forward_seqs']
+        data = []
         for k, vals in pt.iterrows():
             k = k.split('.', 1)[-1]
+            rp = vals['run_prefix']
             sample = {
                 'Sample_Name': k,
                 'Sample_ID': k.replace('.', '_'),
@@ -126,6 +134,14 @@ class PrepNuQC(StandardMetagenomicWorkflow):
                 'Sample_Well': '',
                 'Lane': '1'}
             sheet.add_sample(sample_sheet.Sample(sample))
+            _d = df_summary[
+                df_summary.filename.str.startswith(rp)]
+            if _d.shape[0] != 1:
+                ValueError(f'The run_prefix {rp} from {k} has {_d.shape[0]} '
+                           'matches with files')
+            data.append({
+                'Lane': '1', 'SampleID': rp, 'Sample_Project': project_name,
+                'Index': vals['index'], '# Reads': _d.reads.values[0]})
 
         sheet.Contact = pd.DataFrame(
             columns=['Email', 'Sample_Project'],
@@ -140,10 +156,16 @@ class PrepNuQC(StandardMetagenomicWorkflow):
         convert_path = out_path('ConvertJob')
         project_folder = out_path('ConvertJob', project_name)
         makedirs(project_folder, exist_ok=True)
+        # creating Demultiplex_Stats.csv
+        reports_folder = out_path('ConvertJob', 'Reports')
+        makedirs(reports_folder, exist_ok=True)
+        pd.DataFrame(data).set_index('SampleID').to_csv(
+            f'{reports_folder}/Demultiplex_Stats.csv')
 
         for fs in files.values():
             for f in fs:
-                bn = basename(f['filepath'])
+                bn = basename(f['filepath']).replace(
+                    '.trimmed.fastq.gz', '.fastq.gz')
                 symlink(f['filepath'], f'{project_folder}/{bn}')
 
         # create job_completed file to skip this step
@@ -153,7 +175,7 @@ class PrepNuQC(StandardMetagenomicWorkflow):
                   'uif_path': new_sample_sheet,
                   'lane_number': "1",
                   'config_fp': config_fp,
-                  'run_identifier': '211021_A00000_0000_SAMPLE',
+                  'run_identifier': '250225_LH00444_0301_B22N7T2LT4',
                   'output_dir': out_dir,
                   'job_id': job_id,
                   'status_update_callback': status_line.update_job_status,

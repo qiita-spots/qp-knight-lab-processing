@@ -34,6 +34,7 @@ dependencies = [
     "click>=3.3",
     "future",
     "pandas",
+    "lxml",
     "qiita-files@https://github.com/qiita-spots/qiita-files/archive/master.zip",
     "qiita_client@https://github.com/qiita-spots/qiita_client/archive/master.zip",
     "sequence-processing-pipeline@https://github.com/biocore/mg-scripts/archive/master.zip"

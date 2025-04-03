@@ -38,9 +38,7 @@ plugin.register_command(sequence_processing_pipeline_cmd)
 
 # adding prep_NuQCJob job
 
-req_params = {
-    'prep_id': ('integer', [None]),
-}
+req_params = {'prep_id': ('integer', [None])}
 outputs = {'output': 'job-output-folder'}
 
 prep_NuQCJob_cmd = QiitaCommand(
