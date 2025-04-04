@@ -165,13 +165,13 @@ class Assay():
             # used to generate the run_directory. Hence this method is
             # supplied by the instrument mixin.
             self.convert_raw_to_fastq()
+            self.post_process_raw_fastq_output()
+            self.integrate_results()
+            self.generate_sequence_counts()
 
         self.update_status("Performing quality control", 2, 9)
         if "NuQCJob" not in self.skip_steps:
             # there is no failed samples reporting for amplicon runs.
-            self.post_process_raw_fastq_output()
-            self.integrate_results()
-            self.generate_sequence_counts()
             self.quality_control()
 
         self.update_status("Generating reports", 3, 9)
@@ -468,6 +468,9 @@ class Amplicon(Assay):
 
         return df
 
+    def quality_control():
+        pass
+
 
 class MetaOmic(Assay):
     """
@@ -644,6 +647,9 @@ class MetaOmic(Assay):
                                render_links=True, escape=False))
 
         return df
+
+    def post_process_raw_fastq_output():
+        pass
 
 
 class Metagenomic(MetaOmic):
