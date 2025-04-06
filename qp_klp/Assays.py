@@ -468,7 +468,7 @@ class Amplicon(Assay):
 
         return df
 
-    def quality_control():
+    def quality_control(self):
         pass
 
 
@@ -648,7 +648,7 @@ class MetaOmic(Assay):
 
         return df
 
-    def post_process_raw_fastq_output():
+    def post_process_raw_fastq_output(self):
         pass
 
 
