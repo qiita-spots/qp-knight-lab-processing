@@ -1,22 +1,31 @@
 [build-system]
 requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
+# requires = ["hatchling"]
+# build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["qp_klp", "sequence_processing_pipeline"]
+
+[tool.poetry]
+packages = [
+    {include = "src/qp_klp", from = "./", to = "qp_klp" },
+    {include = "src/sequence_processing_pipeline", from = "./", to = "sequence_processing_pipeline" }
+]
 
 [project]
-name = "qp_klp"
+name = "knigt_lab_processing"
 # version strings must comply with PEP 440:
 # https://peps.python.org/pep-0440/
-version = "2022.4"
-authors = [
-    {name = "Qiita Development Team", email = "qiita.help@gmail.com"},
-]
+version = "2025.4"
+authors = [{ name = "Qiita Development Team", email = "qiita.help@gmail.com" }]
 description = "Qiita Plugin: Knight Lab Processing"
 readme = "README.rst"
 # ">=" required as most available versions of 3.9 will be "3.9.17" or
 # similar.
 requires-python = ">=3.9"
 keywords = ["bioinformatics", "qiita", "sequence_processing_pipeline"]
-license = {text = "BSD"}
+license = { text = "BSD" }
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: BSD License",
@@ -27,17 +36,26 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: Implementation :: CPython",
     "Operating System :: POSIX :: Linux",
-    "Operating System :: MacOS :: MacOS X"
-    ]
+    "Operating System :: MacOS :: MacOS X",
+]
 dependencies = [
     "nose>=0.10.1",
     "click>=3.3",
     "future",
     "pandas",
+    'requests',
+    'flake8',
+    'nose',
+    'coverage',
+    'pgzip',
+    'jinja2',
+    'numpy',
+    'cython',
     "qiita-files@https://github.com/qiita-spots/qiita-files/archive/master.zip",
     "qiita_client@https://github.com/qiita-spots/qiita_client/archive/master.zip",
-    "sequence-processing-pipeline@https://github.com/biocore/mg-scripts/archive/master.zip"
+    'metapool@https://github.com/biocore/metagenomics_pooling_notebook/archive/master.zip',
 ]
 [project.scripts]
 configure_klp = "qp_klp.scripts.configure_klp:config"
 start_klp = "qp_klp.scripts.start_klp:execute"
+demux = "sequence_processing_pipeline.scripts.cli:demux"

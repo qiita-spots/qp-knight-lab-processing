@@ -2,8 +2,11 @@
 
 on:
   push:
+    branches: [master]
     branches: [dev]
   pull_request:
+    branches: [master]
+    branches: [dev]
 
 jobs:
   # derived from https://github.com/actions/example-services/blob/master/.github/workflows/postgres-service.yml
@@ -90,10 +93,9 @@ jobs:
           pip --quiet install https://github.com/qiita-spots/qtp-job-output-folder/archive/refs/heads/main.zip
 
           # pip --quiet install .
-          pip install .
-          pip --quiet install coveralls
-
           export QP_KLP_CONFIG_FP=`pwd`/configuration.json
+          pip install -e .
+          pip --quiet install coveralls
 
           configure_qtp_job_output_folder --env-script "source /home/runner/.profile; conda activate klp" --ca-cert $QIITA_ROOTCA_CERT
           configure_klp --env-script "source /home/runner/.profile; export QP_KLP_CONFIG_FP=$QP_KLP_CONFIG_FP; conda activate klp" --ca-cert $QIITA_ROOTCA_CERT
@@ -131,7 +133,7 @@ jobs:
           sleep 10
           cat /tmp/supervisord.log
 
-      - name: Main tests
+      - name: qp-knight-lab-processing & mg-scripts tests
         shell: bash -l {0}
         env:
           COVER_PACKAGE: ${{ matrix.cover_package }}
@@ -141,10 +143,11 @@ jobs:
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           export QP_KLP_CONFIG_FP=`pwd`/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
-          nosetests --with-doctest --with-coverage -v --cover-package=qp_klp
+          nosetests --with-doctest --with-coverage -v  # --cover-package qp_klp sequence_processing_pipeline
       - uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
 
   lint:
     runs-on: ubuntu-latest
@@ -160,4 +163,4 @@ jobs:
       - name: lint
         run: |
           pip install -q flake8
-          flake8 qp_klp
+          flake8 .
