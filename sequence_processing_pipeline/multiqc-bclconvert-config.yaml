@@ -1,0 +1,87 @@
+﻿title: "Sequence processing summaries"
+output_fn_name: "index.html"
+show_analysis_paths: False
+show_analysis_time: False
+
+run_modules:
+    - bclconvert
+    - fastqc
+    - fastp
+
+# including BLANKs in reports is now default operation for the pipeline
+sample_names_ignore:
+#     - "blank*"
+#     - "BLANK*"
+
+# This can optionally be set to True. When version-checking is enabled,
+# a message will appear in stdout as well as in the log-file. If these are not
+# reviewed then the effort will be wasted. Note FastQCJob calls multiqc
+# multiple times, once for each project specified in the sample-sheet.
+no_version_check: False
+
+# How to plot graphs. Different templates can override these settings, but
+# the default template can use interactive plots (Javascript using HighCharts)
+# or flat plots (images, using MatPlotLib). With interactive plots, the report
+# can prevent automatically rendering all graphs if there are lots of samples
+# to prevent the browser being locked up when the report opens.
+
+# Try to use only interactive javascript graphs
+plots_force_interactive: True
+# If interactive, don't plot on load if > this number of datasets
+num_datasets_plot_limit: 1
+# Swap tables for a beeswarm plot above this
+max_table_rows: 10000
+
+# Overwrite the defaults of which table columns are visible by default
+table_columns_visible:
+    # "Base Calling": False # total: True
+    "Sequence Quality (bclconvert raw)":
+        percent_fails: False
+        percent_duplicates: False
+        percent_gc: False
+        avg_sequence_length: True
+        total_sequences: True
+    Trimming:
+        #  R1 and R2 being stored in the same file
+        input_format: False
+        avg_sequence_length: False
+        total_record_count:  False
+        mean_sequence_length:    False
+        fraction_bp_trimmed: False
+        fraction_records_with_adapters: False
+    "Sequence Quality (trimmed)":
+        percent_fails: False
+        percent_duplicates: False
+        percent_gc: False
+        avg_sequence_length: True
+        total_sequences: True
+    "Human Filtering":
+        overall_alignment_rate: True
+    "Sequence Quality (filtered)":
+        percent_fails: False
+        percent_duplicates: False
+        percent_gc: False
+        avg_sequence_length: True
+        total_sequences: True
+
+module_order:
+    - bclconvert:
+         name: 'Base Calling'
+         # TODO: make sure we can split Stats.json files on a per-project basis
+         info: 'Conversion from BCL files to FASTQ files. Note this section currently includes samples generated in other projects, this is a known bug that will be addressed in the near future. '
+    - fastqc:
+        name: 'Sequence Quality (raw)'
+        info: 'Sequence quality and summary statistics for raw sequences.'
+        path_filters:
+            - '*fastqc.zip'
+            - '*.csv'
+    - fastp:
+        name: 'Sequence Quality (adapter trimmed)'
+        info: 'Summary statistics from adapter trimming and quality control with fastp.'
+        fn: '*.json'
+    - fastqc:
+        name: 'Sequence Quality (trimmed)'
+        info: 'Sequence quality and summary statistics after quality-control and adapter trimming.'
+        path_filters:
+          - '*trimmed_fastqc.zip'
+          - '*fastp_fastqc.zip'

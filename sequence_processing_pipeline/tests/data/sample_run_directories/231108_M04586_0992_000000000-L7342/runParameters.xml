@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<RunParameters xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" LineWashRequired="false">
+  <RunParametersVersion>MiSeq_1_1</RunParametersVersion>
+  <CopyManifests>false</CopyManifests>
+  <FlowcellRFIDTag>
+    <SerialNumber>000000000-L7342</SerialNumber>
+    <PartNumber>15028382</PartNumber>
+    <ExpirationDate>2024-06-15T00:00:00</ExpirationDate>
+    <LotNumber>20764717</LotNumber>
+  </FlowcellRFIDTag>
+  <PR2BottleRFIDTag>
+    <SerialNumber>MS7903718-00PR2</SerialNumber>
+    <PartNumber>15041807</PartNumber>
+    <ExpirationDate>2024-06-10T00:00:00</ExpirationDate>
+    <LotNumber>20764159</LotNumber>
+  </PR2BottleRFIDTag>
+  <ReagentKitRFIDTag>
+    <SerialNumber>MS3502391-300V2</SerialNumber>
+    <PartNumber>15033572</PartNumber>
+    <ExpirationDate>2024-05-27T00:00:00</ExpirationDate>
+    <LotNumber>20772496</LotNumber>
+  </ReagentKitRFIDTag>
+  <IsStandAlone>false</IsStandAlone>
+  <Resumable>true</Resumable>
+  <ManifestFiles />
+  <AfterRunWashMethod>Post-Run Wash</AfterRunWashMethod>
+  <Setup>
+    <SupportMultipleSurfacesInUI>true</SupportMultipleSurfacesInUI>
+    <ApplicationVersion>3.1.0.13</ApplicationVersion>
+    <NumTilesPerSwath>14</NumTilesPerSwath>
+    <NumSwaths>1</NumSwaths>
+    <NumLanes>1</NumLanes>
+    <ApplicationName>MiSeq Control Software</ApplicationName>
+  </Setup>
+  <RunID>231108_M04586_0992_000000000-L7342</RunID>
+  <ScannerID>M04586</ScannerID>
+  <RunNumber>992</RunNumber>
+  <FPGAVersion>9.5.12</FPGAVersion>
+  <MCSVersion>3.1.0.13</MCSVersion>
+  <RTAVersion>1.18.54.4</RTAVersion>
+  <Barcode>000000000-L7342</Barcode>
+  <PR2BottleBarcode>MS7903718-00PR2</PR2BottleBarcode>
+  <ReagentKitPartNumberEntered>15033572</ReagentKitPartNumberEntered>
+  <ReagentKitVersion>Version2</ReagentKitVersion>
+  <ReagentKitBarcode>MS3502391-300V2</ReagentKitBarcode>
+  <PreviousPR2BottleBarcode />
+  <PreviousReagentKitBarcode />
+  <ExperimentName>Knight_Cedars</ExperimentName>
+  <Chemistry>Amplicon</Chemistry>
+  <Username>sbsuser</Username>
+  <Workflow>
+    <Analysis>Amplicon</Analysis>
+  </Workflow>
+  <EnableAnalysis>false</EnableAnalysis>
+  <Reads>
+    <RunInfoRead Number="1" NumCycles="151" IsIndexedRead="N" />
+    <RunInfoRead Number="2" NumCycles="12" IsIndexedRead="Y" />
+    <RunInfoRead Number="3" NumCycles="151" IsIndexedRead="N" />
+  </Reads>
+  <TempFolder>D:\Illumina\MiSeqTemp\231108_M04586_0992_000000000-L7342</TempFolder>
+  <AnalysisFolder>D:\Illumina\MiSeqAnalysis\231108_M04586_0992_000000000-L7342</AnalysisFolder>
+  <RunStartDate>231108</RunStartDate>
+  <MostRecentWashType>PostRun</MostRecentWashType>
+  <RecipeFolder>D:\Illumina\MiSeq Control Software\CustomRecipe</RecipeFolder>
+  <ILMNOnlyRecipeFolder>C:\Illumina\MiSeq Control Software\Recipe</ILMNOnlyRecipeFolder>
+  <SampleSheetName>MS3502391-300V2</SampleSheetName>
+  <SampleSheetFolder>Z:\igm\Sample Sheets\MiSeq</SampleSheetFolder>
+  <ManifestFolder>D:\Illumina\MiSeq Control Software\Manifests</ManifestFolder>
+  <OutputFolder>Z:\Illumina_MiSeq\231108_M04586_0992_000000000-L7342</OutputFolder>
+  <FocusMethod>AutoFocus</FocusMethod>
+  <SurfaceToScan>Both</SurfaceToScan>
+  <SaveFocusImages>false</SaveFocusImages>
+  <SaveScanImages>true</SaveScanImages>
+  <CloudUsername>bhenson@ucsd.edu</CloudUsername>
+  <RunManagementType>BaseSpaceCloud</RunManagementType>
+  <CloudRunId>269793560</CloudRunId>
+  <EnableCloud>true</EnableCloud>
+  <RunMonitoringOnly>false</RunMonitoringOnly>
+  <SendInstrumentHealthToILMN>true</SendInstrumentHealthToILMN>
+  <AmpliconWorkflowType />
+  <SelectedRun>Knight_Cedars</SelectedRun>
+  <ModuleName>GenerateFastQWorkflow</ModuleName>
+  <ModuleVersion>2.0.1.17</ModuleVersion>
+  <MAPRunId>606606</MAPRunId>
+  <DxUserName />
+  <DxUserLevel />
+  <LocalRunManagerRunId>606606</LocalRunManagerRunId>
+  <ManualFlowcellEntry>false</ManualFlowcellEntry>
+  <ManualReagentEntry>false</ManualReagentEntry>
+  <ManualPR2Entry>false</ManualPR2Entry>
+</RunParameters>

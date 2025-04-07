@@ -1,0 +1,3 @@
+This is an example .err file produced by seq_counts.sbatch.
+Additional details removed.
++ seqtk size REMOVED/working_dir/8edbdee2-da52-4278-af40-267185bbcd7e/TRIntegrateJob/integrated/Test_8_22_2014_R2_example_S2_L007_I1_001.fastq.gz

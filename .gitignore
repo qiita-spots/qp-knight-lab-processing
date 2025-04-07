@@ -130,3 +130,6 @@ dmypy.json
 
 # ignore local changes
 qp_klp/tests/data/sample-sheets/*/*/*.csv
+
+# test output
+sequence_processing_pipeline/tests/data/output_dir/
