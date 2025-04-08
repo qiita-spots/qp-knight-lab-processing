@@ -16,7 +16,7 @@ import gzip
 class TestNuQCJob(unittest.TestCase):
     def setUp(self):
         # adjustable test_root helps w/testing in different environments.
-        package_root = abspath("../")
+        package_root = abspath("./")
         self.path = partial(join, package_root, "tests", "data")
         self.good_sample_sheet_path = self.path("good-sample-sheet.csv")
         self.bad_sample_sheet_path = self.path(

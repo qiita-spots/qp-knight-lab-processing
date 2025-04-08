@@ -15,8 +15,10 @@ from tempfile import NamedTemporaryFile
 class TestPipeline(unittest.TestCase):
     def setUp(self):
         package_root = abspath('./')
+
         self.path = partial(join, package_root, 'tests', 'data')
-        self.good_config_file = join(package_root, 'configuration.json')
+        self.good_config_file = join(
+            package_root, 'tests', 'configuration.json')
         self.bad_config_file = self.path('bad_configuration.json')
         self.invalid_config_file = 'does/not/exist/configuration.json'
         self.good_run_id = '211021_A00000_0000_SAMPLE'
@@ -1678,7 +1680,8 @@ class TestAmpliconPipeline(unittest.TestCase):
     def setUp(self):
         package_root = abspath('./')
         self.path = partial(join, package_root, 'tests', 'data')
-        self.good_config_file = join(package_root, 'configuration.json')
+        self.good_config_file = join(
+            package_root, 'tests', 'configuration.json')
         self.bad_config_file = self.path('bad_configuration.json')
         self.invalid_config_file = 'does/not/exist/configuration.json'
         self.good_run_id = '211021_A00000_0000_SAMPLE'
