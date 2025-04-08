@@ -20,7 +20,7 @@ from tempfile import TemporaryDirectory
 class FakeClient():
     def __init__(self):
         self.cwd = getcwd()
-        self.base_path = join(self.cwd, 'qp_klp/tests/data/QDir')
+        self.base_path = join(self.cwd, 'tests/data/QDir')
         self.qdirs = {'Demultiplexed': 'Demultiplexed',
                       'beta_div_plots': 'analysis/beta_div_plots',
                       'rarefaction_curves': 'analysis/rarefaction_curves',
@@ -164,7 +164,7 @@ class FakeClient():
 class AnotherFakeClient():
     def __init__(self):
         self.cwd = getcwd()
-        self.base_path = join(self.cwd, 'qp_klp/tests/data/QDir')
+        self.base_path = join(self.cwd, 'tests/data/QDir')
         self.qdirs = {'Demultiplexed': 'Demultiplexed',
                       'beta_div_plots': 'analysis/beta_div_plots',
                       'rarefaction_curves': 'analysis/rarefaction_curves',
@@ -226,7 +226,7 @@ class TestHelpers(TestCase):
         # self.fake_bin_path = self.get_searchable_path()
 
         # self.output_dir represents a qiita working directory.
-        package_root = abspath('./qp_klp/tests/data')
+        package_root = abspath('./tests/data')
         self.output_dir = join(package_root,
                                "077c4da8-74eb-4184-8860-0207f53623be")
         self.delete_these_dirs = [self.output_dir]
@@ -237,11 +237,11 @@ class TestHelpers(TestCase):
         self.debug = False
         self.fake_client = FakeClient()
         self.kwargs = {
-            "uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
+            "uif_path": "tests/data/sample-sheets/metagenomic/"
             "illumina/good_sheet1.csv",
             "qclient": self.fake_client,
             "lane_number": "1",
-            "config_fp": "qp_klp/tests/data/configuration.json",
+            "config_fp": "tests/data/configuration.json",
             "run_identifier": '211021_A00000_0000_SAMPLE',
             "output_dir": self.output_dir,
             "job_id": "077c4da8-74eb-4184-8860-0207f53623be",

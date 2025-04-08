@@ -22,7 +22,7 @@ from platform import system as get_operating_system_type
 class FakeClient():
     def __init__(self):
         self.cwd = getcwd()
-        self.base_path = join(self.cwd, 'qp_klp/tests/data/QDir')
+        self.base_path = join(self.cwd, 'tests/data/QDir')
         self.qdirs = {'Demultiplexed': 'Demultiplexed',
                       'beta_div_plots': 'analysis/beta_div_plots',
                       'rarefaction_curves': 'analysis/rarefaction_curves',
@@ -171,7 +171,7 @@ class TestWorkflows(TestCase):
         self.fake_bin_path = self.get_searchable_path()
 
         # self.output_dir represents a qiita working directory.
-        package_root = abspath('./qp_klp/tests/data')
+        package_root = abspath('./tests/data')
         self.output_dir = join(package_root,
                                "077c4da8-74eb-4184-8860-0207f53623be")
         self.delete_these_dirs = [self.output_dir]
@@ -267,7 +267,7 @@ class TestWorkflows(TestCase):
 
         # use the list of sample_ids found in the sample-sheet to generate
         # fake fastq files for convert_raw_to_fastq() to find and manipulate.
-        sheet = load_sample_sheet("qp_klp/tests/data/sample-sheets/metagenomic"
+        sheet = load_sample_sheet("tests/data/sample-sheets/metagenomic"
                                   "/illumina/good_sheet1.csv")
         exp = defaultdict(list)
         for sample in sheet.samples:
@@ -310,11 +310,11 @@ class TestWorkflows(TestCase):
         # it is the correct one; that is confirmed in other tests. Run
         # convert_raw_to_fastq() and confirm that the directory structure and
         # the audit results match what is expected.
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
+        kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
                   "illumina/good_sheet1.csv",
                   "qclient": FakeClient(),
                   "lane_number": "1",
-                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "config_fp": "tests/data/configuration.json",
                   "run_identifier": '211021_A00000_0000_SAMPLE',
                   "output_dir": self.output_dir,
                   "job_id": "077c4da8-74eb-4184-8860-0207f53623be",
@@ -352,17 +352,17 @@ class TestWorkflows(TestCase):
                'set -x',
                'date',
                'hostname',
-               'cd qp_klp/tests/data/211021_A00000_0000_SAMPLE',
+               'cd tests/data/211021_A00000_0000_SAMPLE',
                'module load bclconvert_3.7.5',
-               'bcl-convert --sample-sheet "qp_klp/tests/data/sample-sheets/'
+               'bcl-convert --sample-sheet "tests/data/sample-sheets/'
                'metagenomic/illumina/good_sheet1.csv" --output-directory '
-               'qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/'
+               'tests/data/077c4da8-74eb-4184-8860-0207f53623be/'
                'ConvertJob --bcl-input-directory . --bcl-num-decompression-'
                'threads 16 --bcl-num-conversion-threads 16 --bcl-num-'
                'compression-threads 16 --bcl-num-parallel-tiles 16 '
                '--bcl-sampleproject-subdirectories true --force']
 
-        with open("qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+        with open("tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
                   "ConvertJob/ConvertJob.sh", 'r') as f:
             obs = f.readlines()
             obs = [x.strip() for x in obs]
@@ -474,7 +474,7 @@ class TestWorkflows(TestCase):
 
         # use the list of sample_ids found in the sample-sheet to generate
         # fake fastq files for convert_raw_to_fastq() to find and manipulate.
-        sheet = load_sample_sheet("qp_klp/tests/data/sample-sheets/meta"
+        sheet = load_sample_sheet("tests/data/sample-sheets/meta"
                                   "transcriptomic/illumina/good_sheet1.csv")
 
         exp = defaultdict(list)
@@ -519,11 +519,11 @@ class TestWorkflows(TestCase):
         # it is the correct one; that is confirmed in other tests. Run
         # convert_raw_to_fastq() and confirm that the directory structure and
         # the audit results match what is expected.
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metatranscript"
+        kwargs = {"uif_path": "tests/data/sample-sheets/metatranscript"
                               "omic/illumina/good_sheet1.csv",
                   "qclient": FakeClient(),
                   "lane_number": "2",
-                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "config_fp": "tests/data/configuration.json",
                   "run_identifier": '211021_A00000_0000_SAMPLE',
                   "output_dir": self.output_dir,
                   "job_id": "077c4da8-74eb-4184-8860-0207f53623be",
@@ -561,18 +561,18 @@ class TestWorkflows(TestCase):
             "set -x",
             "date",
             "hostname",
-            "cd qp_klp/tests/data/211021_A00000_0000_SAMPLE",
+            "cd tests/data/211021_A00000_0000_SAMPLE",
             "module load bclconvert_3.7.5",
-            "bcl-convert --sample-sheet \"qp_klp/tests/data/sample-sheets/"
+            "bcl-convert --sample-sheet \"tests/data/sample-sheets/"
             "metatranscriptomic/illumina/good_sheet1.csv\" --output-directory"
-            " qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+            " tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
             "ConvertJob --bcl-input-directory . --bcl-num-decompression-"
             "threads 16 --bcl-num-conversion-threads 16 --bcl-num-compression"
             "-threads 16 --bcl-num-parallel-tiles 16 --bcl-sampleproject-"
             "subdirectories true --force"
             ]
 
-        with open("qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+        with open("tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
                   "ConvertJob/ConvertJob.sh", 'r') as f:
             obs = f.readlines()
             obs = [x.strip() for x in obs]
@@ -698,10 +698,10 @@ class TestWorkflows(TestCase):
         # it is the correct one; that is confirmed in other tests. Run
         # convert_raw_to_fastq() and confirm that the directory structure and
         # the audit results match what is expected.
-        kwargs = {"uif_path": "qp_klp/tests/data/pre-preps/good_pre_prep1.txt",
+        kwargs = {"uif_path": "tests/data/pre-preps/good_pre_prep1.txt",
                   "qclient": FakeClient(),
                   "lane_number": "1",
-                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "config_fp": "tests/data/configuration.json",
                   "run_identifier": run_id,
                   "output_dir": self.output_dir,
                   "job_id": "077c4da8-74eb-4184-8860-0207f53623be",
@@ -739,18 +739,18 @@ class TestWorkflows(TestCase):
                "set -x",
                "date",
                "hostname",
-               f"cd qp_klp/tests/data/{run_id}",
+               f"cd tests/data/{run_id}",
                "module load bcl2fastq_2.20.0.222",
-               "bcl2fastq --sample-sheet \"qp_klp/tests/data/077c4da8-74eb"
+               "bcl2fastq --sample-sheet \"tests/data/077c4da8-74eb"
                "-4184-8860-0207f53623be/dummy_sample_sheet.csv\" --minimum-"
                "trimmed-read-length 1 "
-               "--mask-short-adapter-reads 1 -R . -o qp_klp/tests/data/"
+               "--mask-short-adapter-reads 1 -R . -o tests/data/"
                "077c4da8-74eb-4184-8860-0207f53623be/ConvertJob "
                "--loading-threads 16 --processing-threads 16 --writing-"
                "threads 16 --create-fastq-for-index-reads --ignore-missing-"
                "positions"]
 
-        with open("qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+        with open("tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
                   "ConvertJob/ConvertJob.sh", 'r') as f:
             obs = f.readlines()
             obs = [x.strip() for x in obs]
@@ -785,7 +785,7 @@ class TestWorkflows(TestCase):
 
         wf.post_process_raw_fastq_output()
 
-        base_path = "qp_klp/tests/data/077c4da8-74eb-4184-8860-0207f53623be"
+        base_path = "tests/data/077c4da8-74eb-4184-8860-0207f53623be"
 
         exp = [join(base_path, 'NuQCJob'),
                join(base_path, 'NuQCJob', 'TestProj_1'),
@@ -869,11 +869,11 @@ class TestWorkflows(TestCase):
         self.create_fake_bin('squeue.2', "echo 'JOBID,STATE\n"
                              "9999991,COMPLETED'")
 
-        kwargs = {"uif_path": ("qp_klp/tests/data/sample-sheets/metagenomic"
+        kwargs = {"uif_path": ("tests/data/sample-sheets/metagenomic"
                                "/tellseq/good_sheet1.csv"),
                   "qclient": FakeClient(),
                   "lane_number": "4",
-                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "config_fp": "tests/data/configuration.json",
                   "run_identifier": '211021_A00000_0000_SAMPLE',
                   "output_dir": self.output_dir,
                   "job_id": "077c4da8-74eb-4184-8860-0207f53623be",
@@ -907,7 +907,7 @@ class TestWorkflows(TestCase):
                 return obs
 
         obs = open_job_script(trjob_script)
-        exp = open_job_script("qp_klp/tests/data/tellread_test.sbatch")
+        exp = open_job_script("tests/data/tellread_test.sbatch")
 
         self.assertEqual(obs, exp)
 

@@ -46,7 +46,7 @@ class WorkflowFactoryTests(PluginTestCase):
         # confirm that once factory is given enough information to select a
         # Workflow() class, the class itself confirms that it has all the
         # parameters it needs.
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
+        kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
                   "illumina/good_sheet1.csv"}
 
         msg = ("The following values must also be defined in kwargs for "
@@ -57,7 +57,7 @@ class WorkflowFactoryTests(PluginTestCase):
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)
 
-        kwargs = {"uif_path": "qp_klp/tests/data/pre-preps/good_pre_prep1.txt"}
+        kwargs = {"uif_path": "tests/data/pre-preps/good_pre_prep1.txt"}
 
         msg = ("The following values must also be defined in kwargs for "
                "StandardAmpliconWorkflow workflows: qclient, config_fp, "
@@ -70,10 +70,10 @@ class WorkflowFactoryTests(PluginTestCase):
         # confirm an otherwise good-sample-sheet w/a bad SheetType is going
         # fail because it doesn't pass validation. SheetType directly
         # determines the Instrument Mixin to be used.
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
+        kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
                   "illumina/bad_sheet1.csv"}
 
-        msg = ("'qp_klp/tests/data/sample-sheets/metagenomic/illumina/"
+        msg = ("'tests/data/sample-sheets/metagenomic/illumina/"
                "bad_sheet1.csv' does not appear to be a valid sample-sheet.")
 
         with self.assertRaisesRegex(ValueError, msg):
@@ -81,10 +81,10 @@ class WorkflowFactoryTests(PluginTestCase):
 
         # confirm an otherwise good-sample-sheet w/a bad Assay value is going
         # to fail because it doesn't pass validation.
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
+        kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
                   "illumina/bad_sheet2.csv"}
 
-        msg = ("'qp_klp/tests/data/sample-sheets/metagenomic/illumina/"
+        msg = ("'tests/data/sample-sheets/metagenomic/illumina/"
                "bad_sheet2.csv' does not appear to be a valid sample-sheet.")
 
         with self.assertRaisesRegex(ValueError, msg):
@@ -92,7 +92,7 @@ class WorkflowFactoryTests(PluginTestCase):
 
         # confirm a file that is obviously not a mapping-file or sample-sheet
         # file will not follow through.
-        kwargs = {"uif_path": "qp_klp/tests/data/Demultiplex_Stats.csv"}
+        kwargs = {"uif_path": "tests/data/Demultiplex_Stats.csv"}
 
         msg = ("Your uploaded file doesn't appear to be a sample-sheet or a "
                "mapping-file.")
@@ -100,13 +100,13 @@ class WorkflowFactoryTests(PluginTestCase):
             WorkflowFactory.generate_workflow(**kwargs)
 
     def test_metagenomic_workflow_creation(self):
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
+        kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
                   "illumina/good_sheet1.csv",
                   "qclient": self.qclient,
                   "lane_number": "1",
-                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "config_fp": "tests/data/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
-                  "output_dir": "qp_klp/tests/test_output",
+                  "output_dir": "tests/test_output",
                   "job_id": "78901",
                   "is_restart": False
                   }
@@ -124,13 +124,13 @@ class WorkflowFactoryTests(PluginTestCase):
             wf.execute_pipeline()
 
     def test_metatranscriptomic_workflow_creation(self):
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/"
+        kwargs = {"uif_path": "tests/data/sample-sheets/"
                   "metatranscriptomic/illumina/good_sheet1.csv",
                   "qclient": self.qclient,
                   "lane_number": "1",
-                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "config_fp": "tests/data/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
-                  "output_dir": "qp_klp/tests/test_output",
+                  "output_dir": "tests/test_output",
                   "job_id": "78901",
                   "is_restart": False
                   }
@@ -148,11 +148,11 @@ class WorkflowFactoryTests(PluginTestCase):
             wf.execute_pipeline()
 
     def test_amplicon_workflow_creation(self):
-        kwargs = {"uif_path": "qp_klp/tests/data/pre-preps/good_pre_prep1.txt",
+        kwargs = {"uif_path": "tests/data/pre-preps/good_pre_prep1.txt",
                   "qclient": self.qclient,
-                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "config_fp": "tests/data/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
-                  "output_dir": "qp_klp/tests/test_output",
+                  "output_dir": "tests/test_output",
                   "job_id": "78901",
                   "is_restart": False
                   }
@@ -170,12 +170,12 @@ class WorkflowFactoryTests(PluginTestCase):
             wf.execute_pipeline()
 
     def test_tellseq_workflow_creation(self):
-        kwargs = {"uif_path": "qp_klp/tests/data/sample-sheets/metagenomic/"
+        kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
                   "tellseq/good_sheet1.csv",
                   "qclient": self.qclient,
-                  "config_fp": "qp_klp/tests/data/configuration.json",
+                  "config_fp": "tests/data/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
-                  "output_dir": "qp_klp/tests/test_output",
+                  "output_dir": "tests/test_output",
                   "job_id": "78901",
                   "lane_number": "1",
                   "is_restart": False

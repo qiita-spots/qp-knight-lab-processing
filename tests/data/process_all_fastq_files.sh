@@ -106,8 +106,8 @@ function mux-runner () {
             -I ${r2} \
             -w 2 \
             --adapter_fasta fastp_known_adapters_formatted.fna \
-            --html REMOVED/qp-knight-lab-processing/qp_klp/tests/data/output_dir/NuQCJob/fastp_reports_dir/html/${html_name} \
-            --json REMOVED/qp-knight-lab-processing/qp_klp/tests/data/output_dir/NuQCJob/fastp_reports_dir/json/${json_name} \
+            --html REMOVED/qp-knight-lab-processing/tests/data/output_dir/NuQCJob/fastp_reports_dir/html/${html_name} \
+            --json REMOVED/qp-knight-lab-processing/tests/data/output_dir/NuQCJob/fastp_reports_dir/json/${json_name} \
             --stdout | gzip > ${r_adapter_only}
 
         # multiplex and write adapter filtered data all at once
@@ -140,7 +140,7 @@ mv ${jobd}/bar ${jobd}/seqs.interleaved.filter_alignment.fastq
     fastq_pair -t 50000000 ${jobd}/reads.r1.fastq ${jobd}/reads.r2.fastq
 
     # keep seqs.movi.txt and migrate it to NuQCJob directory.
-    mv ${jobd}/seqs.movi.txt.gz REMOVED/qp-knight-lab-processing/qp_klp/tests/data/output_dir/NuQCJob/logs/seqs.movi.${SLURM_ARRAY_TASK_ID}.txt.gz
+    mv ${jobd}/seqs.movi.txt.gz REMOVED/qp-knight-lab-processing/tests/data/output_dir/NuQCJob/logs/seqs.movi.${SLURM_ARRAY_TASK_ID}.txt.gz
 }
 export -f mux-runner
 
