@@ -226,7 +226,7 @@ class TestHelpers(TestCase):
         # self.fake_bin_path = self.get_searchable_path()
 
         # self.output_dir represents a qiita working directory.
-        package_root = abspath('./tests/data')
+        package_root = abspath('../tests/data')
         self.output_dir = join(package_root,
                                "077c4da8-74eb-4184-8860-0207f53623be")
         self.delete_these_dirs = [self.output_dir]

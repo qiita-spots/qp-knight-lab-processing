@@ -54,8 +54,7 @@ more main.py
 Adjust configuration settings as needed:
 
 ```bash
-cd mg-scripts/sequence_processing_pipeline
-vi configuration.json
+vi tests/data/configuration.json
 ```
 
 Please note that the setting 'minimap2_databases' is expected to be a list of paths to individual .mmi files for QCJob.
@@ -67,4 +66,3 @@ Additional TellSeq-related notes:
 'spades-cloudspades-0.1', 'tellread-release-novaseqX' or similar directories must be placed in a location available to SPP.
 Their paths should be made known to SPP in the configuration files. (See examples for details).
 Additional scripts found in sequence_processing_pipeline/contrib were contributed by Daniel and Omar and can be similarly located and configured.
-
