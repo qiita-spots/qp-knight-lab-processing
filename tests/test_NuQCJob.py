@@ -1853,7 +1853,7 @@ class TestNuQCJob(unittest.TestCase):
         )
 
         my_path = (
-            "sequence_processing_pipeline/tests/data/output_dir/" "NuQCJob"
+            "tests/data/output_dir/" "NuQCJob"
         )
 
         # since a .completed file is generated when the job is complete, we

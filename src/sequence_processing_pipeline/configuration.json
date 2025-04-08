@@ -1,6 +1,6 @@
 {
-  "archive_path": "sequence_processing_pipeline/tests/data/sequencing/knight_lab_completed_runs",
-  "search_paths": [ "/tmp", "sequence_processing_pipeline/tests/data"],
-  "amplicon_search_paths": [ "/tmp", "sequence_processing_pipeline/tests/data"],
-  "profiles_path": "sequence_processing_pipeline/tests/data/configuration_profiles"
+  "archive_path": "tests/data/sequencing/knight_lab_completed_runs",
+  "search_paths": ["/tmp", "tests/data"],
+  "amplicon_search_paths": ["/tmp", "tests/data"],
+  "profiles_path": "tests/data/configuration_profiles"
 }

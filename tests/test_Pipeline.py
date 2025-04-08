@@ -69,7 +69,7 @@ class TestPipeline(unittest.TestCase):
         # other tests, reuse them here.
 
         f_name = 'RunInfo_Good2.xml' if four_reads else 'RunInfo_Good1.xml'
-        copy(join('sequence_processing_pipeline/tests/data/', f_name),
+        copy(join('tests/data/', f_name),
              self.runinfo_file)
 
     def delete_runinfo_file(self):
@@ -1724,7 +1724,7 @@ class TestAmpliconPipeline(unittest.TestCase):
         # other tests, reuse them here.
 
         f_name = 'RunInfo_Good2.xml' if four_reads else 'RunInfo_Good1.xml'
-        copy(join('sequence_processing_pipeline/tests/data/', f_name),
+        copy(join('tests/data/', f_name),
              self.runinfo_file)
 
     def delete_runinfo_file(self):

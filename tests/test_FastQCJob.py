@@ -17,7 +17,7 @@ class TestFastQCJob(unittest.TestCase):
         self.qiita_job_id = 'abcdabcdabcdabcdabcdabcdabcdabcd'
         self.output_path = self.path('output_dir2')
         self.fastqc_log_path = join(self.output_path, 'logs')
-        self.raw_fastq_files_path = ('sequence_processing_pipeline/tests/data'
+        self.raw_fastq_files_path = ('tests/data'
                                      '/211021_A00000_0000_SAMPLE/Data/Fastq/p'
                                      'roject1')
         self.processed_fastq_files_path = ('sequence_processing_pipeline/tests'
@@ -581,7 +581,7 @@ class TestFastQCJob(unittest.TestCase):
                         self.raw_fastq_files_path.replace('/project1', ''),
                         self.processed_fastq_files_path,
                         16, 16,
-                        'sequence_processing_pipeline/tests/bin/fastqc',
+                        'tests/bin/fastqc',
                         ['my_module.1.1'], self.qiita_job_id, 'queue_name',
                         4, 23, '8g', 30, 1000, False)
 
@@ -597,10 +597,10 @@ class TestFastQCJob(unittest.TestCase):
                "#SBATCH --array 1-4%30", "set -x", "set +e",
                "set -o pipefail", "date", "hostname",
                "echo ${SLURM_JOBID} ${SLURM_ARRAY_TASK_ID}",
-               "cd sequence_processing_pipeline/tests/data/output_dir2/"
+               "cd tests/data/output_dir2/"
                "FastQCJob", "", "module load my_module.1.1", "",
                "step=${SLURM_ARRAY_TASK_ID}",
-               "cmd0=$(head -n $step sequence_processing_pipeline/tests/data/"
+               "cmd0=$(head -n $step tests/data/"
                "output_dir2/FastQCJob/FastQCJob.array-details | tail -n 1)",
                "eval $cmd0", "echo \"Cmd Completed: $cmd0\" > logs/FastQCJob_"
                "$step.completed"]
@@ -612,31 +612,31 @@ class TestFastQCJob(unittest.TestCase):
         for a, b in zip(obs, exp):
             self.assertEqual(a, b)
 
-        exp = ["fastqc --noextract -t 16 sequence_processing_pipeline/tests/da"
+        exp = ["fastqc --noextract -t 16 tests/da"
                "ta/211021_A00000_0000_SAMPLE/Data/Fastq/project1/sample1_R1_.f"
-               "astq.gz sequence_processing_pipeline/tests/data/211021_A00000_"
+               "astq.gz tests/data/211021_A00000_"
                "0000_SAMPLE/Data/Fastq/project1/sample1_R2_.fastq.gz -o sequen"
                "ce_processing_pipeline/tests/data/output_dir2/FastQCJob/fastqc"
                "/project1/bclconvert",
-               "fastqc --noextract -t 16 sequence_processing_pipeline/tests/da"
+               "fastqc --noextract -t 16 tests/da"
                "ta/211021_A00000_0000_SAMPLE/Data/Fastq/project1/sample2_R1_.f"
-               "astq.gz sequence_processing_pipeline/tests/data/211021_A00000_"
+               "astq.gz tests/data/211021_A00000_"
                "0000_SAMPLE/Data/Fastq/project1/sample2_R2_.fastq.gz -o sequen"
                "ce_processing_pipeline/tests/data/output_dir2/FastQCJob/fastqc"
                "/project1/bclconvert",
-               "fastqc --noextract -t 16 sequence_processing_pipeline/tests/da"
+               "fastqc --noextract -t 16 tests/da"
                "ta/211021_A00000_0000_SAMPLE/sample-sequence-directory/project"
                "1/filtered_sequences/sample1_R1_.trimmed.fastq.gz sequence_pro"
                "cessing_pipeline/tests/data/211021_A00000_0000_SAMPLE/sample-s"
                "equence-directory/project1/filtered_sequences/sample1_R2_.trim"
-               "med.fastq.gz -o sequence_processing_pipeline/tests/data/output"
+               "med.fastq.gz -o tests/data/output"
                "_dir2/FastQCJob/fastqc/project1/filtered_sequences",
-               "fastqc --noextract -t 16 sequence_processing_pipeline/tests/da"
+               "fastqc --noextract -t 16 tests/da"
                "ta/211021_A00000_0000_SAMPLE/sample-sequence-directory/project"
                "1/filtered_sequences/sample2_R1_.trimmed.fastq.gz sequence_pro"
                "cessing_pipeline/tests/data/211021_A00000_0000_SAMPLE/sample-s"
                "equence-directory/project1/filtered_sequences/sample2_R2_.trim"
-               "med.fastq.gz -o sequence_processing_pipeline/tests/data/output"
+               "med.fastq.gz -o tests/data/output"
                "_dir2/FastQCJob/fastqc/project1/filtered_sequences"]
 
         with open(array_details_path, 'r') as f:
@@ -651,7 +651,7 @@ class TestFastQCJob(unittest.TestCase):
                         self.raw_fastq_files_path.replace('/project1', ''),
                         self.processed_fastq_files_path,
                         16, 16,
-                        'sequence_processing_pipeline/tests/bin/fastqc', [],
+                        'tests/bin/fastqc', [],
                         self.qiita_job_id, 'queue_name', 4, 23, '8g', 30,
                         1000, False)
 
@@ -1085,7 +1085,7 @@ class TestFastQCJob(unittest.TestCase):
                       self.raw_fastq_files_path.replace('/project1', ''),
                       self.processed_fastq_files_path,
                       16, 16,
-                      'sequence_processing_pipeline/tests/bin/fastqc', [],
+                      'tests/bin/fastqc', [],
                       self.qiita_job_id, 'queue_name', 4, 23, '8g', 30,
                       1000, False)
 
@@ -1100,7 +1100,7 @@ class TestFastQCJob(unittest.TestCase):
                         self.raw_fastq_files_path.replace('/project1', ''),
                         self.processed_fastq_files_path,
                         16, 16,
-                        'sequence_processing_pipeline/tests/bin/fastqc', [],
+                        'tests/bin/fastqc', [],
                         self.qiita_job_id, 'queue_name', 4, 23, '8g', 30,
                         1000, False)
 
@@ -1120,7 +1120,7 @@ class TestFastQCJob(unittest.TestCase):
                         self.raw_fastq_files_path.replace('/project1', ''),
                         self.processed_fastq_files_path,
                         16, 16,
-                        'sequence_processing_pipeline/tests/bin/fastqc', [],
+                        'tests/bin/fastqc', [],
                         self.qiita_job_id, 'queue_name', 4, 23, '8g', 30,
                         1000, False)
 
@@ -1156,7 +1156,7 @@ class TestFastQCJob(unittest.TestCase):
                         self.raw_fastq_files_path.replace('/project1', ''),
                         self.processed_fastq_files_path,
                         16, 16,
-                        'sequence_processing_pipeline/tests/bin/fastqc', [],
+                        'tests/bin/fastqc', [],
                         self.qiita_job_id, 'queue_name', 4, 23, '8g', 30,
                         1000, False)
 

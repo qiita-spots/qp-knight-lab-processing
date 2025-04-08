@@ -15,7 +15,7 @@ class TestMultiQCJob(unittest.TestCase):
         self.qiita_job_id = 'abcdabcdabcdabcdabcdabcdabcdabcd'
         self.output_path = self.path('output_dir2')
         self.multiqc_log_path = join(self.output_path, 'logs')
-        self.raw_fastq_files_path = ('sequence_processing_pipeline/tests/data'
+        self.raw_fastq_files_path = ('tests/data'
                                      '/211021_A00000_0000_SAMPLE/Data/Fastq/p'
                                      'roject1')
         self.processed_fastq_files_path = ('sequence_processing_pipeline/tests'
@@ -101,7 +101,7 @@ class TestMultiQCJob(unittest.TestCase):
                          self.raw_fastq_files_path.replace('/project1', ''),
                          self.processed_fastq_files_path,
                          16, 16,
-                         'sequence_processing_pipeline/tests/bin/multiqc',
+                         'tests/bin/multiqc',
                          ['multiqc.2.0'], self.qiita_job_id, 'queue_name', 4,
                          23, '8g', 30, self.fastqc_root_path, 1000,
                          "sequence_processing_pipeline/"
@@ -119,10 +119,10 @@ class TestMultiQCJob(unittest.TestCase):
                "#SBATCH --array 1-1%30", "set -x", "set +e",
                "set -o pipefail", "date", "hostname",
                "echo ${SLURM_JOBID} ${SLURM_ARRAY_TASK_ID}",
-               "cd sequence_processing_pipeline/tests/data/output_dir2/"
+               "cd tests/data/output_dir2/"
                "MultiQCJob", "", "module load multiqc.2.0", "",
                "step=${SLURM_ARRAY_TASK_ID}",
-               "cmd0=$(head -n $step sequence_processing_pipeline/tests/data/"
+               "cmd0=$(head -n $step tests/data/"
                "output_dir2/MultiQCJob/MultiQCJob.array-details | tail -n 1)",
                "eval $cmd0", "echo \"Cmd Completed: $cmd0\" > logs/MultiQCJob_"
                "$step.completed"]
@@ -150,7 +150,7 @@ class TestMultiQCJob(unittest.TestCase):
                          self.raw_fastq_files_path.replace('/project1', ''),
                          self.processed_fastq_files_path,
                          16, 16,
-                         'sequence_processing_pipeline/tests/bin/multiqc',
+                         'tests/bin/multiqc',
                          ['multiqc.2.0'], self.qiita_job_id, 'queue_name', 4,
                          23, '8g', 30, self.fastqc_root_path, 1000,
                          "sequence_processing_pipeline/"
