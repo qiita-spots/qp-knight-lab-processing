@@ -77,7 +77,7 @@ if __name__ == "__main__":
     # "squeue -t all -j " f"{','.join(job_ids)} " "-o '%i,%T'"
     job_ids = argv[4].split(',')
 
-    state_file_path = join("sequence_processing_pipeline", "scripts",
+    state_file_path = join("tests", "bin",
                            "my_state.json")
 
     state = generate_output(job_ids)

@@ -155,7 +155,7 @@ class TestJob(unittest.TestCase):
         copyfile(foo, squeue_path)
         chmod(squeue_path, 0o755)
         self.remove_these.append(squeue_path)
-        self.remove_these.append(join(package_root, 'scripts',
+        self.remove_these.append(join(package_root, 'tests', 'bin',
                                       'my_state.json'))
 
         job_ids = ['1234567', '1234568', '1234569', '1234570']
@@ -215,7 +215,7 @@ class TestJob(unittest.TestCase):
         copyfile(foo, squeue_path)
         chmod(squeue_path, 0o755)
         self.remove_these.append(squeue_path)
-        self.remove_these.append(join(package_root, 'scripts',
+        self.remove_these.append(join(package_root, 'tests', 'bin',
                                       'my_state.json'))
 
         job_ids = ['1234567']
@@ -259,7 +259,7 @@ class TestJob(unittest.TestCase):
         copyfile(foo, squeue_path)
         chmod(squeue_path, 0o755)
         self.remove_these.append(squeue_path)
-        self.remove_these.append(join(package_root, 'scripts',
+        self.remove_these.append(join(package_root, 'tests', 'bin'
                                       'my_state.json'))
 
         job_ids = ['1', '2', '3', '4']
