@@ -4,9 +4,11 @@ on:
   push:
     branches: [master]
     branches: [dev]
+    branches: [run-ci]
   pull_request:
     branches: [master]
     branches: [dev]
+    branches: [run-ci]
 
 jobs:
   # derived from https://github.com/actions/example-services/blob/master/.github/workflows/postgres-service.yml
