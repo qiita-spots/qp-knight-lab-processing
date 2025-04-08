@@ -20,7 +20,7 @@ class TestJob(unittest.TestCase):
                 remove(some_path)
 
     def test_system_call(self):
-        package_root = abspath('./sequence_processing_pipeline')
+        package_root = abspath('./')
         self.path = partial(join, package_root, 'tests', 'data')
 
         output_dir = self.path('my_output_dir')
@@ -72,7 +72,7 @@ class TestJob(unittest.TestCase):
         self.remove_these.append(output_dir)
 
     def test_group_commands(self):
-        package_root = abspath('./sequence_processing_pipeline')
+        package_root = abspath('./')
         self.path = partial(join, package_root, 'tests', 'data')
 
         job = Job(self.path('211021_A00000_0000_SAMPLE'),
@@ -87,7 +87,7 @@ class TestJob(unittest.TestCase):
         self.assertEqual(len(results), 2)
 
     def test_extract_project_names_from_fastq_dir(self):
-        package_root = abspath('./sequence_processing_pipeline')
+        package_root = abspath('./')
         base_path = partial(join, package_root, 'tests', 'data')
 
         dummy_fastqs = [
@@ -127,7 +127,7 @@ class TestJob(unittest.TestCase):
         self.assertEqual(obs, ['NPH_15288'])
 
     def test_query_slurm(self):
-        package_root = abspath('./sequence_processing_pipeline')
+        package_root = abspath('./')
         base_path = partial(join, package_root, 'tests', 'data')
 
         # set up a fake job so that we can test the query_jobs() method.
@@ -187,7 +187,7 @@ class TestJob(unittest.TestCase):
 
     def test_query_slurm_single_job(self):
         # perform test_query_slurm() but with a single job only.
-        package_root = abspath('./sequence_processing_pipeline')
+        package_root = abspath('./')
         base_path = partial(join, package_root, 'tests', 'data')
 
         # set up a fake job so that we can test the query_jobs() method.
@@ -246,7 +246,7 @@ class TestJob(unittest.TestCase):
                 self.assertGreaterEqual(aid, 0)
 
     def test_wait_on_job_ids(self):
-        package_root = abspath('./sequence_processing_pipeline')
+        package_root = abspath('./')
         base_path = partial(join, package_root, 'tests', 'data')
 
         job = Job(base_path('211021_A00000_0000_SAMPLE'),
@@ -289,7 +289,7 @@ class TestJob(unittest.TestCase):
         self.assertDictEqual(obs, results)
 
     def test_mark_completed_commands(self):
-        package_root = abspath('./sequence_processing_pipeline')
+        package_root = abspath('./')
         self.path = partial(join, package_root, 'tests', 'data')
 
         job = Job(self.path('211021_A00000_0000_SAMPLE'),

@@ -6,7 +6,7 @@ import unittest
 
 class TestTellReadJob(unittest.TestCase):
     def setUp(self):
-        package_root = "sequence_processing_pipeline"
+        package_root = ""
         self.path = partial(join, package_root, "tests")
         # where 2caa8226-cf69-45a3-bd40-1e90ec3d18d0 is a random qiita job id.
         self.obs = self.path('2caa8226-cf69-45a3-bd40-1e90ec3d18d0',

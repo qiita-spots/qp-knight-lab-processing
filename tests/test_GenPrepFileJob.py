@@ -8,7 +8,7 @@ import re
 
 class TestGenPrepFileJob(unittest.TestCase):
     def setUp(self):
-        self.package_root = 'sequence_processing_pipeline'
+        self.package_root = ''
         self.qiita_job_id = 'b197f317-1c06-4619-9af3-65721149c1e8'
         self.working_directory_root = join(self.package_root,
                                            self.qiita_job_id)
@@ -112,7 +112,7 @@ class TestGenPrepFileJob(unittest.TestCase):
 
 class TestReplication(unittest.TestCase):
     def setUp(self):
-        self.package_root = 'sequence_processing_pipeline'
+        self.package_root = ''
         self.qiita_job_id = 'b197f317-1c06-4619-9af3-65721149c1e8'
         self.working_directory_root = join(self.package_root,
                                            self.qiita_job_id)

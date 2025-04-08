@@ -12,7 +12,7 @@ from json import load
 class TestFastQCJob(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        package_root = 'sequence_processing_pipeline'
+        package_root = ''
         self.path = partial(join, package_root, 'tests', 'data')
         self.qiita_job_id = 'abcdabcdabcdabcdabcdabcdabcdabcd'
         self.output_path = self.path('output_dir2')
