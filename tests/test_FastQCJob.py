@@ -20,7 +20,7 @@ class TestFastQCJob(unittest.TestCase):
         self.raw_fastq_files_path = ('tests/data'
                                      '/211021_A00000_0000_SAMPLE/Data/Fastq/p'
                                      'roject1')
-        self.processed_fastq_files_path = ('sequence_processing_pipeline/tests'
+        self.processed_fastq_files_path = ('tests'
                                            '/data/211021_A00000_0000_SAMPLE/sa'
                                            'mple-sequence-directory')
         self.config_yml = join(package_root, 'multiqc-bclconvert-config.yaml')
