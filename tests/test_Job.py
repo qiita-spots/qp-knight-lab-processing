@@ -147,7 +147,7 @@ class TestJob(unittest.TestCase):
         # individual array-ids will succeed or fail is random.
         python_path = split(job._which('python'))[0]
         squeue_path = join(python_path, 'squeue')
-        foo = join(package_root, 'scripts', 'fake_squeue.py')
+        foo = join(package_root, 'tests', 'bin', 'fake_squeue.py')
 
         # place the fake squeue file in a place that's known to be in the
         # PATH. Make sure this file is removed after this test is complete.
@@ -207,7 +207,7 @@ class TestJob(unittest.TestCase):
         # individual array-ids will succeed or fail is random.
         python_path = split(job._which('python'))[0]
         squeue_path = join(python_path, 'squeue')
-        foo = join(package_root, 'scripts', 'fake_squeue.py')
+        foo = join(package_root, 'tests', 'bin', 'fake_squeue.py')
 
         # place the fake squeue file in a place that's known to be in the
         # PATH. Make sure this file is removed after this test is complete.
@@ -255,7 +255,7 @@ class TestJob(unittest.TestCase):
 
         python_path = split(job._which('python'))[0]
         squeue_path = join(python_path, 'squeue')
-        foo = join(package_root, 'scripts', 'fake_squeue.py')
+        foo = join(package_root, 'tests', 'bin', 'fake_squeue.py')
         copyfile(foo, squeue_path)
         chmod(squeue_path, 0o755)
         self.remove_these.append(squeue_path)

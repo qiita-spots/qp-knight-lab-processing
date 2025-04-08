@@ -18,7 +18,7 @@ class TestMultiQCJob(unittest.TestCase):
         self.raw_fastq_files_path = ('tests/data'
                                      '/211021_A00000_0000_SAMPLE/Data/Fastq/p'
                                      'roject1')
-        self.processed_fastq_files_path = ('sequence_processing_pipeline/tests'
+        self.processed_fastq_files_path = ('tests'
                                            '/data/211021_A00000_0000_SAMPLE/sa'
                                            'mple-sequence-directory')
         self.config_yml = join(package_root, 'multiqc-bclconvert-config.yaml')
@@ -104,8 +104,7 @@ class TestMultiQCJob(unittest.TestCase):
                          'tests/bin/multiqc',
                          ['multiqc.2.0'], self.qiita_job_id, 'queue_name', 4,
                          23, '8g', 30, self.fastqc_root_path, 1000,
-                         "sequence_processing_pipeline/"
-                         "multiqc-bclconvert-config.yaml", False)
+                         "tests/data/multiqc-bclconvert-config.yaml", False)
 
         job_script_path = join(job.output_path, 'MultiQCJob.sh')
         array_details_path = join(job.output_path, 'MultiQCJob.array-details')
@@ -134,8 +133,8 @@ class TestMultiQCJob(unittest.TestCase):
         for a, b in zip(obs, exp):
             self.assertEqual(a, b)
 
-        exp = ["multiqc -c sequence_processing_pipeline/multiqc-bclconvert-con"
-               "fig.yaml --fullnames --force -o sequence_processing_pipeline/t"
+        exp = ["multiqc -c tests/data/multiqc-bclconvert-con"
+               "fig.yaml --fullnames --force -o t"
                "ests/data/output_dir2/MultiQCJob/multiqc/project1"]
 
         with open(array_details_path, 'r') as f:
@@ -153,7 +152,7 @@ class TestMultiQCJob(unittest.TestCase):
                          'tests/bin/multiqc',
                          ['multiqc.2.0'], self.qiita_job_id, 'queue_name', 4,
                          23, '8g', 30, self.fastqc_root_path, 1000,
-                         "sequence_processing_pipeline/"
+                         "tests/data/"
                          "multiqc-bclconvert-config.yaml", False)
 
         self.assertFalse(job is None)

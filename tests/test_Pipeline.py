@@ -242,7 +242,7 @@ class TestPipeline(unittest.TestCase):
                      r'not a key in sequence_processing_pipeline',
                      str(e.exception))
         self.assertEqual(msg, "'search_paths' is not a key in "
-                              "sequence_processing_pipeline/tests"
+                              "tests"
                               "/data/bad_configuration.json")
 
         # Pipeline should assert due to Assay having a bad value.
@@ -1797,7 +1797,7 @@ class TestAmpliconPipeline(unittest.TestCase):
                      r'not a key in sequence_processing_pipeline',
                      str(e.exception))
         self.assertEqual(msg, "'search_paths' is not a key in "
-                              "sequence_processing_pipeline/tests"
+                              "tests"
                               "/data/bad_configuration.json")
 
         # Pipeline should assert due to an invalid config file path.
@@ -2328,8 +2328,7 @@ class TestAmpliconPipeline(unittest.TestCase):
                             self.qiita_id,
                             Pipeline.AMPLICON_PTYPE)
 
-        obs = pipeline.process_run_info_file('sequence_processing_pipeline/'
-                                             'tests/data/RunInfo_Good1.xml')
+        obs = pipeline.process_run_info_file('tests/data/RunInfo_Good1.xml')
 
         exp = [{'NumCycles': 151, 'Number': 1, 'IsIndexedRead': False},
                {'NumCycles': 8, 'Number': 2, 'IsIndexedRead': True},
@@ -2338,8 +2337,7 @@ class TestAmpliconPipeline(unittest.TestCase):
 
         self.assertEqual(obs, exp)
 
-        obs = pipeline.process_run_info_file('sequence_processing_pipeline/'
-                                             'tests/data/RunInfo_Good2.xml')
+        obs = pipeline.process_run_info_file('tests/data/RunInfo_Good2.xml')
 
         exp = [{'NumCycles': 151, 'Number': 1, 'IsIndexedRead': False},
                {'NumCycles': 8, 'Number': 2, 'IsIndexedRead': True},
@@ -2351,8 +2349,7 @@ class TestAmpliconPipeline(unittest.TestCase):
         # a RunInfo.XML file is passed to the method.
         with self.assertRaisesRegex(ValueError, "Cannot extract read "
                                                 "information"):
-            pipeline.process_run_info_file('sequence_processing_pipeline/'
-                                           'tests/data/good-sample-sheet.csv')
+            pipeline.process_run_info_file('tests/data/good-sample-sheet.csv')
 
         # other errors like an improper list of results from
         # process_run_info_file() are handled by generate_dummy_sample_sheet().

@@ -57,7 +57,7 @@ gzip -c ${i1_in} > ${i1_out}
 # generate integrated R1 and R2 fastq.gz files.
 conda activate qp-knight-lab-processing-2022.03
 
-python sequence_processing_pipeline/contrib/integrate-indices-np.py integrate \
+python src/sequence_processing_pipeline/contrib/integrate-indices-np.py integrate \
 --no-sort \
 --r1-in ${r1_in} \
 --r2-in ${r2_in} \

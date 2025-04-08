@@ -27,9 +27,7 @@
         "nprocs": 16,
         "queue": "qiita",
         "wallclock_time_in_minutes": 216,
-        "modules_to_load": [
-          "bclconvert_3.7.5"
-        ],
+        "modules_to_load": ["bclconvert_3.7.5"],
         "executable_path": "bcl-convert",
         "per_process_memory_limit": "10gb"
       },
@@ -38,9 +36,7 @@
         "nprocs": 64,
         "queue": "qiita",
         "wallclock_time_in_minutes": 1024,
-        "modules_to_load": [
-          "bcl2fastq_2.20.0.422"
-        ],
+        "modules_to_load": ["bcl2fastq_2.20.0.422"],
         "executable_path": "bcl2fastq",
         "per_process_memory_limit": "100gb"
       },
@@ -49,12 +45,11 @@
         "cpus_per_task": 32,
         "queue": "qiita",
         "wallclock_time_in_minutes": 2048,
-        "minimap2_databases": ["/databases/minimap2/db_1.mmi", "/databases/minimap2/db_2.mmi"],
-        "modules_to_load": [
-          "fastp_0.20.1",
-          "samtools_1.12",
-          "minimap2_2.18"
+        "minimap2_databases": [
+          "/databases/minimap2/db_1.mmi",
+          "/databases/minimap2/db_2.mmi"
         ],
+        "modules_to_load": ["fastp_0.20.1", "samtools_1.12", "minimap2_2.18"],
         "fastp_executable_path": "fastp",
         "minimap2_executable_path": "minimap2",
         "samtools_executable_path": "samtools",
@@ -78,12 +73,10 @@
         "queue": "qiita",
         "nthreads": 64,
         "wallclock_time_in_minutes": 240,
-        "modules_to_load": [
-          "fastqc_0.11.5"
-        ],
+        "modules_to_load": ["fastqc_0.11.5"],
         "fastqc_executable_path": "fastqc",
         "multiqc_executable_path": "multiqc",
-        "multiqc_config_file_path": "sequence_processing_pipeline/multiqc-bclconvert-config.yaml",
+        "multiqc_config_file_path": "tests/data/multiqc-bclconvert-config.yaml",
         "job_total_memory_limit": "20gb",
         "job_pool_size": 120,
         "job_max_array_length": 4000
