@@ -259,7 +259,7 @@ class TestJob(unittest.TestCase):
         copyfile(foo, squeue_path)
         chmod(squeue_path, 0o755)
         self.remove_these.append(squeue_path)
-        self.remove_these.append(join(package_root, 'tests', 'bin'
+        self.remove_these.append(join(package_root, 'tests', 'bin',
                                       'my_state.json'))
 
         job_ids = ['1', '2', '3', '4']

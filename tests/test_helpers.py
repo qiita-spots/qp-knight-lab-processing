@@ -241,7 +241,7 @@ class TestHelpers(TestCase):
             "illumina/good_sheet1.csv",
             "qclient": self.fake_client,
             "lane_number": "1",
-            "config_fp": "tests/data/configuration.json",
+            "config_fp": "tests/configuration.json",
             "run_identifier": '211021_A00000_0000_SAMPLE',
             "output_dir": self.output_dir,
             "job_id": "077c4da8-74eb-4184-8860-0207f53623be",

@@ -90,7 +90,7 @@ jobs:
           pip --quiet install https://github.com/qiita-spots/qtp-job-output-folder/archive/refs/heads/main.zip
 
           # pip --quiet install .
-          export QP_KLP_CONFIG_FP=`pwd`/tests/data/configuration.json
+          export QP_KLP_CONFIG_FP=`pwd`/tests/configuration.json
           pip install -e .
           pip --quiet install coveralls
 
@@ -138,7 +138,7 @@ jobs:
           conda activate klp
           export QIITA_ROOTCA_CERT=`pwd`/qiita-dev/qiita_core/support_files/ci_rootca.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
-          export QP_KLP_CONFIG_FP=`pwd`/tests/data/configuration.json
+          export QP_KLP_CONFIG_FP=`pwd`/tests/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
           nosetests --with-doctest --with-coverage -v # --cover-package qp_klp sequence_processing_pipeline
       - uses: codecov/codecov-action@v3
