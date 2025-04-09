@@ -41,6 +41,13 @@ class TestPipeline(unittest.TestCase):
         self.rtacomplete_file = self.path(self.good_run_id, 'RTAComplete.txt')
         self.good_sheet_w_replicates = self.path('good_sheet_w_replicates.csv')
 
+        # making backups of the files so they can be restored at the end
+        self.runinfo_file_bk = self.runinfo_file + '.bk'
+        self.rtacomplete_file_bk = self.rtacomplete_file + '.bk'
+
+        copy(self.runinfo_file, self.runinfo_file_bk)
+        copy(self.rtacomplete_file, self.rtacomplete_file_bk)
+
         # most of the tests here were written with the assumption that these
         # files already exist.
         self.create_runinfo_file()
@@ -59,6 +66,12 @@ class TestPipeline(unittest.TestCase):
         self.delete_runinfo_file()
         self.delete_rtacomplete_file()
         self.delete_more_files()
+
+        # recovering backups
+        copy(self.runinfo_file_bk, self.runinfo_file)
+        copy(self.rtacomplete_file_bk, self.rtacomplete_file)
+        os.remove(self.runinfo_file_bk)
+        os.remove(self.rtacomplete_file_bk)
 
     def make_runinfo_file_unreadable(self):
         os.chmod(self.runinfo_file, 0o000)
@@ -242,8 +255,7 @@ class TestPipeline(unittest.TestCase):
                      r'not a key in sequence_processing_pipeline',
                      str(e.exception))
         self.assertEqual(msg, "'search_paths' is not a key in "
-                              "tests"
-                              "/data/bad_configuration.json")
+                         f"{self.path()}/bad_configuration.json")
 
         # Pipeline should assert due to Assay having a bad value.
         with self.assertRaisesRegex(ValueError, "bad-sample-sheet-metagenomics"
@@ -319,8 +331,7 @@ class TestPipeline(unittest.TestCase):
                     '"per_process_memory_limit": "10gb" } } } }')
 
         with self.assertRaisesRegex(ValueError, "'profile' is not an attribute"
-                                                " in 'sequence_processing_"
-                                                "pipeline/tests/data/"
+                                                " in 'tests/data/"
                                                 "configuration_profiles/"
                                                 "bad.json'"):
             Pipeline(self.good_config_file,
@@ -341,8 +352,7 @@ class TestPipeline(unittest.TestCase):
                     '"per_process_memory_limit": "10gb" } } } }')
 
         with self.assertRaisesRegex(ValueError, "'instrument_type' is not an "
-                                                "attribute in 'sequence_"
-                                                "processing_pipeline/tests/"
+                                                "attribute in 'tests/"
                                                 "data/configuration_profiles/"
                                                 "bad.json'"):
             Pipeline(self.good_config_file,
@@ -364,8 +374,7 @@ class TestPipeline(unittest.TestCase):
                     '"per_process_memory_limit": "10gb" } } } }')
 
         with self.assertRaisesRegex(ValueError, "'assay_type' is not an "
-                                                "attribute in 'sequence_"
-                                                "processing_pipeline/tests/"
+                                                "attribute in 'tests/"
                                                 "data/configuration_profiles/"
                                                 "bad.json'"):
             Pipeline(self.good_config_file,
@@ -407,22 +416,14 @@ class TestPipeline(unittest.TestCase):
                             Pipeline.METAGENOMIC_PTYPE)
 
         paths = pipeline.generate_sample_info_files()
-
-        # confirm files exist in the expected location and with the expected
-        # filenames.
-        obs = [x.split('sequence_processing_pipeline/')[1] for x in paths]
-        exp = [(f'tests/data/output_dir/{self.good_run_id}'
+        exp = [(f'{self.path()}/output_dir/{self.good_run_id}'
                 '_NYU_BMS_Melanoma_13059_blanks.tsv'),
-               (f'tests/data/output_dir/{self.good_run_id}'
+               (f'{self.path()}/output_dir/{self.good_run_id}'
                 '_Feist_11661_blanks.tsv'),
-               (f'tests/data/output_dir/{self.good_run_id}'
+               (f'{self.path()}/output_dir/{self.good_run_id}'
                 '_Gerwick_6123_blanks.tsv')]
 
-        # sort the lists to ensure both are in a fixed order.
-        obs.sort()
-        exp.sort()
-
-        self.assertEqual(obs, exp)
+        self.assertCountEqual(paths, exp)
 
         # confirm files contain the expected number of lines.
         # This is going to be based on the number of samples named 'BLANK*'
@@ -1700,6 +1701,12 @@ class TestAmpliconPipeline(unittest.TestCase):
         self.rtacomplete_file = self.path(self.good_run_id, 'RTAComplete.txt')
         self.sample_sheet_path = self.path('good-sample-sheet.csv')
 
+        # making backups of the files so they can be restored at the end
+        self.runinfo_file_bk = self.runinfo_file + '.bk'
+        self.rtacomplete_file_bk = self.rtacomplete_file + '.bk'
+        copy(self.runinfo_file, self.runinfo_file_bk)
+        copy(self.rtacomplete_file, self.rtacomplete_file_bk)
+
         # most of the tests here were written with the assumption that these
         # files already exist.
         self.create_runinfo_file()
@@ -1715,6 +1722,9 @@ class TestAmpliconPipeline(unittest.TestCase):
         # can be deleted at the end of testing.
         self.delete_runinfo_file()
         self.delete_rtacomplete_file()
+
+        copy(self.runinfo_file_bk, self.runinfo_file)
+        copy(self.rtacomplete_file_bk, self.rtacomplete_file)
 
     def make_runinfo_file_unreadable(self):
         os.chmod(self.runinfo_file, 0o000)
@@ -1797,8 +1807,7 @@ class TestAmpliconPipeline(unittest.TestCase):
                      r'not a key in sequence_processing_pipeline',
                      str(e.exception))
         self.assertEqual(msg, "'search_paths' is not a key in "
-                              "tests"
-                              "/data/bad_configuration.json")
+                              f"{self.path()}/bad_configuration.json")
 
         # Pipeline should assert due to an invalid config file path.
         with self.assertRaises(PipelineError) as e:
@@ -1898,18 +1907,10 @@ class TestAmpliconPipeline(unittest.TestCase):
                             Pipeline.AMPLICON_PTYPE)
         paths = pipeline.generate_sample_info_files()
 
-        # confirm file exists in the expected location and with the expected
-        # filename.
-        obs = [x.split('sequence_processing_pipeline/')[1] for x in paths]
-
-        exp = [(f'tests/data/output_dir/{self.good_run_id}'
+        exp = [(f'{self.path()}/output_dir/{self.good_run_id}'
                 '_ABTX_20230208_ABTX_11052_blanks.tsv')]
 
-        # sort the lists to ensure both are in a fixed order.
-        obs.sort()
-        exp.sort()
-
-        self.assertEqual(obs, exp)
+        self.assertCountEqual(paths, exp)
 
         # generate_sample_information_file() remains 95% the same as before.
         # a few lines of code at the beginning of the method generate lists
