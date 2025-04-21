@@ -65,3 +65,4 @@ python {{integrate_script_path}} integrate \
 --r1-out ${r1_out} \
 --r2-out ${r2_out} \
 --threads {{cores_per_task}}
+

@@ -172,6 +172,7 @@ class TestWorkflows(TestCase):
 
         # self.output_dir represents a qiita working directory.
         package_root = abspath('tests/data')
+        self.cwd = package_root.replace('tests/data', '')
         self.output_dir = join(package_root,
                                "077c4da8-74eb-4184-8860-0207f53623be")
         self.delete_these_dirs = [self.output_dir]
@@ -356,7 +357,7 @@ class TestWorkflows(TestCase):
                'module load bclconvert_3.7.5',
                'bcl-convert --sample-sheet "tests/data/sample-sheets/'
                'metagenomic/illumina/good_sheet1.csv" --output-directory '
-               'tests/data/077c4da8-74eb-4184-8860-0207f53623be/'
+               f'{self.cwd}tests/data/077c4da8-74eb-4184-8860-0207f53623be/'
                'ConvertJob --bcl-input-directory . --bcl-num-decompression-'
                'threads 16 --bcl-num-conversion-threads 16 --bcl-num-'
                'compression-threads 16 --bcl-num-parallel-tiles 16 '
@@ -564,8 +565,8 @@ class TestWorkflows(TestCase):
             "cd tests/data/211021_A00000_0000_SAMPLE",
             "module load bclconvert_3.7.5",
             "bcl-convert --sample-sheet \"tests/data/sample-sheets/"
-            "metatranscriptomic/illumina/good_sheet1.csv\" --output-directory"
-            " tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
+            "metatranscriptomic/illumina/good_sheet1.csv\" --output-directory "
+            f"{self.cwd}tests/data/077c4da8-74eb-4184-8860-0207f53623be/"
             "ConvertJob --bcl-input-directory . --bcl-num-decompression-"
             "threads 16 --bcl-num-conversion-threads 16 --bcl-num-compression"
             "-threads 16 --bcl-num-parallel-tiles 16 --bcl-sampleproject-"
@@ -578,7 +579,6 @@ class TestWorkflows(TestCase):
             obs = [x.strip() for x in obs]
             obs = [re.sub('-directory .*?/qp_klp',
                           '-directory qp_klp', x) for x in obs]
-
         self.assertEqual(obs, exp)
 
         # ConvertJob successful.
@@ -741,10 +741,10 @@ class TestWorkflows(TestCase):
                "hostname",
                f"cd tests/data/{run_id}",
                "module load bcl2fastq_2.20.0.222",
-               "bcl2fastq --sample-sheet \"tests/data/077c4da8-74eb"
+               f"bcl2fastq --sample-sheet \"{self.cwd}tests/data/077c4da8-74eb"
                "-4184-8860-0207f53623be/dummy_sample_sheet.csv\" --minimum-"
                "trimmed-read-length 1 "
-               "--mask-short-adapter-reads 1 -R . -o tests/data/"
+               f"--mask-short-adapter-reads 1 -R . -o {self.cwd}tests/data/"
                "077c4da8-74eb-4184-8860-0207f53623be/ConvertJob "
                "--loading-threads 16 --processing-threads 16 --writing-"
                "threads 16 --create-fastq-for-index-reads --ignore-missing-"
@@ -890,24 +890,16 @@ class TestWorkflows(TestCase):
         trjob_script = join(trjob_dir, 'tellread_test.sbatch')
         self.assertTrue(exists(trjob_script))
 
-        def open_job_script(script_path):
+        def open_job_script(self, script_path):
             with open(script_path, 'r') as f:
                 obs = f.readlines()
-                obs = [x.strip() for x in obs]
-                obs = [re.sub('-directory .*?/qp_klp',
-                              '-directory qp_klp', x) for x in obs]
-                obs = [re.sub('--output .*?/qp_klp', '--output qp_klp',
-                              x) for x in obs]
-                obs = [re.sub('--error .*?/qp_klp', '--error qp_klp',
-                              x) for x in obs]
-                obs = [re.sub('find .*?/qp_klp', 'find qp_klp',
-                              x) for x in obs]
-                obs = [re.sub('-o .*?/qp_klp', '-o qp_klp',
-                              x) for x in obs]
+                obs = [x.strip().replace(
+                    '/home/runner/qp-knight-lab-processing/', self.cwd)
+                    for x in obs]
                 return obs
 
-        obs = open_job_script(trjob_script)
-        exp = open_job_script("tests/data/tellread_test.sbatch")
+        obs = open_job_script(self, trjob_script)
+        exp = open_job_script(self, "tests/data/tellread_test.sbatch")
 
         self.assertEqual(obs, exp)
 

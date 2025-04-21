@@ -66,8 +66,7 @@ class TestTRIntegrateJob(unittest.TestCase):
         with open(self.exp, 'r') as f:
             exp_lines = f.readlines()
 
-        for obs_line, exp_line in zip(obs_lines, exp_lines):
-            self.assertEqual(obs_line, exp_line)
+        self.assertEqual(obs_lines, exp_lines)
 
 
 if __name__ == '__main__':
