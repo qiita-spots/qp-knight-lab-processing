@@ -40,7 +40,9 @@ class TestTRIntegrateJob(unittest.TestCase):
                                  "run_tellread_sing.sh")
         self.lane = "1"
         self.cores_per_task = "4"
-        self.integrate_script_path = join(package_root, "contrib",
+        self.integrate_script_path = join(package_root, "src",
+                                          "sequence_processing_pipeline",
+                                          "contrib",
                                           "integrate-indices-np.py")
         self.sil_path = self.path('data', 'fake_sample_index_list.txt')
         self.raw_fastq_dir = join(self.output_path, "TellReadJob", "Full")

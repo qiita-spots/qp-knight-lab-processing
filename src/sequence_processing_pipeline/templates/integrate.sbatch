@@ -14,7 +14,7 @@ set -x
 set -e
 
 samples=($(cat {{output_dir}}/sample_index_list.txt | cut -f 2))
-sample=${samples[$((${SLURM_ARRAY_TASK_ID} - 1))]} 
+sample=${samples[$((${SLURM_ARRAY_TASK_ID} - 1))]}
 
 export TMPDIR={{tmp_dir}}
 

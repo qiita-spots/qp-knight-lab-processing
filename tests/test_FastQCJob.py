@@ -615,26 +615,26 @@ class TestFastQCJob(unittest.TestCase):
         exp = ["fastqc --noextract -t 16 tests/da"
                "ta/211021_A00000_0000_SAMPLE/Data/Fastq/project1/sample1_R1_.f"
                "astq.gz tests/data/211021_A00000_"
-               "0000_SAMPLE/Data/Fastq/project1/sample1_R2_.fastq.gz -o sequen"
-               "ce_processing_pipeline/tests/data/output_dir2/FastQCJob/fastqc"
+               "0000_SAMPLE/Data/Fastq/project1/sample1_R2_.fastq.gz -o "
+               "tests/data/output_dir2/FastQCJob/fastqc"
                "/project1/bclconvert",
                "fastqc --noextract -t 16 tests/da"
                "ta/211021_A00000_0000_SAMPLE/Data/Fastq/project1/sample2_R1_.f"
                "astq.gz tests/data/211021_A00000_"
-               "0000_SAMPLE/Data/Fastq/project1/sample2_R2_.fastq.gz -o sequen"
-               "ce_processing_pipeline/tests/data/output_dir2/FastQCJob/fastqc"
+               "0000_SAMPLE/Data/Fastq/project1/sample2_R2_.fastq.gz -o "
+               "tests/data/output_dir2/FastQCJob/fastqc"
                "/project1/bclconvert",
                "fastqc --noextract -t 16 tests/da"
                "ta/211021_A00000_0000_SAMPLE/sample-sequence-directory/project"
-               "1/filtered_sequences/sample1_R1_.trimmed.fastq.gz sequence_pro"
-               "cessing_pipeline/tests/data/211021_A00000_0000_SAMPLE/sample-s"
+               "1/filtered_sequences/sample1_R1_.trimmed.fastq.gz "
+               "tests/data/211021_A00000_0000_SAMPLE/sample-s"
                "equence-directory/project1/filtered_sequences/sample1_R2_.trim"
                "med.fastq.gz -o tests/data/output"
                "_dir2/FastQCJob/fastqc/project1/filtered_sequences",
                "fastqc --noextract -t 16 tests/da"
                "ta/211021_A00000_0000_SAMPLE/sample-sequence-directory/project"
-               "1/filtered_sequences/sample2_R1_.trimmed.fastq.gz sequence_pro"
-               "cessing_pipeline/tests/data/211021_A00000_0000_SAMPLE/sample-s"
+               "1/filtered_sequences/sample2_R1_.trimmed.fastq.gz "
+               "tests/data/211021_A00000_0000_SAMPLE/sample-s"
                "equence-directory/project1/filtered_sequences/sample2_R2_.trim"
                "med.fastq.gz -o tests/data/output"
                "_dir2/FastQCJob/fastqc/project1/filtered_sequences"]
@@ -1090,8 +1090,8 @@ class TestFastQCJob(unittest.TestCase):
                       1000, False)
 
         self.assertEqual(str(e.exception), "There are no fastq files for "
-                                           "FastQCJob to process in sequence"
-                                           "_processing_pipeline/tests/data/"
+                                           "FastQCJob to process in "
+                                           "tests/data/"
                                            "211021_A00000_0000_SAMPLE/Data/"
                                            "Fastq.")
 
