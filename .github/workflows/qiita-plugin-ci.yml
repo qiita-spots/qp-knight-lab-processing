@@ -140,7 +140,7 @@ jobs:
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           export QP_KLP_CONFIG_FP=`pwd`/tests/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
-          nosetests --with-doctest --with-coverage -v # --cover-package qp_klp sequence_processing_pipeline
+          nosetests --with-doctest --with-coverage -v --cover-package qp_klp,sequence_processing_pipeline
 
       - uses: codecov/codecov-action@v3
         with:
