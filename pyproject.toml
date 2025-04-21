@@ -9,12 +9,12 @@ packages = ["qp_klp", "sequence_processing_pipeline"]
 
 [tool.poetry]
 packages = [
-    {include = "src/qp_klp", from = "./", to = "qp_klp" },
-    {include = "src/sequence_processing_pipeline", from = "./", to = "sequence_processing_pipeline" }
+    { include = "src/qp_klp", from = "./", to = "qp_klp" },
+    { include = "src/sequence_processing_pipeline", from = "./", to = "sequence_processing_pipeline" },
 ]
 
 [project]
-name = "knigt_lab_processing"
+name = "knight_lab_processing"
 # version strings must comply with PEP 440:
 # https://peps.python.org/pep-0440/
 version = "2025.4"
