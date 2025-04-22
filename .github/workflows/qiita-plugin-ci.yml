@@ -74,6 +74,9 @@ jobs:
           # "copying" sql file to allow testing via Qiita
           cp tests/qiita-sql/91.sql qiita-dev/qiita_db/support_files/patches/test_db_sql/
 
+          # setting up sbatch
+          alias sbatch="`pwd`/tests/bin/sbatch"
+
           pip install qiita-dev/ --no-binary redbiom
           mkdir ~/.qiita_plugins
 
