@@ -73,6 +73,9 @@ jobs:
           pip install qiita-dev/ --no-binary redbiom
           mkdir ~/.qiita_plugins
 
+          # "copying" sql file to allow testing via Qiita
+          cp tests/qiita-sql/91.sql qiita-dev/qiita_db/support_files/patches/test_db_sql/
+
       - name: Install Qiita plugins
         shell: bash -l {0}
         run: |
