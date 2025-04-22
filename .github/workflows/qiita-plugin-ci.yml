@@ -75,9 +75,7 @@ jobs:
           cp tests/qiita-sql/91.sql qiita-dev/qiita_db/support_files/patches/test_db_sql/
 
           # setting up sbatch
-          # taken from https://github.com/actions/toolkit/issues/766
-          shopt -s expand_aliases
-          alias sbatch="`pwd`/tests/bin/sbatch"
+          echo "alias sbatch=`pwd`/tests/bin/sbatch" >> /home/runner/.profile
 
           pip install qiita-dev/ --no-binary redbiom
           mkdir ~/.qiita_plugins
