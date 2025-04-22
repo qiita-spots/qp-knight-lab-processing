@@ -1,0 +1,8 @@
+/ddn_scratch/qiita_t/working_dir/8edbdee2-da52-4278-af40-267185bbcd7e/TellReadJob/Full/TellReadJob_I1_C519.fastq.gz.corrected.err_barcode_removed.fastq
+/ddn_scratch/qiita_t/working_dir/8edbdee2-da52-4278-af40-267185bbcd7e/TellReadJob/Full/TellReadJob_I1_C519.fastq.gz.erroneous.fastq
+/ddn_scratch/qiita_t/working_dir/8edbdee2-da52-4278-af40-267185bbcd7e/TellReadJob/Full/TellReadJob_I1_C520.fastq.gz.corrected.err_barcode_removed.fastq
+/ddn_scratch/qiita_t/working_dir/8edbdee2-da52-4278-af40-267185bbcd7e/TellReadJob/Full/TellReadJob_I1_C520.fastq.gz.erroneous.fastq
+/ddn_scratch/qiita_t/working_dir/8edbdee2-da52-4278-af40-267185bbcd7e/TellReadJob/Full/TellReadJob_R1_C519.fastq.gz.corrected.err_barcode_removed.fastq
+/ddn_scratch/qiita_t/working_dir/8edbdee2-da52-4278-af40-267185bbcd7e/TellReadJob/Full/TellReadJob_R1_C520.fastq.gz.corrected.err_barcode_removed.fastq
+/ddn_scratch/qiita_t/working_dir/8edbdee2-da52-4278-af40-267185bbcd7e/TellReadJob/Full/TellReadJob_R2_C519.fastq.gz.corrected.err_barcode_removed.fastq
+/ddn_scratch/qiita_t/working_dir/8edbdee2-da52-4278-af40-267185bbcd7e/TellReadJob/Full/TellReadJob_R2_C520.fastq.gz.corrected.err_barcode_removed.fastq

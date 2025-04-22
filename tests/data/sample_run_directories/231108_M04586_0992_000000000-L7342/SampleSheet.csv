@@ -1,0 +1,23 @@
+[Header]
+Local Run Manager Analysis Id,607607
+Experiment Name,Knight_Cedars
+Date,11/8/2023
+Module,GenerateFASTQ - 2.0.1
+Workflow,GenerateFASTQ
+Library Prep Kit,Custom
+Chemistry,Amplicon
+iemfileversion,5
+application,FASTQ Only
+instrument type,MiSeq
+index adapters,
+
+[Reads]
+151
+151
+
+[Settings]
+reversecomplement,0
+
+[Data]
+Sample_ID,Description,index,I7_Index_ID,Sample_Project,Sample_Plate,Sample_Well
+Cedars_Creeping_Fat_EVP,,NNNNNNNNNNNN,NNNNNNNNNNNN,,,

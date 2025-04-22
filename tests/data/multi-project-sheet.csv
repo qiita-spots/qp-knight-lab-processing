@@ -1,0 +1,39 @@
+[Header],,,,,,,,,,,
+IEMFileVersion,4,,,,,,,,,,
+SheetType,standard_metag,,,,,,,,,,
+SheetVersion,100,,,,,,,,,,
+Investigator Name,Knight,,,,,,,,,,
+Experiment Name,RKL0042,,,,,,,,,,
+Date,2020-02-26,,,,,,,,,,
+Workflow,GenerateFASTQ,,,,,,,,,,
+Application,FASTQ Only,,,,,,,,,,
+Assay,Metagenomic,,,,,,,,,,
+Description,,,,,,,,,,,
+Chemistry,Default,,,,,,,,,,
+,,,,,,,,,,,
+[Reads],,,,,,,,,,,
+150,,,,,,,,,,,
+150,,,,,,,,,,,
+,,,,,,,,,,,
+[Settings],,,,,,,,,,,
+ReverseComplement,0,,,,,,,,,,
+,,,,,,,,,,,
+[Data],,,,,,,,,,,
+Lane,Sample_ID,Sample_Name,Sample_Plate,well_id_384,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,syndna_pool_number,Well_description
+1,3A,3A,Something,I23,iTru7_201_03,GATAGGCT,iTru5_09_H,AGAAGGAC,Wisconsin_U19_15445,pool1,3A
+1,4A,4A,Something,K23,iTru7_201_04,TTGACAGG,iTru5_10_H,TGACCGTT,Wisconsin_U19_15445,pool1,4A
+1,5B,5B,Something,I24,iTru7_209_03,CCTGATTG,iTru5_21_H,GCCTTCTT,Wisconsin_U19_15445,pool1,5B
+1,6A,6A,Something,K24,iTru7_209_04,TTGTGTGC,iTru5_22_H,TGGACCAT,Wisconsin_U19_NA_15446,pool1,6A
+1,7A,7A,Something,J23,iTru7_402_03,ACTCAGAC,iTru5_109_H,GCATTGGT,Wisconsin_U19_NA_15446,pool1,7A
+1,8A,8A,Something,L23,iTru7_402_04,GTCCACAT,iTru5_110_H,TCCAGCAA,Wisconsin_U19_NA_15446,pool1,8A
+,,,,,,,,,,,
+[Bioinformatics],,,,,,,,,,,
+Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,,,,
+Wisconsin_U19_15445,15445,False,AACC,GGTT,True,Nextera,Equipment,,,,
+Wisconsin_U19_NA_15446,15446,False,AACC,GGTT,True,Nextera,Equipment,,,,
+,,,,,,,,,,,
+[Contact],,,,,,,,,,,
+Email,Sample_Project,,,,,,,,,,
+test@lol.com,Wisconsin_U19_15445,,,,,,,,,,
+test@lol.com,Wisconsin_U19_NA_15446,,,,,,,,,,
+,,,,,,,,,,,

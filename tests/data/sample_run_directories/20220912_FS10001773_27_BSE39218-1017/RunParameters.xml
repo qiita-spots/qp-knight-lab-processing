@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<RunParameters xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <InstrumentId>FS10001773</InstrumentId>
+  <RunId>20220912_FS10001773_27_BSE39218-1017</RunId>
+  <RunCounter>27</RunCounter>
+  <ApplicationName>iSeq Control Software</ApplicationName>
+  <ApplicationVersion>2.0.0.661</ApplicationVersion>
+  <ClientVersion>2.0.0.1703</ClientVersion>
+  <FirmwareVersion>1.4.0</FirmwareVersion>
+  <Pdb1FirmwareVersion>1.4.0</Pdb1FirmwareVersion>
+  <Pdb2FirmwareVersion>1.4.0</Pdb2FirmwareVersion>
+  <SibFpgaVersion>0x1300000a</SibFpgaVersion>
+  <SibBoardRevision>PilotvA</SibBoardRevision>
+  <Pdb1BoardRevision>5</Pdb1BoardRevision>
+  <Pdb2BoardRevision>3</Pdb2BoardRevision>
+  <IdbBoardRevision>1</IdbBoardRevision>
+  <RtaVersion>2.12.6.0</RtaVersion>
+  <ExperimentName>20220912_RNA_pilot_II_metaT_2_3_14606</ExperimentName>
+  <RecipeRelativeFilePath>Protocol\2Read2Index.xml</RecipeRelativeFilePath>
+  <RecipeFolder>C:\ProgramData\Illumina\iSeq Control Software\Recipe\v2</RecipeFolder>
+  <RecipeName>2Read2Index</RecipeName>
+  <RecipeVersion>P2BL_6.6.0</RecipeVersion>
+  <LibraryPoolId>X</LibraryPoolId>
+  <LocalRunManagerRunId>27027</LocalRunManagerRunId>
+  <LocalRunManagerVersion>2.4.0.2466</LocalRunManagerVersion>
+  <UcsRunId>197314E2AACB8427</UcsRunId>
+  <ReadType>PairedEnd</ReadType>
+  <RtaSaveThumbnailImages>true</RtaSaveThumbnailImages>
+  <PlannedCycles>
+    <Read1>151</Read1>
+    <Index1>8</Index1>
+    <Index2>8</Index2>
+    <Read2>151</Read2>
+  </PlannedCycles>
+  <CompletedCycles>
+    <Read1>151</Read1>
+    <Index1>8</Index1>
+    <Index2>8</Index2>
+    <Read2>151</Read2>
+  </CompletedCycles>
+  <SequencingMetrics>
+    <Q30Read1>92.24359</Q30Read1>
+    <Q30Read2>90.33952</Q30Read2>
+    <ClusterPf>50.21934</ClusterPf>
+    <Occupancy>57.13833</Occupancy>
+    <ProjectedYield>1.212311 G</ProjectedYield>
+  </SequencingMetrics>
+  <RunFolderPath>D:\Illumina\iSeq Runs\20220912_FS10001773_27_BSE39218-1017</RunFolderPath>
+  <OutputFolder>Y:\KL_iSeq_Runs\20220912_FS10001773_27_BSE39218-1017</OutputFolder>
+  <SampleSheetPath />
+  <FlowcellEEPROMTag>
+    <SerialNumber>BSE39218-1017</SerialNumber>
+    <PartNumber>20009555</PartNumber>
+    <LotNumber>20685883</LotNumber>
+    <ExpirationDate>2023-08-18T00:00:00</ExpirationDate>
+  </FlowcellEEPROMTag>
+  <ReagentKitRFIDTag>
+    <SerialNumber>FY2191571-FC7</SerialNumber>
+    <PartNumber>20009584</PartNumber>
+    <LotNumber>20658953</LotNumber>
+    <ExpirationDate>2023-06-04T00:00:00</ExpirationDate>
+  </ReagentKitRFIDTag>
+  <RunStartDate>2022-09-12T16:32:24-07:00</RunStartDate>
+  <RunEndDate>2022-09-13T11:30:21-07:00</RunEndDate>
+  <BaseSpaceParameters>
+    <EnvironmentName>use1-prod</EnvironmentName>
+    <DomainName />
+    <BaseSpaceRunId>243942699</BaseSpaceRunId>
+    <Mode>UserAndIlluminaHealth</Mode>
+    <WorkgroupName>Personal</WorkgroupName>
+  </BaseSpaceParameters>
+</RunParameters>

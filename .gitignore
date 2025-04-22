@@ -129,4 +129,7 @@ dmypy.json
 .pyre/
 
 # ignore local changes
-qp_klp/tests/data/sample-sheets/*/*/*.csv
+tests/data/sample-sheets/*/*/*.csv
+
+# test output
+tests/data/output_dir/
