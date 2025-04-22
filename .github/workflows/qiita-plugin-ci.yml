@@ -70,11 +70,12 @@ jobs:
         shell: bash -l {0}
         run: |
           conda activate qiita
-          pip install qiita-dev/ --no-binary redbiom
-          mkdir ~/.qiita_plugins
 
           # "copying" sql file to allow testing via Qiita
           cp tests/qiita-sql/91.sql qiita-dev/qiita_db/support_files/patches/test_db_sql/
+
+          pip install qiita-dev/ --no-binary redbiom
+          mkdir ~/.qiita_plugins
 
       - name: Install Qiita plugins
         shell: bash -l {0}
@@ -127,6 +128,8 @@ jobs:
           qiita-env make --no-load-ontologies
           qiita plugins update
           qiita-test-install
+          qiita-env clean-test
+          python -c 'from qiita_db.study import Study; Study(6124)'
 
           echo "4. Starting supervisord => multiple qiita instances"
           supervisord -c ${PWD}/qiita-dev/qiita_pet/supervisor_example.conf
