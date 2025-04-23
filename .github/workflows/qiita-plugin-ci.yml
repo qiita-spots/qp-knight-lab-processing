@@ -29,22 +29,11 @@ jobs:
         ports:
           # based on https://github.com/actions/example-services/blob/master/.github/workflows/postgres-service.yml#L44-L72
           - 5432/tcp
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-        ports:
-          - "8888:3306"
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out repository code
         uses: actions/checkout@v2
-
-      # https://github.com/koesterlab/setup-slurm-action
-      - name: Setting up slurm
-        uses: koesterlab/setup-slurm-action@v1
 
       - name: Setup for conda
         uses: conda-incubator/setup-miniconda@v2
@@ -59,8 +48,9 @@ jobs:
         run: |
           echo "Testing: " $COVER_PACKAGE
 
-          # creating the qiita slurm partition
-          sudo scontrol create partitionname=qiita allowqos=normal,interactive-default
+          # creating sbatch executable
+          echo '/usr/bin/bash "$@"' > /usr/bin/sbatch
+          chmod +x /usr/bin/sbatch
 
           # we need to download qiita directly so we have "easy" access to
           # all config files

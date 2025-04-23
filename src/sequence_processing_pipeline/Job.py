@@ -261,11 +261,9 @@ class Job:
         # query_slurm encapsulates the handling of squeue.
         count = 0
         while True:
-            print ('------> _query_slurm')
             result = self._system_call("squeue -t all -j "
                                        f"{','.join(job_ids)} "
                                        "-o '%i,%T'")
-            print (result)
 
             if result['return_code'] == 0:
                 # there was no issue w/squeue, break this loop and
@@ -364,7 +362,6 @@ class Job:
             cmd = f'cd {exec_from};' + cmd
 
         logging.debug("job scheduler call: %s" % cmd)
-        print ('===>', cmd)
 
         if self.force_job_fail:
             raise JobFailedError("This job died.")
