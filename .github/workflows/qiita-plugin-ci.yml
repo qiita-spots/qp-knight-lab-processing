@@ -48,6 +48,8 @@ jobs:
         run: |
           echo "Testing: " $COVER_PACKAGE
 
+          env
+          env | grep PATH
           # creating sbatch executable
           sudo echo '/usr/bin/bash "$@"' > /usr/bin/sbatch
           sudo chmod +x /usr/bin/sbatch
