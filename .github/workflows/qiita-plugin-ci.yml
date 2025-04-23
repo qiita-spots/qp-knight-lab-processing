@@ -49,8 +49,8 @@ jobs:
           echo "Testing: " $COVER_PACKAGE
 
           # creating sbatch executable
-          echo '/usr/bin/bash "$@"' > /usr/bin/sbatch
-          chmod +x /usr/bin/sbatch
+          sudo echo '/usr/bin/bash "$@"' > /usr/bin/sbatch
+          sudo chmod +x /usr/bin/sbatch
 
           # we need to download qiita directly so we have "easy" access to
           # all config files
