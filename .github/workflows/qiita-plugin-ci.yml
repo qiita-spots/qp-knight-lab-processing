@@ -66,10 +66,6 @@ jobs:
           conda activate qiita
           pip install sphinx sphinx-bootstrap-theme nose-timer Click
 
-          # creating sbatch executable
-          echo '/usr/bin/bash "$@"' > ${CONDA_PREFIX}/bin/sbatch
-          chmod +x ${CONDA_PREFIX}/bin/sbatch
-
       - name: Qiita install
         shell: bash -l {0}
         run: |
@@ -91,9 +87,10 @@ jobs:
 
           conda activate klp
 
-          # creating sbatch executable
+          # creating sbatch/sbatch executable
           echo '/usr/bin/bash "$@"' > ${CONDA_PREFIX}/bin/sbatch
-          chmod +x ${CONDA_PREFIX}/bin/sbatch
+          cp `pwd`/tests/bin/fake_squeue.py ${CONDA_PREFIX}/bin/squeue
+          chmod +x ${CONDA_PREFIX}/bin/sbatch ${CONDA_PREFIX}/bin/squeue
 
           export QIITA_ROOTCA_CERT=`pwd`/qiita-dev/qiita_core/support_files/ci_rootca.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
