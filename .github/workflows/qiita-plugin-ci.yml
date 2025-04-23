@@ -45,6 +45,10 @@ jobs:
       # https://github.com/koesterlab/setup-slurm-action
       - name: Setting up slurm
         uses: koesterlab/setup-slurm-action@v1
+        vars:
+          slurm_partitions:
+            - name: qiita
+              Default: YES
 
       - name: Setup for conda
         uses: conda-incubator/setup-miniconda@v2
