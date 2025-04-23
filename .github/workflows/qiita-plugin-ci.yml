@@ -45,9 +45,6 @@ jobs:
       # https://github.com/koesterlab/setup-slurm-action
       - name: Setting up slurm
         uses: koesterlab/setup-slurm-action@v1
-        shell: bash -l {0}
-        run: |
-          scontrol create partition qiita
 
       - name: Setup for conda
         uses: conda-incubator/setup-miniconda@v2
@@ -61,6 +58,9 @@ jobs:
         shell: bash -l {0}
         run: |
           echo "Testing: " $COVER_PACKAGE
+
+          # creating the qiita slurm partition
+          scontrol create partition qiita
 
           # we need to download qiita directly so we have "easy" access to
           # all config files
