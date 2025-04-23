@@ -60,7 +60,7 @@ jobs:
           echo "Testing: " $COVER_PACKAGE
 
           # creating the qiita slurm partition
-          scontrol create partitionname=qiita allowqos=normal,interactive-default
+          sudo scontrol create partitionname=qiita allowqos=normal,interactive-default
 
           # we need to download qiita directly so we have "easy" access to
           # all config files
