@@ -29,11 +29,22 @@ jobs:
         ports:
           # based on https://github.com/actions/example-services/blob/master/.github/workflows/postgres-service.yml#L44-L72
           - 5432/tcp
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - "8888:3306"
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out repository code
         uses: actions/checkout@v2
+
+      # https://github.com/koesterlab/setup-slurm-action
+      - name: Setting up slurm
+        uses: koesterlab/setup-slurm-action@v1
 
       - name: Setup for conda
         uses: conda-incubator/setup-miniconda@v2
@@ -73,9 +84,6 @@ jobs:
 
           # "copying" sql file to allow testing via Qiita
           cp tests/qiita-sql/91.sql qiita-dev/qiita_db/support_files/patches/test_db_sql/
-
-          # setting up sbatch
-          echo "alias sbatch=`pwd`/tests/bin/sbatch" >> /home/runner/.profile
 
           pip install qiita-dev/ --no-binary redbiom
           mkdir ~/.qiita_plugins
@@ -131,8 +139,6 @@ jobs:
           qiita-env make --no-load-ontologies
           qiita plugins update
           qiita-test-install
-          qiita-env clean-test
-          python -c 'from qiita_db.study import Study; Study(6124)'
 
           echo "4. Starting supervisord => multiple qiita instances"
           supervisord -c ${PWD}/qiita-dev/qiita_pet/supervisor_example.conf
