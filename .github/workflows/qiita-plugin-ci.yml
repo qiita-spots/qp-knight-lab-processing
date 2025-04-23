@@ -48,9 +48,9 @@ jobs:
         run: |
           echo "Testing: " $COVER_PACKAGE
 
-          env
-          env | grep PATH
           # creating sbatch executable
+          ls ./; pwd
+          ls -laht /home/runner/.local/bin
           echo '/usr/bin/bash "$@"' > /home/runner/.local/bin/sbatch
           chmod +x /home/runner/.local/bin/sbatch
 
