@@ -51,8 +51,8 @@ jobs:
           env
           env | grep PATH
           # creating sbatch executable
-          sudo echo '/usr/bin/bash "$@"' > /usr/bin/sbatch
-          sudo chmod +x /usr/bin/sbatch
+          echo '/usr/bin/bash "$@"' > /home/runner/.local/bin/sbatch
+          chmod +x /home/runner/.local/bin/sbatch
 
           # we need to download qiita directly so we have "easy" access to
           # all config files
