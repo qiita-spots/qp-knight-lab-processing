@@ -88,9 +88,6 @@ jobs:
           conda activate klp
 
           # creating bcl-convert/sbatch/squeue executable
-          echo 'echo "$@"' > `pwd`/tests/bin/sbatch
-          echo 'echo -e "JOBID,STATE\n1234,COMPLETED"' > `pwd`/tests/bin/squeue
-          chmod +x `pwd`/tests/bin/sbatch `pwd`/tests/bin/squeue `pwd`/tests/bin/bcl-convert
           echo `pwd`/tests/bin/ >> "$GITHUB_PATH"
 
           export QIITA_ROOTCA_CERT=`pwd`/qiita-dev/qiita_core/support_files/ci_rootca.crt
