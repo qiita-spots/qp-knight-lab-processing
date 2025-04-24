@@ -87,10 +87,10 @@ jobs:
 
           conda activate klp
 
-          # creating sbatch/sbatch executable
-          echo '/usr/bin/bash "$@"' > ${CONDA_PREFIX}/bin/sbatch
-          echo 'echo -e "JOBID,STATE\n1234,COMPLETED"' > ${CONDA_PREFIX}/bin/squeue
+          # creating bcl-convert/sbatch/squeue executable
           cp `pwd`/tests/bin/bcl-convert ${CONDA_PREFIX}/bin/
+          echo 'echo "$@"' > ${CONDA_PREFIX}/bin/sbatch
+          echo 'echo -e "JOBID,STATE\n1234,COMPLETED"' > ${CONDA_PREFIX}/bin/squeue
           chmod +x ${CONDA_PREFIX}/bin/sbatch ${CONDA_PREFIX}/bin/squeue ${CONDA_PREFIX}/bin/bcl-convert
 
           export QIITA_ROOTCA_CERT=`pwd`/qiita-dev/qiita_core/support_files/ci_rootca.crt
