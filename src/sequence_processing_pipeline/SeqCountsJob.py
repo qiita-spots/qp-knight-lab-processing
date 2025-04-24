@@ -80,7 +80,7 @@ class SeqCountsJob(Job):
             info = self.parse_logs()
             # prepend just the message component of the Error.
             info.insert(0, str(e))
-            raise JobFailedError('\n'.join(info))
+            raise JobFailedError(info)
 
         self.mark_job_completed()
 

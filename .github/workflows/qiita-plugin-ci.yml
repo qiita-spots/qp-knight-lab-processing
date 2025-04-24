@@ -89,8 +89,9 @@ jobs:
 
           # creating sbatch/sbatch executable
           echo '/usr/bin/bash "$@"' > ${CONDA_PREFIX}/bin/sbatch
-          cp `pwd`/tests/bin/fake_squeue.py ${CONDA_PREFIX}/bin/squeue
-          chmod +x ${CONDA_PREFIX}/bin/sbatch ${CONDA_PREFIX}/bin/squeue
+          echo 'echo -e "JOBID,STATE\n1234,COMPLETED"' > ${CONDA_PREFIX}/bin/squeue
+          cp `pwd`/tests/bin/bcl-convert ${CONDA_PREFIX}/bin/
+          chmod +x ${CONDA_PREFIX}/bin/sbatch ${CONDA_PREFIX}/bin/squeue ${CONDA_PREFIX}/bin/bcl-convert
 
           export QIITA_ROOTCA_CERT=`pwd`/qiita-dev/qiita_core/support_files/ci_rootca.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg

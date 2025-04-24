@@ -17,6 +17,7 @@ from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
 from shutil import rmtree
 from qiita_client.testing import PluginTestCase
 from qiita_client.exceptions import NotFoundError
+from sequence_processing_pipeline.PipelineError import PipelineError
 
 
 class WorkflowFactoryTests(PluginTestCase):
@@ -123,7 +124,7 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
         with self.assertRaisesRegex(
-                NotFoundError, '{"message": "Study not found"}'):
+                PipelineError, 'There are no fastq files for FastQCJob'):
             wf.execute_pipeline()
 
     def test_metatranscriptomic_workflow_creation(self):
@@ -147,7 +148,7 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.assay_type, ASSAY_NAME_METATRANSCRIPTOMIC)
 
         with self.assertRaisesRegex(
-                NotFoundError, '{"message": "Study not found"}'):
+                PipelineError, 'There are no fastq files for FastQCJob'):
             wf.execute_pipeline()
 
     def test_amplicon_workflow_creation(self):
@@ -193,7 +194,8 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
         with self.assertRaisesRegex(
-                NotFoundError, '{"message": "Study not found"}'):
+                FileNotFoundError,
+                'TellReadJob/sample_index_list_TellReadJob.txt'):
             wf.execute_pipeline()
 
 
