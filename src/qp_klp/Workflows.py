@@ -518,7 +518,7 @@ class Workflow():
                 results_tid = self._process_tube_ids(qiita_id, samples)
                 if results_tid:
                     rtid = results_tid[0]
-                    msgs.append('Number of sample-names not in Qiita: '
+                    msgs.append('Number of tube-ids not in Qiita: '
                                 f'{len(rtid)}; {list(rtid)[:3]}')
 
                     if len(results_tid[0]) == 0:
