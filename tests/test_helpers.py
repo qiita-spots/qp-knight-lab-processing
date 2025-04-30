@@ -5,7 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
-from unittest import TestCase
+from unittest import TestCase, main
 from os.path import join, abspath, exists
 from os import makedirs
 from shutil import rmtree
@@ -402,3 +402,7 @@ class FailedSamplesRecordTests(TestCase):
         self.assertFalse(exists(fsr.report_path))
         fsr.generate_report()
         self.assertTrue(exists(fsr.report_path))
+
+
+if __name__ == '__main__':
+    main()
