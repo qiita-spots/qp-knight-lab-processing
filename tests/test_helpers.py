@@ -105,11 +105,11 @@ class FakeClient():
                                        '13059.LP127829A02': ['LP127829A-2'],
                                        '13059.BLANK3.3B': ['BLANK3.3B'],
                                        '13059.EP529635B02': ['EP529635B-2'],
-                                       '13059.EP542578B04': ['EP542578B-4'],
-                                       '13059.EP446602B01': ['EP446602B-1'],
-                                       '13059.EP121011B01': ['EP121011B-1'],
-                                       '13059.EP636802A01': ['EP636802A-1'],
-                                       '13059.SP573843A04': ['SP573843A-4']}}
+                                       '13059.EP542578B04': ['EP542578B.4'],
+                                       '13059.EP446602B01': ['EP446602B.1'],
+                                       '13059.EP121011B01': ['EP121011B.1'],
+                                       '13059.EP636802A01': ['EP636802A.1'],
+                                       '13059.SP573843A04': ['SP573843A.4']}}
 
         self.tids_11661 = {"header": ["tube_id"],
                            "samples": {"11661.1.24": ["1.24"],
@@ -261,11 +261,11 @@ class TestHelpers(TestCase):
         wf.generate_special_map()
 
         obs = wf.special_map
-        exp = [('NYU_BMS_Melanoma_13059',
+        exp = [('StudyA_13059',
                 join(self.fake_client.base_path, 'uploads/13059'), '13059'),
-               ('Feist_11661',
+               ('StudyB_11661',
                 join(self.fake_client.base_path, 'uploads/11661'), '11661'),
-               ('Gerwick_6123',
+               ('StudyC_6123',
                 join(self.fake_client.base_path, 'uploads/6123'), '6123')]
 
         self.assertEqual(obs, exp)
@@ -275,11 +275,11 @@ class TestHelpers(TestCase):
         wf.generate_special_map()
         obs = wf.pipeline.get_project_info()
 
-        exp = [{'project_name': 'NYU_BMS_Melanoma_13059', 'qiita_id': '13059',
+        exp = [{'project_name': 'StudyA_13059', 'qiita_id': '13059',
                 'contains_replicates': False},
-               {'project_name': 'Feist_11661', 'qiita_id': '11661',
+               {'project_name': 'StudyB_11661', 'qiita_id': '11661',
                 'contains_replicates': False},
-               {'project_name': 'Gerwick_6123', 'qiita_id': '6123',
+               {'project_name': 'StudyC_6123', 'qiita_id': '6123',
                 'contains_replicates': False}]
 
         self.assertEqual(obs, exp)
@@ -299,11 +299,11 @@ class TestHelpers(TestCase):
                     '13059.LP127829A02': ['LP127829A-2'],
                     '13059.BLANK3.3B': ['BLANK3.3B'],
                     '13059.EP529635B02': ['EP529635B-2'],
-                    '13059.EP542578B04': ['EP542578B-4'],
-                    '13059.EP446602B01': ['EP446602B-1'],
-                    '13059.EP121011B01': ['EP121011B-1'],
-                    '13059.EP636802A01': ['EP636802A-1'],
-                    '13059.SP573843A04': ['SP573843A-4']}
+                    '13059.EP542578B04': ['EP542578B.4'],
+                    '13059.EP446602B01': ['EP446602B.1'],
+                    '13059.EP121011B01': ['EP121011B.1'],
+                    '13059.EP636802A01': ['EP636802A.1'],
+                    '13059.SP573843A04': ['SP573843A.4']}
 
         self.assertEqual(obs_samples, exp_samples)
         self.assertDictEqual(obs_tids, exp_tids)
@@ -318,11 +318,11 @@ class TestHelpers(TestCase):
                          'LP127829A02': 'LP127829A-2',
                          'BLANK3.3B': 'BLANK3.3B',
                          'EP529635B02': 'EP529635B-2',
-                         'EP542578B04': 'EP542578B-4',
-                         'EP446602B01': 'EP446602B-1',
-                         'EP121011B01': 'EP121011B-1',
-                         'EP636802A01': 'EP636802A-1',
-                         'SP573843A04': 'SP573843A-4'},
+                         'EP542578B04': 'EP542578B.4',
+                         'EP446602B01': 'EP446602B.1',
+                         'EP121011B01': 'EP121011B.1',
+                         'EP636802A01': 'EP636802A.1',
+                         'SP573843A04': 'SP573843A.4'},
                '11661': {'1.24': '1.24', '1.57': '1.57', '1.86': '1.86',
                          '10.17': '10.17', '10.41': '10.41', '10.64': '10.64',
                          '11.18': '11.18', '11.43': '11.43', '11.64': '11.64',

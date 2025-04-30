@@ -799,7 +799,7 @@ class Pipeline:
         """
         Split fully-qualified project_name into a project_name and a qiita-id
         if possible. Else return project_name and None.
-        :param project_name: A fully-qualified project name e.g: Feist_1161.
+        :param project_name: A fully-qualified project name e.g: StudyB_1161.
         :param short_names: True returns orig. value. False returns name only.
         :return: Tuple (project-name, qiita-id)
         """
