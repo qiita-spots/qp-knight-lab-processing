@@ -373,6 +373,10 @@ class Job:
         stdout = results['stdout']
 
         job_id = stdout.strip().split()[-1]
+        # during testing sometimes job_id would be a fullpath and the
+        # log_fp creation will fail so making sure this doesn't happen
+        if job_id.startswith('/'):
+            job_id = basename(job_id)
 
         # Just to give some time for everything to be set up properly
         sleep(10)

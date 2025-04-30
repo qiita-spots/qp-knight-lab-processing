@@ -9,6 +9,9 @@ from qp_klp.WorkflowFactory import WorkflowFactory
 from unittest import main
 from os import makedirs
 from os.path import dirname, abspath, join
+from shutil import copyfile
+from pathlib import Path
+import pandas as pd
 from qp_klp.Protocol import (PROTOCOL_NAME_ILLUMINA,
                              PROTOCOL_NAME_TELLSEQ)
 from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
@@ -23,8 +26,8 @@ from sequence_processing_pipeline.PipelineError import PipelineError
 class WorkflowFactoryTests(PluginTestCase):
     def setUp(self):
         self.remove_these = []
-        self.output_dir = join(
-            dirname(abspath(__file__)), 'tests', 'test_output')
+        self.base_dir = dirname(abspath(__file__))
+        self.output_dir = join(self.base_dir, 'tests', 'test_output')
 
     def tearDown(self):
         for fp in self.remove_these:
@@ -126,6 +129,67 @@ class WorkflowFactoryTests(PluginTestCase):
         with self.assertRaisesRegex(
                 PipelineError, 'There are no fastq files for FastQCJob'):
             wf.execute_pipeline()
+
+        # inject Convert/NuQC/FastQC/MultiQC/GenPrepFileJob files so we can
+        # move down the pipeline; first let's create the base folders
+        gz_source = f'{self.base_dir}/data/dummy.fastq.gz'
+        convert_dir = f'{self.output_dir}/ConvertJob'
+        reports_dir = f'{self.output_dir}/ConvertJob/Reports'
+        nuqc_dir = f'{self.output_dir}/NuQCJob'
+        fastqc_dir = f'{self.output_dir}/FastQCJob/logs/'
+        multiqc_dir = f'{self.output_dir}/MultiQCJob/logs/'
+        genprep_dir = (f'{self.output_dir}/GenPrepFileJob/'
+                       '211021_A00000_0000_SAMPLE/')
+        makedirs(convert_dir, exist_ok=True)
+        Path(f'{convert_dir}/job_completed').touch()
+        makedirs(reports_dir, exist_ok=True)
+        makedirs(nuqc_dir, exist_ok=True)
+        makedirs(fastqc_dir, exist_ok=True)
+        makedirs(multiqc_dir, exist_ok=True)
+        makedirs(genprep_dir, exist_ok=True)
+        # now let's create the required project folders
+        for project in wf.pipeline.get_project_info():
+            sp = project['project_name']
+            makedirs(f'{convert_dir}/{sp}', exist_ok=True)
+            makedirs(f'{nuqc_dir}/filtered_sequences/{sp}', exist_ok=True)
+            makedirs(f'{genprep_dir}/{sp}/filtered_sequences/', exist_ok=True)
+
+        # then loop over samples and stage all fastq.gz files
+        demux_stats = []
+        samples = wf.pipeline.sample_sheet.samples
+        for i, sample in enumerate(samples):
+            rp = sample["Sample_ID"]
+            sp = sample["Sample_Project"]
+
+            # ConvertJob
+            demux_stats.append(
+                {'Lane': sample['Lane'], 'SampleID': rp,
+                    'Sample_Project': sp, 'Index': sample['index'],
+                 '# Reads': 2})
+            dname = f'{convert_dir}/{sp}'
+            copyfile(gz_source, f'{dname}/{rp}_L001_R1_001.fastq.gz')
+            copyfile(gz_source, f'{dname}/{rp}_L001_R2_001.fastq.gz')
+
+            # NuQCJob
+            dname = f'{nuqc_dir}/filtered_sequences/{sp}'
+            copyfile(gz_source, f'{dname}/{rp}_L001_R1_001.fastq.gz')
+            copyfile(gz_source, f'{dname}/{rp}_L001_R2_001.fastq.gz')
+
+            # GenPrepFileJob
+            gprep_base = f'{genprep_dir}/{sp}/filtered_sequences/{rp}'
+            copyfile(gz_source, f'{gprep_base}_L001_R1_001.fastq.gz')
+            copyfile(gz_source, f'{gprep_base}_L001_R2_001.fastq.gz')
+
+        # this is required by the Convert step
+        pd.DataFrame(demux_stats).set_index('SampleID').to_csv(
+            f'{reports_dir}/Demultiplex_Stats.csv')
+
+        # generating the "*.completed" files
+        for i in range(len(samples)*3):
+            Path(f'{fastqc_dir}/FastQCJob_{i}.completed').touch()
+            Path(f'{multiqc_dir}/MultiQCJob_{i}.completed').touch()
+
+        wf.execute_pipeline()
 
     def test_metatranscriptomic_workflow_creation(self):
         kwargs = {"uif_path": "tests/data/sample-sheets/"
