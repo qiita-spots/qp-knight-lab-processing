@@ -503,9 +503,9 @@ class Workflow():
 
             results_sn = self._process_sample_names(p_name, qiita_id,
                                                     samples)
-
+            rsn = results_sn[0]
             msgs.append('Number of sample-names not in Qiita: '
-                        f'{len(results_sn[0])}; {results_sn[0][:3]}')
+                        f'{len(rsn)}; {list(rsn)[:3]}')
 
             use_tids = False
 
@@ -517,8 +517,9 @@ class Workflow():
                 # check for possible match w/tube-ids, if defined in project.
                 results_tid = self._process_tube_ids(qiita_id, samples)
                 if results_tid:
+                    rtid = results_tid[0]
                     msgs.append('Number of sample-names not in Qiita: '
-                                f'{len(results_tid[0])}; {results_tid[0][:3]}')
+                                f'{len(rtid)}; {list(rtid)[:3]}')
 
                     if len(results_tid[0]) == 0:
                         # all values were matched to tube-ids.
