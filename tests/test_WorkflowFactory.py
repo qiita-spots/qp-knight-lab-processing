@@ -8,6 +8,7 @@
 from qp_klp.WorkflowFactory import WorkflowFactory
 from unittest import main
 from os import makedirs
+from os.path import dirname, abspath, join
 from qp_klp.Protocol import (PROTOCOL_NAME_ILLUMINA,
                              PROTOCOL_NAME_TELLSEQ)
 from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
@@ -16,11 +17,14 @@ from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
 from shutil import rmtree
 from qiita_client.testing import PluginTestCase
 from qiita_client.exceptions import NotFoundError
+from sequence_processing_pipeline.PipelineError import PipelineError
 
 
 class WorkflowFactoryTests(PluginTestCase):
     def setUp(self):
         self.remove_these = []
+        self.output_dir = join(
+            dirname(abspath(__file__)), 'tests', 'test_output')
 
     def tearDown(self):
         for fp in self.remove_these:
@@ -106,7 +110,7 @@ class WorkflowFactoryTests(PluginTestCase):
                   "lane_number": "1",
                   "config_fp": "tests/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
-                  "output_dir": "tests/test_output",
+                  "output_dir": self.output_dir,
                   "job_id": "78901",
                   "is_restart": False
                   }
@@ -120,7 +124,7 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
         with self.assertRaisesRegex(
-                NotFoundError, '{"message": "Study not found"}'):
+                PipelineError, 'There are no fastq files for FastQCJob'):
             wf.execute_pipeline()
 
     def test_metatranscriptomic_workflow_creation(self):
@@ -130,7 +134,7 @@ class WorkflowFactoryTests(PluginTestCase):
                   "lane_number": "1",
                   "config_fp": "tests/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
-                  "output_dir": "tests/test_output",
+                  "output_dir": self.output_dir,
                   "job_id": "78901",
                   "is_restart": False
                   }
@@ -144,7 +148,7 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.assay_type, ASSAY_NAME_METATRANSCRIPTOMIC)
 
         with self.assertRaisesRegex(
-                NotFoundError, '{"message": "Study not found"}'):
+                PipelineError, 'There are no fastq files for FastQCJob'):
             wf.execute_pipeline()
 
     def test_amplicon_workflow_creation(self):
@@ -152,7 +156,7 @@ class WorkflowFactoryTests(PluginTestCase):
                   "qclient": self.qclient,
                   "config_fp": "tests/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
-                  "output_dir": "tests/test_output",
+                  "output_dir": self.output_dir,
                   "job_id": "78901",
                   "is_restart": False
                   }
@@ -175,7 +179,7 @@ class WorkflowFactoryTests(PluginTestCase):
                   "qclient": self.qclient,
                   "config_fp": "tests/configuration.json",
                   "run_identifier": "211021_A00000_0000_SAMPLE",
-                  "output_dir": "tests/test_output",
+                  "output_dir": self.output_dir,
                   "job_id": "78901",
                   "lane_number": "1",
                   "is_restart": False
@@ -190,7 +194,8 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
         with self.assertRaisesRegex(
-                NotFoundError, '{"message": "Study not found"}'):
+                FileNotFoundError,
+                'TellReadJob/sample_index_list_TellReadJob.txt'):
             wf.execute_pipeline()
 
 

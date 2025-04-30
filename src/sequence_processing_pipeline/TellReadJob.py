@@ -89,10 +89,9 @@ class TellReadJob(Job):
             # job to return a more descriptive message to the user.
             # TODO: We need more examples of failed jobs before we can create
             #  a parser for the logs.
-            # info = self.parse_logs()
+            info = self.parse_logs()
             # prepend just the message component of the Error.
-            # info.insert(0, str(e))
-            info = str(e)
+            info.insert(0, str(e))
             raise JobFailedError('\n'.join(info))
 
         self.mark_job_completed()

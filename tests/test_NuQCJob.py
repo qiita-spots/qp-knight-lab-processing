@@ -27,9 +27,9 @@ class TestNuQCJob(unittest.TestCase):
         )
         self.mmi_db_paths = [self.path("mmi.db")]
         self.project_list = [
-            "NYU_BMS_Melanoma_13059",
-            "Feist_11661",
-            "Gerwick_6123",
+            "StudyA_13059",
+            "StudyB_11661",
+            "StudyC_6123",
         ]
         self.qiita_job_id = "abcdabcdabcdabcdabcdabcdabcdabcd"
         self.maxDiff = None
@@ -62,7 +62,7 @@ class TestNuQCJob(unittest.TestCase):
             # strip the qiita-id from a project-name in order to test
             # NuQCJob's ability to match project directories for both new and
             # legacy project folders w/in a run-directory.
-            tmp = "Feist" if project_name == "Feist_11661" else project_name
+            tmp = "StudyB" if project_name == "StudyB_11661" else project_name
             sample_path = self.fastq_path(tmp)
             makedirs(sample_path, exist_ok=True)
 
@@ -80,7 +80,7 @@ class TestNuQCJob(unittest.TestCase):
                 with gzip.open(rr_fp, "wb") as f:
                     f.write(b"@my_seq_id BX:Z:TATGACACATGCGGCCCT\n")
 
-        self.feist_ids = [
+        self.StudyB_ids = [
             "JM-MEC__Staphylococcus_aureusstrain_BERTI-R08624",
             "AB5075_AZM_TALE_in_MHB_A_baumannii_AB5075_WT_1_69",
             "JM-Metabolic__GN0_2148",
@@ -466,7 +466,7 @@ class TestNuQCJob(unittest.TestCase):
             "JM-Metabolic__GN04612",
         ]
 
-        self.gerwick_ids = ["5B", "3A", "6A", "8A", "4A", "7A", "GFR", "ISB"]
+        self.StudyC_ids = ["5B", "3A", "6A", "8A", "4A", "7A", "GFR", "ISB"]
 
         self.nyu_ids = [
             "22_001_710_503_791_00",
@@ -823,7 +823,7 @@ class TestNuQCJob(unittest.TestCase):
             "lp127896a01",
         ]
 
-        self.sample_ids = self.feist_ids + self.gerwick_ids + self.nyu_ids
+        self.sample_ids = self.StudyB_ids + self.StudyC_ids + self.nyu_ids
 
         self.qc_log_path = join(self.output_path, "NuQCJob", "logs")
         makedirs(self.qc_log_path, exist_ok=True)
@@ -2270,18 +2270,18 @@ class TestNuQCJob(unittest.TestCase):
 
         # test _move_trimmed_files() by verifying that only the interleave
         # fastq files from the NYU project are moved.
-        job._move_trimmed_files("NYU_BMS_Melanoma_13059", trimmed_only_path)
+        job._move_trimmed_files("StudyA_13059", trimmed_only_path)
 
-        new_path = join(trimmed_only_path, "NYU_BMS_Melanoma_13059")
+        new_path = join(trimmed_only_path, "StudyA_13059")
 
         exp = {
-            'NuQCJob/only-adapter-filtered/NYU_BMS_Melanoma_13059/EP890158A02'
+            'NuQCJob/only-adapter-filtered/StudyA_13059/EP890158A02'
             '_S58_L001_R1_001.interleave.fastq.gz',
-            'NuQCJob/only-adapter-filtered/NYU_BMS_Melanoma_13059/EP023801B04'
+            'NuQCJob/only-adapter-filtered/StudyA_13059/EP023801B04'
             '_S27_L001_R1_001.interleave.fastq.gz',
-            'NuQCJob/only-adapter-filtered/NYU_BMS_Melanoma_13059/EP890158A02'
+            'NuQCJob/only-adapter-filtered/StudyA_13059/EP890158A02'
             '_S58_L001_R2_001.interleave.fastq.gz',
-            'NuQCJob/only-adapter-filtered/NYU_BMS_Melanoma_13059/EP023801B04'
+            'NuQCJob/only-adapter-filtered/StudyA_13059/EP023801B04'
             '_S27_L001_R2_001.interleave.fastq.gz'
             }
 
@@ -2292,7 +2292,7 @@ class TestNuQCJob(unittest.TestCase):
                 some_path = some_path.replace(self.path(""), "")
                 obs.append(some_path)
 
-        # confirm that only the samples in NYU_BMS_Melanoma_13059 were
+        # confirm that only the samples in StudyA_13059 were
         # moved.
         self.assertEqual(set(obs), exp)
 

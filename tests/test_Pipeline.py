@@ -130,25 +130,25 @@ class TestPipeline(unittest.TestCase):
         df.to_csv(output_file_path, sep='\t', index=False, header=True)
 
     def test_make_sif_fname(self):
-        exp = '211021_A00000_0000_SAMPLE_NYU_BMS_Melanoma_13059_blanks.tsv'
+        exp = '211021_A00000_0000_SAMPLE_StudyA_13059_blanks.tsv'
         obs = Pipeline.make_sif_fname('211021_A00000_0000_SAMPLE',
-                                      'NYU_BMS_Melanoma_13059')
+                                      'StudyA_13059')
         self.assertEqual(exp, obs)
 
     def test_is_sif_fp(self):
         obs1 = Pipeline.is_sif_fp("/path/to/sifs/211021_A00000_0000_SAMPLE_"
-                                  "NYU_BMS_Melanoma_13059_blanks.tsv")
+                                  "StudyA_13059_blanks.tsv")
         self.assertTrue(obs1)
 
         obs2 = Pipeline.is_sif_fp("/path/to/sifs/211021_A00000_0000_SAMPLE_"
-                                  "NYU_BMS_Melanoma_13059_lord_of_the.sif")
+                                  "StudyA_13059_lord_of_the.sif")
         self.assertFalse(obs2)
 
     def test_get_qiita_id_from_sif_fp(self):
         exp = "13059"
         obs = Pipeline.get_qiita_id_from_sif_fp(
             "/path/to/sifs/211021_A00000_0000_SAMPLE_"
-            "NYU_BMS_Melanoma_13059_blanks.tsv")
+            "StudyA_13059_blanks.tsv")
         self.assertEqual(exp, obs)
 
     def test_validate_mapping_file_numeric_ids(self):
@@ -197,7 +197,7 @@ class TestPipeline(unittest.TestCase):
                             self.output_file_path, self.qiita_id,
                             Pipeline.METAGENOMIC_PTYPE)
 
-        obs = pipeline.get_orig_names_from_sheet('Feist_11661')
+        obs = pipeline.get_orig_names_from_sheet('StudyB_11661')
         exp = {'BLANK.43.12G', 'BLANK.43.12H', 'JBI.KHP.HGL.021',
                'JBI.KHP.HGL.022', 'JBI.KHP.HGL.023', 'JBI.KHP.HGL.024',
                'RMA.KHP.rpoS.Mage.Q97D', 'RMA.KHP.rpoS.Mage.Q97E',
@@ -417,24 +417,24 @@ class TestPipeline(unittest.TestCase):
 
         paths = pipeline.generate_sample_info_files()
         exp = [(f'{self.path()}/output_dir/{self.good_run_id}'
-                '_NYU_BMS_Melanoma_13059_blanks.tsv'),
+                '_StudyA_13059_blanks.tsv'),
                (f'{self.path()}/output_dir/{self.good_run_id}'
-                '_Feist_11661_blanks.tsv'),
+                '_StudyB_11661_blanks.tsv'),
                (f'{self.path()}/output_dir/{self.good_run_id}'
-                '_Gerwick_6123_blanks.tsv')]
+                '_StudyC_6123_blanks.tsv')]
 
         self.assertCountEqual(paths, exp)
 
         # confirm files contain the expected number of lines.
         # This is going to be based on the number of samples named 'BLANK*'
         # in good-sample-sheet.csv.
-        exp_lines = {f'{self.good_run_id}_NYU_BMS_Melanoma_13059_blanks.tsv':
+        exp_lines = {f'{self.good_run_id}_StudyA_13059_blanks.tsv':
                      33,
-                     f'{self.good_run_id}_Feist_11661_blanks.tsv': 8,
-                     f'{self.good_run_id}_Gerwick_6123_blanks.tsv': 2}
+                     f'{self.good_run_id}_StudyB_11661_blanks.tsv': 8,
+                     f'{self.good_run_id}_StudyC_6123_blanks.tsv': 2}
 
         exp_first_lines = {
-            f'{self.good_run_id}_NYU_BMS_Melanoma_13059_blanks.tsv':
+            f'{self.good_run_id}_StudyA_13059_blanks.tsv':
             'BLANK1.1A\t2021-10-21\t193\t'
             'Control\tNegative\tSterile w'
             'ater blank\tSterile water blank\turban biome\tres'
@@ -442,29 +442,29 @@ class TestPipeline(unittest.TestCase):
             'r\tmisc environment\tUSA:CA:'
             'San Diego\tBLANK1.1A\t32.5\t'
             '-117.25\tcontrol blank\tmeta'
-            'genome\t256318\tBLANK1.1A\tN'
-            'YU_BMS_Melanoma\tTRUE\t'
+            'genome\t256318\tBLANK1.1A\t'
+            'StudyA\tTRUE\t'
             'UCSD\tFALSE',
-            f'{self.good_run_id}_Feist_11661_blanks.tsv':
+            f'{self.good_run_id}_StudyB_11661_blanks.tsv':
             'BLANK.40.12G\t2021-10-21\t193\tControl'
             '\tNegative\tSterile water blank\tSterile water blank\turban '
             'biome\tresearch facility\tsterile water'
             '\tmisc environment\tUSA:CA:San Diego\tB'
             'LANK.40.12G\t32.5\t-117.25\tcontrol bla'
             'nk\tmetagenome\t256318\tBLANK.40.12G\t'
-            'Feist\tTRUE\tUCSD\tFALSE',
-            f'{self.good_run_id}_Gerwick_6123_blanks.tsv':
+            'StudyB\tTRUE\tUCSD\tFALSE',
+            f'{self.good_run_id}_StudyC_6123_blanks.tsv':
             'BLANK.41.12G\t2021-10-21\t193\tControl'
             '\tNegative\tSterile water blank\tSterile water blank\turban'
             ' biome\tresearch facility\tsterile wat'
             'er\tmisc environment\tUSA:CA:San Diego'
             '\tBLANK.41.12G\t32.5\t-117.25\tcontrol'
             ' blank\tmetagenome\t256318\tBLANK.41.1'
-            '2G\tGerwick\tTRUE\tUCSD\tFALSE'
+            '2G\tStudyC\tTRUE\tUCSD\tFALSE'
         }
 
         exp_last_lines = {
-            f'{self.good_run_id}_NYU_BMS_Melanoma_13059_blanks.tsv':
+            f'{self.good_run_id}_StudyA_13059_blanks.tsv':
             'BLANK4.4H\t2021-10-21\t193\t'
             'Control\tNegative\tSterile w'
             'ater blank\tSterile water blank\turban biome\tres'
@@ -472,25 +472,25 @@ class TestPipeline(unittest.TestCase):
             'r\tmisc environment\tUSA:CA:'
             'San Diego\tBLANK4.4H\t32.5\t'
             '-117.25\tcontrol blank\tmeta'
-            'genome\t256318\tBLANK4.4H\tN'
-            'YU_BMS_Melanoma\tTRUE\t'
+            'genome\t256318\tBLANK4.4H\t'
+            'StudyA\tTRUE\t'
             'UCSD\tFALSE',
-            f'{self.good_run_id}_Feist_11661_blanks.tsv':
+            f'{self.good_run_id}_StudyB_11661_blanks.tsv':
             'BLANK.43.12H\t2021-10-21\t193\tControl'
             '\tNegative\tSterile water blank\tSterile water blank\turban'
             ' biome\tresearch facility\tsterile wat'
             'er\tmisc environment\tUSA:CA:San Diego'
             '\tBLANK.43.12H\t32.5\t-117.25\tcontrol'
             ' blank\tmetagenome\t256318\tBLANK.43.1'
-            '2H\tFeist\tTRUE\tUCSD\tFALSE',
-            f'{self.good_run_id}_Gerwick_6123_blanks.tsv':
+            '2H\tStudyB\tTRUE\tUCSD\tFALSE',
+            f'{self.good_run_id}_StudyC_6123_blanks.tsv':
             'BLANK.41.12G\t2021-10-21\t193\tContro'
             'l\tNegative\tSterile water blank\tSterile water blank\turb'
             'an biome\tresearch facility\tsterile '
             'water\tmisc environment\tUSA:CA:San D'
             'iego\tBLANK.41.12G\t32.5\t-117.25\tco'
             'ntrol blank\tmetagenome\t256318\tBLAN'
-            'K.41.12G\tGerwick\tTRUE\tUCSD\t'
+            'K.41.12G\tStudyC\tTRUE\tUCSD\t'
             'FALSE'
         }
 
@@ -524,15 +524,15 @@ class TestPipeline(unittest.TestCase):
         # create a dataframe with duplicate information to pass to
         # generate_sample_information_files(). Confirm that the duplicates
         # are dropped. Confirm 'NOTBLANK_999A' is also filtered out.
-        df = pd.DataFrame(data=[('BLANK999_999A', 'NYU_BMS_Melanoma_13059'),
-                                ('BLANK999_999A', 'NYU_BMS_Melanoma_13059'),
-                                ('NOTBLANK_999A', 'NYU_BMS_Melanoma_13059')],
+        df = pd.DataFrame(data=[('BLANK999_999A', 'StudyA_13059'),
+                                ('BLANK999_999A', 'StudyA_13059'),
+                                ('NOTBLANK_999A', 'StudyA_13059')],
                           columns=['sample_name', 'project_name'])
 
         sif_path = pipeline.generate_sample_info_files(addl_info=df)
 
-        # get the path for the NYU_BMS_Melanoma dataset.
-        sif_path = [x for x in sif_path if 'NYU_BMS_Melanoma' in x][0]
+        # get the path for the StudyA dataset.
+        sif_path = [x for x in sif_path if 'StudyA' in x][0]
 
         exp_first_line = ("BLANK1.1A\t2021-10-21\t193\t"
                           "Control\tNegative\tSterile water blank\t"
@@ -541,14 +541,14 @@ class TestPipeline(unittest.TestCase):
                           "misc environment\tUSA:CA:San Diego\t"
                           "BLANK1.1A\t32.5\t-117.25\tcontrol blank\t"
                           "metagenome\t256318\tBLANK1.1A\t"
-                          "NYU_BMS_Melanoma\tTRUE\tUCSD\tFALSE")
+                          "StudyA\tTRUE\tUCSD\tFALSE")
 
         exp_last_line = ("BLANK4.4H\t2021-10-21\t193\tControl\tNegative\t"
                          "Sterile water blank\tSterile water blank\t"
                          "urban biome\tresearch facility\tsterile water\t"
                          "misc environment\tUSA:CA:San Diego\tBLANK4.4H\t"
                          "32.5\t-117.25\tcontrol blank\tmetagenome\t256318\t"
-                         "BLANK4.4H\tNYU_BMS_Melanoma\tTRUE\tUCSD\tFALSE")
+                         "BLANK4.4H\tStudyA\tTRUE\tUCSD\tFALSE")
 
         with open(sif_path, 'r') as f:
             obs_lines = f.readlines()
@@ -1525,20 +1525,20 @@ class TestPipeline(unittest.TestCase):
         exp = {'3A', '4A', '5B', '6A', 'BLANK.41.12G', '7A', '8A', 'ISB',
                'GFR'}
 
-        obs = set(pipeline.get_sample_names('Gerwick'))
+        obs = set(pipeline.get_sample_names('StudyC'))
         self.assertEqual(obs, exp)
 
     def test_get_project_info(self):
         exp_proj_info = [
-            {'project_name': 'NYU_BMS_Melanoma_13059', 'qiita_id': '13059',
+            {'project_name': 'StudyA_13059', 'qiita_id': '13059',
              'contains_replicates': False},
-            {'project_name': 'Feist_11661', 'qiita_id': '11661',
+            {'project_name': 'StudyB_11661', 'qiita_id': '11661',
              'contains_replicates': False},
-            {'project_name': 'Gerwick_6123', 'qiita_id': '6123',
+            {'project_name': 'StudyC_6123', 'qiita_id': '6123',
              'contains_replicates': False}]
 
-        exp_project_names = ['NYU_BMS_Melanoma_13059', 'Feist_11661',
-                             'Gerwick_6123']
+        exp_project_names = ['StudyA_13059', 'StudyB_11661',
+                             'StudyC_6123']
 
         # test sample-information-file generation.
         pipeline = Pipeline(self.good_config_file, self.good_run_id,
@@ -1562,7 +1562,7 @@ class TestPipeline(unittest.TestCase):
 
         # repeat test, but set short_names to True and confirm that the Qiita
         # IDs are not part of the project_names.
-        exp_project_names = ['NYU_BMS_Melanoma', 'Feist', 'Gerwick']
+        exp_project_names = ['StudyA', 'StudyB', 'StudyC']
 
         obs_proj_info = pipeline.get_project_info(short_names=True)
 
@@ -1619,16 +1619,16 @@ class TestPipeline(unittest.TestCase):
                             Pipeline.METAGENOMIC_PTYPE)
 
         tests = {
-            'True': [('NYU_BMS_Melanoma_13059', ('NYU_BMS_Melanoma', '13059')),
-                     ('Feist_11661', ('Feist', '11661')),
-                     ('Gerwick_6123', ('Gerwick', '6123')),
+            'True': [('StudyA_13059', ('StudyA', '13059')),
+                     ('StudyB_11661', ('StudyB', '11661')),
+                     ('StudyC_6123', ('StudyC', '6123')),
                      ('bar.baz_123', ('bar.baz', '123')),
                      ('Foobar', None),
                      ('', None),
                      (None, None)],
             'False': [('NYU_BMS_Mel_13059', ('NYU_BMS_Mel_13059', '13059')),
-                      ('Feist_11661', ('Feist_11661', '11661')),
-                      ('Gerwick_6123', ('Gerwick_6123', '6123')),
+                      ('StudyB_11661', ('StudyB_11661', '11661')),
+                      ('StudyC_6123', ('StudyC_6123', '6123')),
                       ('bar.baz_123', ('bar.baz_123', '123')),
                       ('Foobar', None),
                       ('', None),
@@ -2403,7 +2403,7 @@ class TestInstrumentUtils(unittest.TestCase):
                '231215_LH00444_0031_B222WHFLT4': {'id': 'LH00444',
                                                   'type': 'NovaSeq X Plus',
                                                   'date': '2023-12-16'},
-               '190809_D00611_0709_AH3CKJBCX3_RKL0040_Feist_36-39_2': {
+               '190809_D00611_0709_AH3CKJBCX3_RKL0040_StudyB_36-39_2': {
                    'id': 'D00611',
                    'type': 'HiSeq 2500',
                    'date': '2019-08-09'},
