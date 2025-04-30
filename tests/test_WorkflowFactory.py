@@ -106,30 +106,10 @@ class WorkflowFactoryTests(PluginTestCase):
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)
 
-    def test_metagenomic_workflow_creation(self):
-        kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
-                  "illumina/good_sheet1.csv",
-                  "qclient": self.qclient,
-                  "lane_number": "1",
-                  "config_fp": "tests/configuration.json",
-                  "run_identifier": "211021_A00000_0000_SAMPLE",
-                  "output_dir": self.output_dir,
-                  "job_id": "78901",
-                  "is_restart": False
-                  }
-
-        self._create_directory(kwargs['output_dir'])
-
-        wf = WorkflowFactory.generate_workflow(**kwargs)
-
-        # confirm that the proper type of workflow was generated.
-        self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
-        self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
-
-        with self.assertRaisesRegex(
-                PipelineError, 'There are no fastq files for FastQCJob'):
-            wf.execute_pipeline()
-
+    def _inject_data(self, wf):
+        '''This is a helper method for testing that all the steps are run
+           when testing wf.execute_pipeline()
+        '''
         # inject Convert/NuQC/FastQC/MultiQC/GenPrepFileJob files so we can
         # move down the pipeline; first let's create the base folders
         gz_source = f'{self.base_dir}/data/dummy.fastq.gz'
@@ -189,6 +169,32 @@ class WorkflowFactoryTests(PluginTestCase):
             Path(f'{fastqc_dir}/FastQCJob_{i}.completed').touch()
             Path(f'{multiqc_dir}/MultiQCJob_{i}.completed').touch()
 
+
+    def test_metagenomic_workflow_creation(self):
+        kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
+                  "illumina/good_sheet1.csv",
+                  "qclient": self.qclient,
+                  "lane_number": "1",
+                  "config_fp": "tests/configuration.json",
+                  "run_identifier": "211021_A00000_0000_SAMPLE",
+                  "output_dir": self.output_dir,
+                  "job_id": "78901",
+                  "is_restart": False
+                  }
+
+        self._create_directory(kwargs['output_dir'])
+
+        wf = WorkflowFactory.generate_workflow(**kwargs)
+
+        # confirm that the proper type of workflow was generated.
+        self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
+        self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
+
+        with self.assertRaisesRegex(
+                PipelineError, 'There are no fastq files for FastQCJob'):
+            wf.execute_pipeline()
+
+        self._inject_data(wf)
         wf.execute_pipeline()
 
     def test_metatranscriptomic_workflow_creation(self):
@@ -215,6 +221,9 @@ class WorkflowFactoryTests(PluginTestCase):
                 PipelineError, 'There are no fastq files for FastQCJob'):
             wf.execute_pipeline()
 
+        self._inject_data(wf)
+        wf.execute_pipeline()
+
     def test_amplicon_workflow_creation(self):
         kwargs = {"uif_path": "tests/data/pre-preps/good_pre_prep1.txt",
                   "qclient": self.qclient,
@@ -236,6 +245,9 @@ class WorkflowFactoryTests(PluginTestCase):
         with self.assertRaisesRegex(
                 NotFoundError, '{"message": "Study not found"}'):
             wf.execute_pipeline()
+
+        self._inject_data(wf)
+        wf.execute_pipeline()
 
     def test_tellseq_workflow_creation(self):
         kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
@@ -261,6 +273,10 @@ class WorkflowFactoryTests(PluginTestCase):
                 FileNotFoundError,
                 'TellReadJob/sample_index_list_TellReadJob.txt'):
             wf.execute_pipeline()
+
+        self._inject_data(wf)
+        wf.execute_pipeline()
+
 
 
 if __name__ == '__main__':
