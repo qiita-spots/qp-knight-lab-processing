@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <RunParameters xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Setup>
-    <ExperimentName>RKL0040_Feist_36-39_2</ExperimentName>
+    <ExperimentName>RKL0040_StudyB_36-39_2</ExperimentName>
     <ScanID>-999</ScanID>
     <FCPosition>A</FCPosition>
     <WorkFlowType>DUALINDEX</WorkFlowType>
@@ -33,7 +33,7 @@
     <ServiceRun>false</ServiceRun>
     <ApplicationName>HiSeq Control Software</ApplicationName>
     <ApplicationVersion>2.2.68</ApplicationVersion>
-    <RunID>190809_D00611_0709_AH3CKJBCX3_RKL0040_Feist_36-39_2</RunID>
+    <RunID>190809_D00611_0709_AH3CKJBCX3_RKL0040_StudyB_36-39_2</RunID>
     <RunStartDate>190809</RunStartDate>
     <IntegrationMode>Standalone</IntegrationMode>
     <BaseSpaceSettings>
@@ -131,7 +131,7 @@
     <Resume>false</Resume>
     <ResumeCycle>0</ResumeCycle>
     <SupportMultipleSurfacesInUI>true</SupportMultipleSurfacesInUI>
-    <TempFolder>D:\Illumina\HiSeqTemp\190809_D00611_0709_AH3CKJBCX3_RKL0040_Feist_36-39_2</TempFolder>
+    <TempFolder>D:\Illumina\HiSeqTemp\190809_D00611_0709_AH3CKJBCX3_RKL0040_StudyB_36-39_2</TempFolder>
     <RecipeFragmentVersion>1.5.21.0</RecipeFragmentVersion>
     <PromptForPeReagents>false</PromptForPeReagents>
     <MockRun>false</MockRun>
