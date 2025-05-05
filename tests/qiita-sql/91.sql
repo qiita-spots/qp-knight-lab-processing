@@ -1628,7 +1628,7 @@ VALUES
     (6124, '6124.Test.4.4.2015.example'),
     (6124, '6124.T.Test.7.19.15A'),
     (6124, '6124.Test.9.28.2014.example'),
-    (6124, '6124.Soil .Test.T2.2.Tube2'),
+    (6124, '6124.Soil.Test.T2.2.Tube2'),
     (6124, '6124.Test.3.24.2015.example'),
     (6124, '6124.Test.12.28.2011.example'),
     (6124, '6124.Test1.T1.1test.A'),

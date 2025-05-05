@@ -180,8 +180,8 @@ class WorkflowFactoryTests(PluginTestCase):
 
             # GenPrepFileJob
             gprep_base = f'{genprep_dir}/{sp}/filtered_sequences/{rp}'
-            copyfile(self.gz_source, f'{gprep_base}_L001_R1_001.fastq.gz')
-            copyfile(self.gz_source, f'{gprep_base}_L001_R2_001.fastq.gz')
+            Path(f'{gprep_base}_L001_R1_001.fastq.gz').touch()
+            Path(f'{gprep_base}_L001_R2_001.fastq.gz').touch()
 
         # this is required by the Convert step
         if tellseq:
