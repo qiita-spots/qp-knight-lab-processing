@@ -337,7 +337,14 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
         self._inject_data(wf)
-        wf.execute_pipeline()
+
+        # Metagenomic is a valid data type in the default qiita test
+        # database but job-id: 78901 doesn't exist; however, if we get
+        # to here, it means that all steps have ran to completion
+        # and the system is trying to create the preps.
+        with self.assertRaisesRegex(RuntimeError, 'invalid input '
+                                    'syntax for type uuid: "78901"'):
+            wf.execute_pipeline()
 
 
 if __name__ == '__main__':
