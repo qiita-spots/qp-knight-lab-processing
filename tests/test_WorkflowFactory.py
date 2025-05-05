@@ -170,8 +170,8 @@ class WorkflowFactoryTests(PluginTestCase):
                      'Sample_Project': sp, 'Index': sample['index'],
                      '# Reads': 2})
                 dname = f'{convert_dir}/{sp}'
-                copyfile(self.gz_source, f'{dname}/{rp}_L001_R1_001.fastq.gz')
-                copyfile(self.gz_source, f'{dname}/{rp}_L001_R2_001.fastq.gz')
+                Path(f'{dname}/{rp}_L001_R1_001.fastq.gz').touch()
+                Path(f'{dname}/{rp}_L001_R2_001.fastq.gz').touch()
 
             # NuQCJob
             dname = f'{nuqc_dir}/filtered_sequences/{sp}'
