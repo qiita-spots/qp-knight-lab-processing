@@ -132,4 +132,4 @@ dmypy.json
 tests/data/sample-sheets/*/*/*.csv
 
 # test output
-tests/data/output_dir/
+# tests/data/output_dir/

@@ -8,7 +8,6 @@ from sequence_processing_pipeline.MultiQCJob import MultiQCJob
 import pandas as pd
 from json import dumps
 from collections import defaultdict
-import re
 
 
 ASSAY_NAME_NONE = "Assay"
@@ -150,6 +149,12 @@ class Assay():
         """
         pass
 
+    def quality_control(self):
+        """This is an MetaOmic specific method, see that object for
+           more info
+        """
+        pass
+
     def execute_pipeline(self):
         '''
         Executes steps of pipeline in proper sequence.
@@ -205,28 +210,27 @@ class Assay():
 
         prep_paths = []
         self.prep_file_paths = {}
-        rematch = re.compile(
-            r"(?P<runid>[a-zA-Z0-9_-]+)\.(?P<qname>[a-zA-Z0-9_]+)"
-            r"(?P<qid>[0-9]{5,6})\..\.tsv")
 
         for root, dirs, files in walk(tmp):
             for _file in files:
-                # breakup the prep-info-file into segments
-                # (run-id, project_qid, other) and cleave
-                # the qiita-id from the project_name.
-                rer = rematch.match(_file)
-                if rer is None:
+                # we are looing for .tsv files and we are only interested
+                # in the string after the last _, which is the study_id
+                if not _file.endswith('.tsv'):
                     continue
-
-                _, _, qid = rer.groups()
-
+                # continue if no underscore
+                chunks = _file.rsplit('_', 1)
+                if len(chunks) <= 1:
+                    continue
+                # continue if no int after .
+                qid = chunks[-1].split('.')[0]
+                if not qid.isnumeric():
+                    continue
                 if qid not in self.prep_file_paths:
                     self.prep_file_paths[qid] = []
 
                 _path = abspath(join(root, _file))
-                if _path.endswith('.tsv'):
-                    prep_paths.append(_path)
-                    self.prep_file_paths[qid].append(_path)
+                prep_paths.append(_path)
+                self.prep_file_paths[qid].append(_path)
 
             for _dir in dirs:
                 if _dir == '1':

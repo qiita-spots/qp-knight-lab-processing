@@ -651,6 +651,9 @@ class Pipeline:
             controls = self.sample_sheet.get_denormalized_controls_list()
             df = pd.DataFrame(controls)
 
+        print(list(df.columns))
+        print(PROJECT_FULL_NAME_KEY in list(df.columns))
+
         projects = df[PROJECT_FULL_NAME_KEY].unique()
 
         paths = []
