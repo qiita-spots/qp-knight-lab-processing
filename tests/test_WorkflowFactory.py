@@ -308,7 +308,13 @@ class WorkflowFactoryTests(PluginTestCase):
             Path(f'{fastqc_dir}/FastQCJob_{i}.completed').touch()
             Path(f'{multiqc_dir}/MultiQCJob_{i}.completed').touch()
 
-        wf.execute_pipeline()
+        # Amplicon is a valid data type in the default qiita test
+        # database but job-id: 78901 doesn't exist; however, if we get
+        # to here, it means that all steps have ran to completion
+        # and the system is trying to create the preps.
+        with self.assertRaisesRegex(RuntimeError, 'invalid input '
+                                    'syntax for type uuid: "78901"'):
+            wf.execute_pipeline()
 
     def test_tellseq_workflow_creation(self):
         kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"

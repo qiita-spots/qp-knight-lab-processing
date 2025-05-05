@@ -651,12 +651,14 @@ class Pipeline:
             controls = self.sample_sheet.get_denormalized_controls_list()
             df = pd.DataFrame(controls)
 
-        print(list(df.columns))
-        print(PROJECT_FULL_NAME_KEY in list(df.columns))
+        paths = []
+
+        # there are not BLANKs to add
+        if df.empty:
+            return paths
 
         projects = df[PROJECT_FULL_NAME_KEY].unique()
 
-        paths = []
         for project in projects:
             project_info = parse_project_name(project)
 
@@ -690,9 +692,6 @@ class Pipeline:
 
             controls_in_proj_df = controls_in_proj_df[Pipeline.sif_header]
             controls_in_proj_df.to_csv(curr_fp, sep='\t', index=False)
-
-            # spp_metadata.write_extended_spp_metadata(
-            #     controls_in_proj_df, self.output_path, curr_fname)
 
         return paths
 
