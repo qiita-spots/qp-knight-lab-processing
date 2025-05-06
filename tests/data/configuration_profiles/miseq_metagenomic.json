@@ -20,7 +20,8 @@
         "sing_script_path": "/home/user/tellread-release-novaseqX/run_tellread_sing.sh",
         "tellread_cores": "4",
         "tellread_mem_limit": "16",
-        "wallclock_time_in_minutes": 1440
+        "wallclock_time_in_minutes": 1440,
+        "job_max_array_length": 100
       },
       "bcl-convert": {
         "nodes": 1,

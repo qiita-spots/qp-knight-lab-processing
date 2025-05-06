@@ -8,7 +8,10 @@
 from qp_klp.WorkflowFactory import WorkflowFactory
 from unittest import main
 from os import makedirs
-from os.path import dirname, abspath, join
+from os.path import dirname, abspath, join, exists
+from shutil import copyfile
+from pathlib import Path
+import pandas as pd
 from qp_klp.Protocol import (PROTOCOL_NAME_ILLUMINA,
                              PROTOCOL_NAME_TELLSEQ)
 from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
@@ -16,22 +19,26 @@ from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
                            ASSAY_NAME_AMPLICON)
 from shutil import rmtree
 from qiita_client.testing import PluginTestCase
-from qiita_client.exceptions import NotFoundError
-from sequence_processing_pipeline.PipelineError import PipelineError
 
 
 class WorkflowFactoryTests(PluginTestCase):
     def setUp(self):
-        self.remove_these = []
-        self.output_dir = join(
-            dirname(abspath(__file__)), 'tests', 'test_output')
+        self.base_dir = dirname(abspath(__file__))
+        self.output_dir = join(self.base_dir, 'test_output')
+        self.remove_these = [self.output_dir]
+
+        self.gz_source = f'{self.base_dir}/data/dummy.fastq.gz'
 
     def tearDown(self):
         for fp in self.remove_these:
-            rmtree(fp)
+            if exists(fp):
+                rmtree(fp)
 
     def _create_directory(self, fp):
-        makedirs(fp, exist_ok=True)
+        # just making sure that we always start with a clean folder:
+        if exists(fp):
+            rmtree(fp)
+        makedirs(fp)
         self.remove_these.append(fp)
 
     def test_no_parameters(self):
@@ -103,6 +110,92 @@ class WorkflowFactoryTests(PluginTestCase):
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)
 
+    def _inject_data(self, wf):
+        '''This is a helper method for testing that all the steps are run
+           when testing wf.execute_pipeline()
+        '''
+        samples = wf.pipeline.sample_sheet.samples
+        tellseq = True
+        if 'index' in dict(samples[0]).keys():
+            tellseq = False
+
+        # inject Convert/NuQC/FastQC/MultiQC/GenPrepFileJob files so we can
+        # move down the pipeline; first let's create the base folders
+        if tellseq:
+            reports_dir = f'{self.output_dir}/TellReadJob/'
+            convert_dir = f'{self.output_dir}/TRIntegrateJob/integrated'
+            makedirs(convert_dir, exist_ok=True)
+        else:
+            convert_dir = f'{self.output_dir}/ConvertJob'
+            reports_dir = f'{self.output_dir}/ConvertJob/Reports'
+            makedirs(convert_dir, exist_ok=True)
+            Path(f'{convert_dir}/job_completed').touch()
+        tellread_dir = f'{self.output_dir}/TellReadJob'
+        nuqc_dir = f'{self.output_dir}/NuQCJob'
+        fastqc_dir = f'{self.output_dir}/FastQCJob/logs/'
+        multiqc_dir = f'{self.output_dir}/MultiQCJob/logs/'
+        genprep_dir = (f'{self.output_dir}/GenPrepFileJob/'
+                       '211021_A00000_0000_SAMPLE/')
+        makedirs(reports_dir, exist_ok=True)
+        makedirs(nuqc_dir, exist_ok=True)
+        makedirs(fastqc_dir, exist_ok=True)
+        makedirs(multiqc_dir, exist_ok=True)
+        makedirs(genprep_dir, exist_ok=True)
+        # now let's create the required project folders
+        for project in wf.pipeline.get_project_info():
+            sp = project['project_name']
+            makedirs(f'{convert_dir}/{sp}', exist_ok=True)
+            makedirs(f'{nuqc_dir}/filtered_sequences/{sp}', exist_ok=True)
+            makedirs(f'{genprep_dir}/{sp}/filtered_sequences/', exist_ok=True)
+
+        # then loop over samples and stage all fastq.gz files
+        dstats = []
+        for i, sample in enumerate(samples):
+            rp = sample["Sample_ID"]
+            sp = sample["Sample_Project"]
+
+            # ConvertJob
+            if tellseq:
+                bid = sample['barcode_id']
+                dstats.append(
+                    {'Lane': sample['Lane'], 'SampleID': rp,
+                     'Sample_Project': sp, 'Barcode': bid,
+                     '# Reads': 2})
+                dname = f'{convert_dir}/{sp}'
+                copyfile(self.gz_source, f'{dname}/{bid}.R1.fastq.gz')
+                copyfile(self.gz_source, f'{dname}/{bid}.R2.fastq.gz')
+            else:
+                dstats.append(
+                    {'Lane': sample['Lane'], 'SampleID': rp,
+                     'Sample_Project': sp, 'Index': sample['index'],
+                     '# Reads': 2})
+                dname = f'{convert_dir}/{sp}'
+                Path(f'{dname}/{rp}_L001_R1_001.fastq.gz').touch()
+                Path(f'{dname}/{rp}_L001_R2_001.fastq.gz').touch()
+
+            # NuQCJob
+            dname = f'{nuqc_dir}/filtered_sequences/{sp}'
+            copyfile(self.gz_source, f'{dname}/{rp}_L001_R1_001.fastq.gz')
+            copyfile(self.gz_source, f'{dname}/{rp}_L001_R2_001.fastq.gz')
+
+            # GenPrepFileJob
+            gprep_base = f'{genprep_dir}/{sp}/filtered_sequences/{rp}'
+            Path(f'{gprep_base}_L001_R1_001.fastq.gz').touch()
+            Path(f'{gprep_base}_L001_R2_001.fastq.gz').touch()
+
+        # this is required by the Convert step
+        if tellseq:
+            pd.DataFrame(dstats).set_index('SampleID').to_csv(
+                f'{tellread_dir}/sample_index_list_TellReadJob.txt')
+        else:
+            pd.DataFrame(dstats).set_index('SampleID').to_csv(
+                f'{reports_dir}/Demultiplex_Stats.csv')
+
+        # generating the "*.completed" files
+        for i in range(len(samples)*3):
+            Path(f'{fastqc_dir}/FastQCJob_{i}.completed').touch()
+            Path(f'{multiqc_dir}/MultiQCJob_{i}.completed').touch()
+
     def test_metagenomic_workflow_creation(self):
         kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
                   "illumina/good_sheet1.csv",
@@ -123,8 +216,16 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
-        with self.assertRaisesRegex(
-                PipelineError, 'There are no fastq files for FastQCJob'):
+        self._inject_data(wf)
+
+        # Metagenomic is a valid data type in the default qiita test
+        # database but job-id: 78901 doesn't exist; however, if we get
+        # to here, it means that all steps have run to completion
+        # and the system is trying to create the preps.
+        # Note: Qiita job_id's are UUID in the database and this tests
+        # uses 78901 as the job_id so the db complains about the format
+        with self.assertRaisesRegex(RuntimeError, 'invalid input '
+                                    'syntax for type uuid: "78901"'):
             wf.execute_pipeline()
 
     def test_metatranscriptomic_workflow_creation(self):
@@ -147,15 +248,20 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METATRANSCRIPTOMIC)
 
-        with self.assertRaisesRegex(
-                PipelineError, 'There are no fastq files for FastQCJob'):
+        self._inject_data(wf)
+        # Metatranscriptomic is not a valid data type in the default qiita test
+        # database; however, if we get to here, it means that all steps have
+        # ran to completion and the system is trying to create the preps.
+        with self.assertRaisesRegex(RuntimeError, 'Metatranscriptomic not '
+                                    'valid for table data_type'):
             wf.execute_pipeline()
 
     def test_amplicon_workflow_creation(self):
+        runid = '211021_A00000_0000_SAMPLE'
         kwargs = {"uif_path": "tests/data/pre-preps/good_pre_prep1.txt",
                   "qclient": self.qclient,
                   "config_fp": "tests/configuration.json",
-                  "run_identifier": "211021_A00000_0000_SAMPLE",
+                  "run_identifier": runid,
                   "output_dir": self.output_dir,
                   "job_id": "78901",
                   "is_restart": False
@@ -169,8 +275,49 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_ILLUMINA)
         self.assertEqual(wf.assay_type, ASSAY_NAME_AMPLICON)
 
-        with self.assertRaisesRegex(
-                NotFoundError, '{"message": "Study not found"}'):
+        convert_dir = f'{self.output_dir}/ConvertJob/'
+        convertr_dir = f'{self.output_dir}/ConvertJob/{runid}_SMPL1/'
+        makedirs(convertr_dir, exist_ok=True)
+        copyfile(self.gz_source,
+                 f'{convertr_dir}/{runid}_SMPL1_S00_L001_R1_001.fastq.gz')
+        copyfile(self.gz_source,
+                 f'{convertr_dir}/{runid}_SMPL1_S00_L001_R2_001.fastq.gz')
+        Path(f'{convert_dir}/job_completed').touch()
+
+        nuqc_dir = (f'{self.output_dir}/NuQCJob/filtered_sequences/'
+                    f'{runid}_SMPL1')
+        makedirs(nuqc_dir, exist_ok=True)
+        copyfile(self.gz_source,
+                 f'{nuqc_dir}/{runid}_SMPL1_S00_L001_R1_001.fastq.gz')
+        copyfile(self.gz_source,
+                 f'{nuqc_dir}/{runid}_SMPL1_S00_L001_R2_001.fastq.gz')
+
+        for project in ['TestProj_1', 'TestProj_2']:
+            genprep_dir = (f'{self.output_dir}/GenPrepFileJob/'
+                           f'211021_A00000_0000_SAMPLE/{project}/amplicon/')
+            makedirs(genprep_dir, exist_ok=True)
+            copyfile(self.gz_source,
+                     f'{genprep_dir}/{runid}_SMPL1_S00_L001_R1_001.fastq.gz')
+            copyfile(self.gz_source,
+                     f'{genprep_dir}/{runid}_SMPL1_S00_L001_R2_001.fastq.gz')
+
+        fastqc_dir = f'{self.output_dir}/FastQCJob/logs/'
+        multiqc_dir = f'{self.output_dir}/MultiQCJob/logs/'
+        makedirs(fastqc_dir, exist_ok=True)
+        makedirs(multiqc_dir, exist_ok=True)
+        # generating the "*.completed" files
+        for i in range(3):
+            Path(f'{fastqc_dir}/FastQCJob_{i}.completed').touch()
+            Path(f'{multiqc_dir}/MultiQCJob_{i}.completed').touch()
+
+        # Amplicon is a valid data type in the default qiita test
+        # database but job-id: 78901 doesn't exist; however, if we get
+        # to here, it means that all steps have run to completion
+        # and the system is trying to create the preps.
+        # Note: Qiita job_id's are UUID in the database and this tests
+        # uses 78901 as the job_id so the db complains about the format
+        with self.assertRaisesRegex(RuntimeError, 'invalid input '
+                                    'syntax for type uuid: "78901"'):
             wf.execute_pipeline()
 
     def test_tellseq_workflow_creation(self):
@@ -193,9 +340,16 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_TELLSEQ)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
-        with self.assertRaisesRegex(
-                FileNotFoundError,
-                'TellReadJob/sample_index_list_TellReadJob.txt'):
+        self._inject_data(wf)
+
+        # Metagenomic is a valid data type in the default qiita test
+        # database but job-id: 78901 doesn't exist; however, if we get
+        # to here, it means that all steps have run to completion
+        # and the system is trying to create the preps.
+        # Note: Qiita job_id's are UUID in the database and this tests
+        # uses 78901 as the job_id so the db complains about the format
+        with self.assertRaisesRegex(RuntimeError, 'invalid input '
+                                    'syntax for type uuid: "78901"'):
             wf.execute_pipeline()
 
 

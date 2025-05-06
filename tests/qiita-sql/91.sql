@@ -15,6 +15,19 @@ INSERT INTO
     )
 VALUES
     (
+        2,
+        'demo@microbio.me',
+        1,
+        true,
+        true,
+        1,
+        false,
+        'Study 2',
+        '',
+        '',
+        ''
+    ),
+    (
         6123,
         'demo@microbio.me',
         1,
@@ -68,9 +81,16 @@ VALUES
     );
 
 -- Add studies to Qiita portal
-INSERT INTO qiita.study_portal (study_id, portal_type_id) VALUES (6123, 1), (6124, 1), (11661, 1), (13059, 1);
+INSERT INTO qiita.study_portal (study_id, portal_type_id) VALUES (2, 1), (6123, 1), (6124, 1), (11661, 1), (13059, 1);
 
 -- Creating the sample-metadata for tne new studies
+
+
+CREATE TABLE qiita.sample_2 (
+    sample_id VARCHAR NOT NULL PRIMARY KEY,
+    sample_values JSONB NOT NULL
+);
+INSERT INTO qiita.sample_2 (sample_id, sample_values) VALUES  ('qiita_sample_column_names', '{}'::json);
 
 CREATE TABLE qiita.sample_6123 (
     sample_id VARCHAR NOT NULL PRIMARY KEY,
@@ -100,6 +120,19 @@ INSERT INTO qiita.sample_13059 (sample_id, sample_values) VALUES  ('qiita_sample
 INSERT INTO
     qiita.study_sample (study_id, sample_id)
 VALUES
+    -- 2
+    (2, 'SKD9.640182'),
+    (2, 'SKB8.640193'),
+    (2, 'SKM3.640197'),
+    (2, 'SKB9.640200'),
+    (2, 'SKB5.640181'),
+    (2, 'SKM2.640199'),
+    (2, 'SKD8.640184'),
+    (2, 'SKB3.640195'),
+    (2, 'SKD3.640198'),
+    (2, 'SKD6.640190'),
+    (2, 'SKM9.640192'),
+    (2, 'SKD5.640186'),
     -- 11661
     (11661, '11661.CDPH-SAL.Salmonella.Typhi.MDL-143'),
     (11661, '11661.CDPH-SAL.Salmonella.Typhi.MDL-144'),
@@ -1595,7 +1628,7 @@ VALUES
     (6124, '6124.Test.4.4.2015.example'),
     (6124, '6124.T.Test.7.19.15A'),
     (6124, '6124.Test.9.28.2014.example'),
-    (6124, '6124.Soil .Test.T2.2.Tube2'),
+    (6124, '6124.Soil.Test.T2.2.Tube2'),
     (6124, '6124.Test.3.24.2015.example'),
     (6124, '6124.Test.12.28.2011.example'),
     (6124, '6124.Test1.T1.1test.A'),

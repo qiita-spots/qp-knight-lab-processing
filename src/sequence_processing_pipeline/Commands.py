@@ -66,8 +66,9 @@ def split_similar_size_bins(data_location_path, max_file_list_size_in_gb,
     if fp is not None:
         fp.close()
 
+    code_dir = 'qp-knight-lab-processing/tests/test_output/'
     is_test = data_location_path.endswith(
-        'qp-knight-lab-processing/tests/tests/test_output/ConvertJob')
+        (f'{code_dir}ConvertJob', f'{code_dir}TRIntegrateJob/integrated'))
 
     if split_offset == 0 and not is_test:
         raise ValueError("No splits made")
