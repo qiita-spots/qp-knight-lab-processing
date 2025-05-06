@@ -41,6 +41,7 @@ dependencies = [
     "click>=3.3",
     "future",
     "pandas",
+    "lxml",
     'requests',
     'flake8',
     'nose',
