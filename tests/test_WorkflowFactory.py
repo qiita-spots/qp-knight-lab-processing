@@ -220,7 +220,7 @@ class WorkflowFactoryTests(PluginTestCase):
 
         # Metagenomic is a valid data type in the default qiita test
         # database but job-id: 78901 doesn't exist; however, if we get
-        # to here, it means that all steps have ran to completion
+        # to here, it means that all steps have run to completion
         # and the system is trying to create the preps.
         with self.assertRaisesRegex(RuntimeError, 'invalid input '
                                     'syntax for type uuid: "78901"'):
@@ -310,7 +310,7 @@ class WorkflowFactoryTests(PluginTestCase):
 
         # Amplicon is a valid data type in the default qiita test
         # database but job-id: 78901 doesn't exist; however, if we get
-        # to here, it means that all steps have ran to completion
+        # to here, it means that all steps have run to completion
         # and the system is trying to create the preps.
         with self.assertRaisesRegex(RuntimeError, 'invalid input '
                                     'syntax for type uuid: "78901"'):
@@ -340,7 +340,7 @@ class WorkflowFactoryTests(PluginTestCase):
 
         # Metagenomic is a valid data type in the default qiita test
         # database but job-id: 78901 doesn't exist; however, if we get
-        # to here, it means that all steps have ran to completion
+        # to here, it means that all steps have run to completion
         # and the system is trying to create the preps.
         with self.assertRaisesRegex(RuntimeError, 'invalid input '
                                     'syntax for type uuid: "78901"'):

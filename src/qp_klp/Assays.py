@@ -143,18 +143,6 @@ class Assay():
             # this is a normal pre-prep or sample-sheet.
             return (a_name, False)
 
-    def post_process_raw_fastq_output(self):
-        """This is an Amplicon specific method, see that object for
-           more info
-        """
-        pass
-
-    def quality_control(self):
-        """This is an MetaOmic specific method, see that object for
-           more info
-        """
-        pass
-
     def execute_pipeline(self):
         '''
         Executes steps of pipeline in proper sequence.
@@ -181,9 +169,7 @@ class Assay():
 
         self.update_status("QC-ing reads", 2, 9)
         if "NuQCJob" not in self.skip_steps:
-            # there is no failed samples reporting for amplicon runs.
-            self.post_process_raw_fastq_output()
-            self.quality_control()
+            self.qc_reads()
 
         self.update_status("Generating reports", 3, 9)
         if "FastQCJob" not in self.skip_steps:
@@ -195,10 +181,6 @@ class Assay():
 
         self.update_status("Generating preps", 4, 9)
         if "GenPrepFileJob" not in self.skip_steps:
-            # preps are currently associated with array mixin, but only
-            # because there are currently some slight differences in how
-            # FastQCJob gets instantiated(). This could get moved into a
-            # shared method, but probably still in Assay.
             self.generate_prep_file()
 
         # moved final component of genprepfilejob outside of object.
@@ -269,6 +251,9 @@ class Assay():
         # prep is pointing to.
         self.load_preps_into_qiita()
 
+        # before we pack the results, we need to generate the human-readable
+        # report of samples lost in each step. The tracking is being done within
+        # fsr (FailedSamplesRecord), in conjuction with Job.audit.
         self.fsr.generate_report()
 
         self.update_status("Generating packaging commands", 8, 9)
@@ -284,7 +269,7 @@ class Amplicon(Assay):
     AMPLICON_SUB_TYPES = {'16S', '18S', 'ITS'}
     assay_type = ASSAY_NAME_AMPLICON
 
-    def post_process_raw_fastq_output(self):
+    def qc_reads(self):
         """
         Post-process ConvertJob output into correct form for FastQCJob.
         """
@@ -487,7 +472,7 @@ class MetaOmic(Assay):
     # MetaOmic does not have an assay_type of its own. It is defined by its
     # children.
 
-    def quality_control(self):
+    def qc_reads(self):
         # because this is a mixin, assume containing object will contain
         # a pipeline object.
         config = self.pipeline.get_software_configuration('nu-qc')

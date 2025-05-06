@@ -243,7 +243,7 @@ class TestWorkflows(TestCase):
             raise ValueError(f"Platform '{type}' is not supported.")
 
     def test_partial_metagenomic_pipeline(self):
-        # Tests convert_raw_to_fastq() and quality_control() steps of
+        # Tests convert_raw_to_fastq() and qc_reads() steps of
         # StandardMetagenomicWorkflow(), which in turn exercises
         # FailedSamplesRecord, Metagenomic and Illumina mixins, and the
         # base Workflow class.
@@ -430,7 +430,7 @@ class TestWorkflows(TestCase):
         # write all the statements out into a bash-script named 'sbatch' and
         # place it somewhere in the PATH. (It will be removed on tearDown()).
         self.create_fake_bin('sbatch', "\n".join(cmds))
-        audit_results = sorted(wf.quality_control())
+        audit_results = sorted(wf.qc_reads())
 
         # add tests to test audit results, modify test to introduce some
         # 'zero-length' files. add some assertions to show that the post-
@@ -450,7 +450,7 @@ class TestWorkflows(TestCase):
         self.assertTrue(exists(join(self.output_dir, 'failed_samples.html')))
 
     def test_partial_metatranscriptomic_pipeline(self):
-        # Tests convert_raw_to_fastq() and quality_control() steps of
+        # Tests convert_raw_to_fastq() and qc_reads() steps of
         # StandardMetatranscriptomicWorkflow(), which in turn exercises
         # FailedSamplesRecord, Metagenomic and Illumina mixins, and the
         # base Workflow class.
@@ -647,12 +647,12 @@ class TestWorkflows(TestCase):
         # write all the statements out into a bash-script named 'sbatch' and
         # place it somewhere in the PATH. (It will be removed on tearDown()).
         self.create_fake_bin('sbatch', "\n".join(cmds))
-        audit_results = sorted(wf.quality_control())
+        audit_results = sorted(wf.qc_reads())
 
         # NuQCJob successful.
 
     def test_partial_amplicon_pipeline(self):
-        # Tests convert_raw_to_fastq() and quality_control() steps of
+        # Tests convert_raw_to_fastq() and qc_reads() steps of
         # StandardAmpliconWorkflow(), which in turn exercises
         # Amplicon and Illumina mixins, and the base Workflow class.
 
@@ -769,8 +769,8 @@ class TestWorkflows(TestCase):
         # copy them into a structure that FastQCJob expects.
 
         # Hence, we do not recreate the structure of NuQCJob here and write
-        # it into a bash script. Instead we'll run quality_control() and
-        # confirm that Amplicon.quality_control() copies the results from
+        # it into a bash script. Instead we'll run qc_reads() and
+        # confirm that Amplicon.qc_reads() copies the results from
         # ConvertJob() into a faked NuQCJob structure for FastQCJob to find.
 
         # With multiple projects and multiplexed fastq files, it's not
@@ -778,12 +778,12 @@ class TestWorkflows(TestCase):
         # expect this, including prep-info file generation and loading of them
         # into Qiita.
 
-        # To support these downstream processes, Amplicon.quality_control()
+        # To support these downstream processes, Amplicon.qc_reads()
         # creates project directories for as many projects are listed in the
         # pre-prep file, and copies _all_ of the Undetermined fastq files into
         # _each_ project directory.
 
-        wf.post_process_raw_fastq_output()
+        wf.qc_reads()
 
         base_path = "tests/data/077c4da8-74eb-4184-8860-0207f53623be"
 
