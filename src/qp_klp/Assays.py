@@ -252,8 +252,8 @@ class Assay():
         self.load_preps_into_qiita()
 
         # before we pack the results, we need to generate the human-readable
-        # report of samples lost in each step. The tracking is being done within
-        # fsr (FailedSamplesRecord), in conjuction with Job.audit.
+        # report of samples lost in each step. The tracking is being done
+        # within fsr (FailedSamplesRecord), in conjuction with Job.audit.
         self.fsr.generate_report()
 
         self.update_status("Generating packaging commands", 8, 9)
