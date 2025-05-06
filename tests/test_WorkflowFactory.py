@@ -222,6 +222,8 @@ class WorkflowFactoryTests(PluginTestCase):
         # database but job-id: 78901 doesn't exist; however, if we get
         # to here, it means that all steps have run to completion
         # and the system is trying to create the preps.
+        # Note: Qiita job_id's are UUID in the database and this tests
+        # uses 78901 as the job_id so the db complains about the format
         with self.assertRaisesRegex(RuntimeError, 'invalid input '
                                     'syntax for type uuid: "78901"'):
             wf.execute_pipeline()
@@ -312,6 +314,8 @@ class WorkflowFactoryTests(PluginTestCase):
         # database but job-id: 78901 doesn't exist; however, if we get
         # to here, it means that all steps have run to completion
         # and the system is trying to create the preps.
+        # Note: Qiita job_id's are UUID in the database and this tests
+        # uses 78901 as the job_id so the db complains about the format
         with self.assertRaisesRegex(RuntimeError, 'invalid input '
                                     'syntax for type uuid: "78901"'):
             wf.execute_pipeline()
@@ -342,6 +346,8 @@ class WorkflowFactoryTests(PluginTestCase):
         # database but job-id: 78901 doesn't exist; however, if we get
         # to here, it means that all steps have run to completion
         # and the system is trying to create the preps.
+        # Note: Qiita job_id's are UUID in the database and this tests
+        # uses 78901 as the job_id so the db complains about the format
         with self.assertRaisesRegex(RuntimeError, 'invalid input '
                                     'syntax for type uuid: "78901"'):
             wf.execute_pipeline()
