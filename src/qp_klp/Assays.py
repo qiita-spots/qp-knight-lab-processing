@@ -148,8 +148,8 @@ class Assay():
         Executes steps of pipeline in proper sequence.
         :return: None
         '''
-        if not self.is_restart:
-            self.pre_check()
+        # pre_check-ing the status of the workflow
+        self.pre_check()
 
         # this is performed even in the event of a restart.
         self.generate_special_map()

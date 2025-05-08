@@ -93,6 +93,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
         pt.set_index('sample_name', inplace=True)
 
         project_name = f'qiita-{pid}-{aid}_{sid}'
+        run_identifier = '250225_LH00444_0301_B22N7T2LT4'
 
         sheet = MetagenomicSampleSheetv90()
         sheet.Header['IEMFileVersion'] = '4'
@@ -153,14 +154,15 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
 
         # now that we have a sample_sheet we can fake the
         # ConvertJob folder so we are ready for the restart
-        convert_path = out_path('ConvertJob')
+        self.raw_fastq_files_path = out_path('ConvertJob')
         project_folder = out_path('ConvertJob', project_name)
         makedirs(project_folder, exist_ok=True)
         # creating Demultiplex_Stats.csv
+
         reports_folder = out_path('ConvertJob', 'Reports')
         makedirs(reports_folder, exist_ok=True)
-        pd.DataFrame(data).set_index('SampleID').to_csv(
-            f'{reports_folder}/Demultiplex_Stats.csv')
+        self.reports_path = f'{reports_folder}/Demultiplex_Stats.csv'
+        pd.DataFrame(data).set_index('SampleID').to_csv(self.reports_path)
 
         for fs in files.values():
             for f in fs:
@@ -169,13 +171,13 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 symlink(f['filepath'], f'{project_folder}/{bn}')
 
         # create job_completed file to skip this step
-        Path(f'{convert_path}/job_completed').touch()
+        Path(f'{self.raw_fastq_files_path}/job_completed').touch()
 
         kwargs = {'qclient': qclient,
                   'uif_path': new_sample_sheet,
                   'lane_number': "1",
                   'config_fp': config_fp,
-                  'run_identifier': '250225_LH00444_0301_B22N7T2LT4',
+                  'run_identifier': run_identifier,
                   'output_dir': out_dir,
                   'job_id': job_id,
                   'status_update_callback': status_line.update_job_status,

@@ -129,36 +129,30 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     final_results_path = out_path('final_results')
     makedirs(final_results_path, exist_ok=True)
 
+    kwargs = {'qclient': qclient,
+              'uif_path': uif_path,
+              'lane_number': lane_number,
+              'config_fp': CONFIG_FP,
+              'run_identifier': run_identifier,
+              'output_dir': out_dir,
+              'job_id': job_id,
+              'status_update_callback': status_line.update_job_status,
+              # set 'update_qiita' to False to avoid updating Qiita DB
+              # and copying files into uploads dir. Useful for testing.
+              'update_qiita': True,
+              'is_restart': is_restart}
+    status_line.update_job_status("Getting project information")
     try:
-        kwargs = {'qclient': qclient,
-                  'uif_path': uif_path,
-                  'lane_number': lane_number,
-                  'config_fp': CONFIG_FP,
-                  'run_identifier': run_identifier,
-                  'output_dir': out_dir,
-                  'job_id': job_id,
-                  'status_update_callback': status_line.update_job_status,
-                  # set 'update_qiita' to False to avoid updating Qiita DB
-                  # and copying files into uploads dir. Useful for testing.
-                  'update_qiita': True,
-                  'is_restart': is_restart}
-
         workflow = WorkflowFactory().generate_workflow(**kwargs)
-
-        status_line.update_job_status("Getting project information")
-
         workflow.execute_pipeline()
-
-        status_line.update_job_status("SPP finished")
-
     except (PipelineError, WorkflowError) as e:
         # add full traceback to the working directory so devs/admins
         # can review and get as much info as possible
         with open(f'{out_dir}/error-traceback.err', 'w') as f:
             f.write(traceback.format_exc())
-        # assume AttributeErrors are issues w/bad sample-sheets or
-        # mapping-files.
         return False, None, str(e)
+
+    status_line.update_job_status("SPP finished")
 
     # return success, ainfo, and the last status message.
     paths = [(f'{final_results_path}/', 'directory')]
@@ -193,9 +187,7 @@ def PrepNuQCJob(qclient, job_id, parameters, out_dir):
     try:
         workflow = PrepNuQCWorkflow(**kwargs)
         workflow.execute_pipeline()
-    except (PipelineError, WorkflowError) as e:
-        # assume AttributeErrors are issues w/bad sample-sheets or
-        # mapping-files.
+    except (PipelineError, WorkflowError, RuntimeError) as e:
         with open(f'{out_dir}/error-traceback.err', 'w') as f:
             f.write(traceback.format_exc())
         return False, None, str(e)
