@@ -254,7 +254,8 @@ class Assay():
         # before we pack the results, we need to generate the human-readable
         # report of samples lost in each step. The tracking is being done
         # within fsr (FailedSamplesRecord), in conjuction with Job.audit.
-        self.fsr.generate_report()
+        if hasattr(self, 'fsr'):
+            self.fsr.generate_report()
 
         self.update_status("Generating packaging commands", 8, 9)
         self.generate_commands()
