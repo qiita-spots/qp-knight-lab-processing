@@ -6,14 +6,16 @@
 # The full license is in the file LICENSE, distributed with this software.
 # -----------------------------------------------------------------------------
 from functools import partial
-from os import environ
 from qiita_client import ArtifactInfo
-from os import makedirs
+from os import makedirs, environ
 from os.path import join, exists
+import traceback
+
 from sequence_processing_pipeline.PipelineError import PipelineError
 from metapool import load_sample_sheet
 from .Workflows import WorkflowError
 from .WorkflowFactory import WorkflowFactory
+from .StandardMetagenomicWorkflow import PrepNuQCWorkflow
 
 
 CONFIG_FP = environ["QP_KLP_CONFIG_FP"]
@@ -127,34 +129,70 @@ def sequence_processing_pipeline(qclient, job_id, parameters, out_dir):
     final_results_path = out_path('final_results')
     makedirs(final_results_path, exist_ok=True)
 
+    kwargs = {'qclient': qclient,
+              'uif_path': uif_path,
+              'lane_number': lane_number,
+              'config_fp': CONFIG_FP,
+              'run_identifier': run_identifier,
+              'output_dir': out_dir,
+              'job_id': job_id,
+              'status_update_callback': status_line.update_job_status,
+              # set 'update_qiita' to False to avoid updating Qiita DB
+              # and copying files into uploads dir. Useful for testing.
+              'update_qiita': True,
+              'is_restart': is_restart}
+    status_line.update_job_status("Getting project information")
     try:
-        kwargs = {'qclient': qclient,
-                  'uif_path': uif_path,
-                  'lane_number': lane_number,
-                  'config_fp': CONFIG_FP,
-                  'run_identifier': run_identifier,
-                  'output_dir': out_dir,
-                  'job_id': job_id,
-                  'status_update_callback': status_line.update_job_status,
-                  # set 'update_qiita' to False to avoid updating Qiita DB
-                  # and copying files into uploads dir. Useful for testing.
-                  'update_qiita': True,
-                  'is_restart': is_restart}
-
         workflow = WorkflowFactory().generate_workflow(**kwargs)
-
-        status_line.update_job_status("Getting project information")
-
         workflow.execute_pipeline()
-
-        status_line.update_job_status("SPP finished")
-
     except (PipelineError, WorkflowError) as e:
-        # assume AttributeErrors are issues w/bad sample-sheets or
-        # mapping-files.
+        # add full traceback to the working directory so devs/admins
+        # can review and get as much info as possible
+        with open(f'{out_dir}/error-traceback.err', 'w') as f:
+            f.write(traceback.format_exc())
         return False, None, str(e)
+
+    status_line.update_job_status("SPP finished")
 
     # return success, ainfo, and the last status message.
     paths = [(f'{final_results_path}/', 'directory')]
     return (True, [ArtifactInfo('output', 'job-output-folder', paths)],
             status_line.msg)
+
+
+def PrepNuQCJob(qclient, job_id, parameters, out_dir):
+    """Sequence Processing Pipeline command
+    Parameters
+    ----------
+    qclient : tgp.qiita_client.QiitaClient
+        The Qiita server client
+    job_id : str
+        The job id
+    parameters : dict
+        The parameter values for this job
+    out_dir : str
+        The path to the job's output directory
+    Returns
+    -------
+    bool, list, str
+        The results of the job
+    """
+    status_line = StatusUpdate(qclient, job_id)
+
+    status_line.update_job_status("Setting up pipeline")
+
+    kwargs = {'qclient': qclient, 'job_id': job_id,
+              'parameters': parameters, 'out_dir': out_dir,
+              'config_fp': CONFIG_FP, 'status_line': status_line}
+    try:
+        workflow = PrepNuQCWorkflow(**kwargs)
+        workflow.execute_pipeline()
+    except (PipelineError, WorkflowError, RuntimeError) as e:
+        with open(f'{out_dir}/error-traceback.err', 'w') as f:
+            f.write(traceback.format_exc())
+        return False, None, str(e)
+
+    status_line.update_job_status("prep_NuQCJob finished")
+    # return success, ainfo, and the last status message.
+    paths = [(f'{workflow.final_results_path}/', 'directory')]
+    return (True, [ArtifactInfo('output', 'job-output-folder', paths)], '')

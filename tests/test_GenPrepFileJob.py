@@ -91,20 +91,20 @@ class TestGenPrepFileJob(unittest.TestCase):
         # We cannot run the object and test the output that is returned from
         # seqpro, but we can test the helper method against canned stdout and
         # verify the results.
-        stdout = ('1111\tmetagenomics_pooling_notebook/metapool/tests/VFTEST/'
+        stdout = ('1111\tkl-metapool/metapool/tests/VFTEST/'
                   '200318_A00953_0082_AH5TWYDSXY.Project_1111.1.tsv\n'
-                  '1111\tmetagenomics_pooling_notebook/metapool/tests/VFTEST/'
+                  '1111\tkl-metapool/metapool/tests/VFTEST/'
                   '200318_A00953_0082_AH5TWYDSXY.Project_1111.3.tsv\n'
-                  '666\tmetagenomics_pooling_notebook/metapool/tests/VFTEST/'
+                  '666\tkl-metapool/metapool/tests/VFTEST/'
                   '200318_A00953_0082_AH5TWYDSXY.Trojecp_666.3.tsv')
 
         obs = job._get_prep_file_paths(stdout)
 
-        exp = {'1111': [('metagenomics_pooling_notebook/metapool/tests/VFTEST'
+        exp = {'1111': [('kl-metapool/metapool/tests/VFTEST'
                          '/200318_A00953_0082_AH5TWYDSXY.Project_1111.1.tsv'),
-                        ('metagenomics_pooling_notebook/metapool/tests/VFTEST'
+                        ('kl-metapool/metapool/tests/VFTEST'
                          '/200318_A00953_0082_AH5TWYDSXY.Project_1111.3.tsv')],
-               '666': [('metagenomics_pooling_notebook/metapool/tests/VFTEST'
+               '666': [('kl-metapool/metapool/tests/VFTEST'
                         '/200318_A00953_0082_AH5TWYDSXY.Trojecp_666.3.tsv')]}
 
         self.assertDictEqual(obs, exp)

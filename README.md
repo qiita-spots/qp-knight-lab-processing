@@ -30,7 +30,7 @@ cd mg-scripts
 pip install -e .
 ```
 
-This will automatically install https://github.com/biocore/metagenomics_pooling_notebook.git, a dependency of mg-scripts and the sequence_processing_pipeline.
+This will automatically install https://github.com/biocore/kl-metapool.git, a dependency of mg-scripts and the sequence_processing_pipeline.
 
 ## Running Unittests
 

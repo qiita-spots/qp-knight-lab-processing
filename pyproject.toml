@@ -41,6 +41,7 @@ dependencies = [
     "click>=3.3",
     "future",
     "pandas",
+    "lxml",
     'requests',
     'flake8',
     'nose',
@@ -51,7 +52,7 @@ dependencies = [
     'cython',
     "qiita-files@https://github.com/qiita-spots/qiita-files/archive/master.zip",
     "qiita_client@https://github.com/qiita-spots/qiita_client/archive/master.zip",
-    'metapool@https://github.com/biocore/metagenomics_pooling_notebook/archive/master.zip',
+    'metapool@https://github.com/biocore/kl-metapool/archive/master.zip',
 ]
 [project.scripts]
 configure_klp = "qp_klp.scripts.configure_klp:config"

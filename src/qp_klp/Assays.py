@@ -148,8 +148,8 @@ class Assay():
         Executes steps of pipeline in proper sequence.
         :return: None
         '''
-        if not self.is_restart:
-            self.pre_check()
+        # pre_check-ing the status of the workflow
+        self.pre_check()
 
         # this is performed even in the event of a restart.
         self.generate_special_map()
@@ -254,7 +254,8 @@ class Assay():
         # before we pack the results, we need to generate the human-readable
         # report of samples lost in each step. The tracking is being done
         # within fsr (FailedSamplesRecord), in conjuction with Job.audit.
-        self.fsr.generate_report()
+        if hasattr(self, 'fsr'):
+            self.fsr.generate_report()
 
         self.update_status("Generating packaging commands", 8, 9)
         self.generate_commands()
