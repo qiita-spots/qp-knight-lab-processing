@@ -100,8 +100,6 @@ class TestPrepNuQCWorkflow(PluginTestCase):
         self.assertFalse(success)
 
         # now, let's test all the way to the end by using PrepNuQCJob_TEST
-        # out_dir = mkdtemp()
-        # self._clean_up_files.append(out_dir)
         pid, job_id, fps = self._setup_test()
         environ['PrepNuQCJob_TEST'] = 'true'
 

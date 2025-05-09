@@ -2,10 +2,11 @@ from functools import partial
 import sample_sheet
 import pandas as pd
 from os.path import basename, join
-from os import symlink, makedirs
+from os import makedirs
 from datetime import datetime
 from metapool import MetagenomicSampleSheetv90
 from pathlib import Path
+from shutil import copyfile
 
 from .Protocol import Illumina
 from sequence_processing_pipeline.Pipeline import Pipeline
@@ -125,7 +126,6 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 'Sample_Name': k,
                 'Sample_ID': k.replace('.', '_'),
                 'Sample_Plate': '',
-                'well_id_384': '',
                 'I7_Index_ID': '',
                 'index': vals['index'],
                 'I5_Index_ID': '',
@@ -168,7 +168,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
             for f in fs:
                 bn = basename(f['filepath']).replace(
                     '.trimmed.fastq.gz', '.fastq.gz')
-                symlink(f['filepath'], f'{project_folder}/{bn}')
+                copyfile(f['filepath'], f'{project_folder}/{bn}')
 
         # create job_completed file to skip this step
         Path(f'{self.raw_fastq_files_path}/job_completed').touch()
