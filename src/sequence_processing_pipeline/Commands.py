@@ -106,7 +106,13 @@ def demux(id_map, fp, out_d, task, maxtask):
             fullname_r1 = outdir + sep + r1 + ext
             fullname_r2 = outdir + sep + r2 + ext
 
-            os.makedirs(outdir, exist_ok=True)
+            # we have seen in lustre that sometime this line
+            # can have a raise condition; making sure it doesn't brake
+            # things
+            try:
+                os.makedirs(outdir, exist_ok=True)
+            except FileExistsError:
+                pass
             current_fp_r1 = gzip.open(fullname_r1, mode)
             current_fp_r2 = gzip.open(fullname_r2, mode)
             current_fp = {'1': current_fp_r1, '2': current_fp_r2}

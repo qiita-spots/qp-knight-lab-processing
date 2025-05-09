@@ -4,7 +4,8 @@
 #SBATCH -N {{node_count}}
 #SBATCH -n {{nprocs}}
 #SBATCH --time {{wall_time_limit}}
-#SBATCH --mem {{mem_in_gb}}G
+# fastqc/multiqc use the same mem value in the templates (2gb); however multiqc requires ~12.
+#SBATCH --mem 1{{mem_in_gb}}G
 #SBATCH --array {{array_params}}
 set -x
 set +e
