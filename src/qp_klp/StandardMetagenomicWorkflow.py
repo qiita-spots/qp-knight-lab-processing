@@ -1,6 +1,7 @@
 from functools import partial
 import sample_sheet
 import pandas as pd
+import re
 from os.path import basename, join
 from os import makedirs
 from datetime import datetime
@@ -119,12 +120,22 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
 
         df_summary = df_summary[df_summary.file_type == 'raw_forward_seqs']
         data = []
+        regex = re.compile(r'^(.*)_S\d{1,4}_L\d{3}')
         for k, vals in pt.iterrows():
             k = k.split('.', 1)[-1]
             rp = vals['run_prefix']
+            # to simplify things we will use the run_prefix as the
+            # sample_name/id as this column is a requirement for
+            # per-sample-FASTQ, it has to be unique and this can help us
+            # keep it simple for special cases (like tubeids). However,
+            # run_prefix could have appended the cell/lane info so we need
+            # to remove it, if present
+            srp = regex.search(rp)
+            if srp is not None:
+                rp = srp[1]
             sample = {
-                'Sample_Name': k,
-                'Sample_ID': k.replace('.', '_'),
+                'Sample_Name': rp.replace('_', '.'),
+                'Sample_ID': rp.replace('.', '_'),
                 'Sample_Plate': '',
                 'I7_Index_ID': '',
                 'index': vals['index'],
