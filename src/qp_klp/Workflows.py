@@ -1,5 +1,5 @@
 from os.path import join, exists, split
-from os import walk, makedirs, listdir
+from os import walk, makedirs, listdir, environ
 import pandas as pd
 from json import dumps
 from subprocess import Popen, PIPE
@@ -759,6 +759,13 @@ class Workflow():
 
     def determine_steps_to_skip(self):
         out_dir = self.pipeline.output_path
+
+        # check if the test flag is on!
+        test = False
+        if 'PrepNuQCJob_TEST' in environ and \
+                environ['PrepNuQCJob_TEST'] == 'true':
+            test = True
+
         # Although amplicon runs don't perform host-filtering,
         # the output from ConvertJob is still copied and organized into
         # a form suitable for FastQCJob to process. Hence the presence or
@@ -776,6 +783,7 @@ class Workflow():
                             break
                     self.skip_steps.append(directory)
                 else:
-                    # work stopped before this job could be completed.
-                    rmtree(join(out_dir, directory))
+                    if not test:
+                        # work stopped before this job could be completed.
+                        rmtree(join(out_dir, directory))
                     break
