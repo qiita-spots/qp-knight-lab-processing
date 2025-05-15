@@ -125,7 +125,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
             k = k.split('.', 1)[-1]
             rp = vals['run_prefix']
             # to simplify things we will use the run_prefix as the
-            # sample_name/id as this column is a requirement for
+            # Sample_ID as this column is a requirement for
             # per-sample-FASTQ, it has to be unique and this can help us
             # keep it simple for special cases (like tubeids). However,
             # run_prefix could have appended the cell/lane info so we need
@@ -134,7 +134,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
             if srp is not None:
                 rp = srp[1]
             sample = {
-                'Sample_Name': rp.replace('_', '.'),
+                'Sample_Name': k.replace('_', '.'),
                 'Sample_ID': rp.replace('.', '_'),
                 'Sample_Plate': '',
                 'I7_Index_ID': '',

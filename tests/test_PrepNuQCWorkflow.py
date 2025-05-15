@@ -122,9 +122,6 @@ class TestPrepNuQCWorkflow(PluginTestCase):
                     '.fastq.gz', '.trimmed.fastq.gz')
                 copyfile(self.source_gz, f'{nuqc_dir}/{bn}')
                 copyfile(self.source_gz, f'{genprep_dir}/{bn}')
-                gprep_base = f'{genprep_dir}/{basename(f)}'
-                Path(f'{gprep_base}_L001_R1_001.fastq.gz').touch()
-                Path(f'{gprep_base}_L001_R2_001.fastq.gz').touch()
         for i in range(1, 7):
             Path(f'{fastqc_dir}/logs/FastQCJob_{i}.completed').touch()
         Path(f'{fastqc_dir}/job_completed').touch()
@@ -132,7 +129,9 @@ class TestPrepNuQCWorkflow(PluginTestCase):
         success, ainfo, msg = PrepNuQCJob(
             self.qclient, job_id, {'prep_id': pid}, out_dir)
         environ['PrepNuQCJob_TEST'] = ''
-        self.assertRegex(msg, r'Your info file only has sample_name')
+        # we'll consider this error a success as it is failing during the
+        # new prep insert as that user doesn't exist
+        self.assertRegex(msg, r"ID 'qiita.help@gmail.com' does not exists")
         self.assertFalse(success)
 
 
