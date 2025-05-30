@@ -267,8 +267,8 @@ class Pipeline:
         required_files = ['RTAComplete.txt', 'RunInfo.xml']
         for some_file in required_files:
             if not exists(join(self.run_dir, some_file)):
-                raise PipelineError("required file '%s' is not present." %
-                                    some_file)
+                raise PipelineError(f"required file '{some_file}' is not "
+                                    f"present in {self.run_dir}.")
 
         # verify that RunInfo.xml file is readable.
         try:
@@ -956,11 +956,11 @@ class Pipeline:
 
         # add a dummy sample.
         samples = [[dummy_sample_id, 'NA', 'NA',
-                    'FALSE', 'FALSE', '14782']]
+                    'FALSE', '14782']]
 
         samples = pd.DataFrame(columns=['Project', 'ForwardAdapter',
-                                        'ReverseAdapter', 'PolyGTrimming',
-                                        'HumanFiltering', 'QiitaID'],
+                                        'ReverseAdapter', 'HumanFiltering',
+                                        'QiitaID'],
                                data=samples)
 
         sheet.Bioinformatics = samples

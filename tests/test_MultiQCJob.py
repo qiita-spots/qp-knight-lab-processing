@@ -114,7 +114,9 @@ class TestMultiQCJob(unittest.TestCase):
         exp = ["#!/bin/bash",
                "#SBATCH -J abcdabcdabcdabcdabcdabcdabcdabcd_MultiQCJob",
                "#SBATCH -p queue_name", "#SBATCH -N 4", "#SBATCH -n 16",
-               "#SBATCH --time 23", "#SBATCH --mem 8gG",
+               "#SBATCH --time 23",  "# fastqc/multiqc use the same mem "
+               "value in the templates (2gb); however multiqc requires "
+               "~12.", "#SBATCH --mem 18gG",
                "#SBATCH --array 1-1%30", "set -x", "set +e",
                "set -o pipefail", "date", "hostname",
                "echo ${SLURM_JOBID} ${SLURM_ARRAY_TASK_ID}",
