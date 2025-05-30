@@ -956,7 +956,7 @@ class Pipeline:
 
         # add a dummy sample.
         samples = [[dummy_sample_id, 'NA', 'NA',
-                    'FALSE', 'FALSE', '14782']]
+                    'FALSE', '14782']]
 
         samples = pd.DataFrame(columns=['Project', 'ForwardAdapter',
                                         'ReverseAdapter', 'HumanFiltering',

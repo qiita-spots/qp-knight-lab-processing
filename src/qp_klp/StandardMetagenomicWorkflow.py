@@ -169,8 +169,8 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
         self.raw_fastq_files_path = out_path('ConvertJob')
         project_folder = out_path('ConvertJob', project_name)
         makedirs(project_folder, exist_ok=True)
-        # creating Demultiplex_Stats.csv
 
+        # creating Demultiplex_Stats.csv
         reports_folder = out_path('ConvertJob', 'Reports')
         makedirs(reports_folder, exist_ok=True)
         self.reports_path = f'{reports_folder}/Demultiplex_Stats.csv'
