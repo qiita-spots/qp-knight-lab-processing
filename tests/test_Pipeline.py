@@ -2443,7 +2443,7 @@ good_dummy_sheet1 = [
     "211021_A00000_0000_SAMPLE_SMPL1,,,,,,", ",,,,,,",
     "[Bioinformatics],,,,,,",
     ("Project,ForwardAdapter,ReverseAdapter,HumanFiltering,"
-     "QiitaID,"),
+     "QiitaID,,"),
     "211021_A00000_0000_SAMPLE_SMPL1,NA,NA,FALSE,14782,", ",,,,,,",
     "[Contact],,,,,,", "Email,Sample_Project,,,,,",
     "c2cowart@ucsd.edu,SomeProject,,,,,",
@@ -2462,7 +2462,7 @@ good_dummy_sheet2 = [
     "211021_A00000_0000_SAMPLE_SMPL1,,,,,,", ",,,,,,",
     "[Bioinformatics],,,,,,",
     ("Project,ForwardAdapter,ReverseAdapter,HumanFiltering,"
-     "QiitaID,"),
+     "QiitaID,,"),
     "211021_A00000_0000_SAMPLE_SMPL1,NA,NA,FALSE,14782,", ",,,,,,",
     "[Contact],,,,,,", "Email,Sample_Project,,,,,",
     "c2cowart@ucsd.edu,SomeProject,,,,,",
