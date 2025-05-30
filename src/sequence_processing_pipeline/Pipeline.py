@@ -268,7 +268,7 @@ class Pipeline:
         for some_file in required_files:
             if not exists(join(self.run_dir, some_file)):
                 raise PipelineError(f"required file '{some_file}' is not "
-                                    f"present {self.run_dir}.")
+                                    f"present in {self.run_dir}.")
 
         # verify that RunInfo.xml file is readable.
         try:
@@ -959,8 +959,8 @@ class Pipeline:
                     'FALSE', 'FALSE', '14782']]
 
         samples = pd.DataFrame(columns=['Project', 'ForwardAdapter',
-                                        'ReverseAdapter', 'PolyGTrimming',
-                                        'HumanFiltering', 'QiitaID'],
+                                        'ReverseAdapter', 'HumanFiltering',
+                                        'QiitaID'],
                                data=samples)
 
         sheet.Bioinformatics = samples

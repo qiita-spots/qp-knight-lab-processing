@@ -107,7 +107,7 @@ def demux(id_map, fp, out_d, task, maxtask):
             fullname_r2 = outdir + sep + r2 + ext
 
             # we have seen in lustre that sometime this line
-            # can have a raise condition; making sure it doesn't brake
+            # can have a raise condition; making sure it doesn't break
             # things
             try:
                 os.makedirs(outdir, exist_ok=True)

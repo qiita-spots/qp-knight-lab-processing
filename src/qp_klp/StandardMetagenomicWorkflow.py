@@ -1,11 +1,9 @@
 from functools import partial
-import sample_sheet
 import pandas as pd
 import re
 from os.path import basename, join
 from os import makedirs
-from datetime import datetime
-from metapool import MetagenomicSampleSheetv90
+from metapool.sample_sheet import make_sample_sheet
 from pathlib import Path
 from shutil import copyfile
 
@@ -62,6 +60,8 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
             self.update = kwargs['update_qiita']
 
 
+# PrepNuQCWorkflow piggy backs on StandardMetagenomicWorkflow by
+# "faking" a restart job as we already have per-sample FASTQ files
 class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
     def __init__(self, **kwargs):
         qclient = kwargs['qclient']
@@ -89,36 +89,37 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
         files, pt = qclient.artifact_and_preparation_files(aid)
         html_summary = qclient.get_artifact_html_summary(aid)
         if html_summary is None:
-            raise WorkflowError(f'Artifact {aid} doesnot have a summary, '
+            raise WorkflowError(f'Artifact {aid} does not have a summary; '
                                 'please generate one.')
         df_summary = pd.read_html(html_summary)[0]
         pt.set_index('sample_name', inplace=True)
 
         project_name = f'qiita-{pid}-{aid}_{sid}'
+        # PrepNuQCWorkflow piggy backs on StandardMetagenomicWorkflow and
+        # StandardMetagenomicWorkflow checks that run_identifier exists so
+        # using the same value for all jobs (including in the test code)
         run_identifier = '250225_LH00444_0301_B22N7T2LT4'
 
-        sheet = MetagenomicSampleSheetv90()
-        sheet.Header['IEMFileVersion'] = '4'
-        sheet.Header['Date'] = datetime.today().strftime('%m/%d/%y')
-        sheet.Header['Workflow'] = 'GenerateFASTQ'
-        sheet.Header['Application'] = 'FASTQ Only'
-        sheet.Header['Assay'] = prep_info['data_type']
-        sheet.Header['Description'] = f'prep_NuQCJob - {pid}'
-        sheet.Header['Chemistry'] = 'Default'
-        sheet.Header['SheetType'] = 'standard_metag'
-        sheet.Header['SheetVersion'] = '90'
-        sheet.Header['Investigator Name'] = 'Qiita'
-        sheet.Header['Experiment Name'] = project_name
+        metadata = {
+            'Bioinformatics': [{
+                'Sample_Project': project_name,
+                'QiitaID': sid,
+                'BarcodesAreRC': 'NA',
+                'ForwardAdapter': 'NA',
+                'ReverseAdapter': 'NA',
+                'HumanFiltering': 'TRUE',
+                'library_construction_protocol': 'NA',
+                'experiment_design_description': 'NA',
+                'contains_replicates': 'FALSE'
+            }],
+            'Contact': [{'Sample_Project': project_name,
+                         'Email': 'qiita.help@gmail.com'}],
+            'SampleContext': [],
+            'Assay': 'Metagenomic',
+            'SheetType': 'standard_metag',
+            'SheetVersion': '101'
+        }
 
-        sheet.Bioinformatics = pd.DataFrame(
-            columns=['Sample_Project', 'ForwardAdapter', 'ReverseAdapter',
-                     'library_construction_protocol',
-                     'experiment_design_description',
-                     'PolyGTrimming', 'HumanFiltering', 'QiitaID'],
-            data=[[project_name, 'NA', 'NA', 'NA', 'NA',
-                   'FALSE', 'TRUE', sid]])
-
-        df_summary = df_summary[df_summary.file_type == 'raw_forward_seqs']
         data = []
         regex = re.compile(r'^(.*)_S\d{1,4}_L\d{3}')
         for k, vals in pt.iterrows():
@@ -133,31 +134,31 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
             srp = regex.search(rp)
             if srp is not None:
                 rp = srp[1]
-            sample = {
-                'Sample_Name': k.replace('_', '.'),
-                'Sample_ID': rp.replace('.', '_'),
-                'Sample_Plate': '',
-                'I7_Index_ID': '',
-                'index': vals['index'],
-                'I5_Index_ID': '',
-                'index2': vals['index2'],
-                'Sample_Project': project_name,
-                'Well_description': '',
-                'Sample_Well': '',
-                'Lane': '1'}
-            sheet.add_sample(sample_sheet.Sample(sample))
+
             _d = df_summary[
                 df_summary.filename.str.startswith(rp)]
-            if _d.shape[0] != 1:
+            if _d.shape[0] != 2:
                 ValueError(f'The run_prefix {rp} from {k} has {_d.shape[0]} '
                            'matches with files')
-            data.append({
-                'Lane': '1', 'SampleID': rp, 'Sample_Project': project_name,
-                'Index': vals['index'], '# Reads': _d.reads.values[0]})
 
-        sheet.Contact = pd.DataFrame(
-            columns=['Email', 'Sample_Project'],
-            data=[['qiita.help@gmail.com', project_name]])
+            sample = {
+                'sample sheet Sample_ID': rp.replace('.', '_'),
+                'Sample': k.replace('_', '.'),
+                'SampleID': k.replace('_', '.'),
+                'i7 name': '',
+                'i7 sequence': vals['index'],
+                'i5 name': '',
+                'i5 sequence': vals['index2'],
+                'Sample_Plate': '',
+                'Project Plate': '',
+                'Project Name': project_name,
+                'Well': '',
+                '# Reads': int(_d.reads.sum()),
+                'Lane': '1'}
+            data.append(sample)
+
+        sheet = make_sample_sheet(
+            metadata, pd.DataFrame(data), 'NovaSeqXPlus', [1])
 
         new_sample_sheet = out_path('sample-sheet.csv')
         with open(new_sample_sheet, 'w') as f:
