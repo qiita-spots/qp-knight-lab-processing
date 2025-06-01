@@ -1,5 +1,5 @@
 import re
-from os import basename
+from os.path import basename
 
 
 PAIR_UNDERSCORE = (re.compile(r'_R1_'), '_R1_', '_R2_')
