@@ -19,6 +19,7 @@ class WorkflowFactory():
     ST_TO_IN_MAP = {PROTOCOL_NAME_ILLUMINA: ['standard_metag',
                                              'standard_metat',
                                              'absquant_metag',
+                                             'abs_quant_metag',
                                              'absquant_metat'],
                     PROTOCOL_NAME_TELLSEQ: ['tellseq_metag',
                                             'tellseq_absquant']}
