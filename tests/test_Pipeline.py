@@ -2330,20 +2330,25 @@ class TestAmpliconPipeline(unittest.TestCase):
                             Pipeline.AMPLICON_PTYPE)
 
         obs = pipeline.process_run_info_file('tests/data/RunInfo_Good1.xml')
-
         exp = [{'NumCycles': 151, 'Number': 1, 'IsIndexedRead': False},
                {'NumCycles': 8, 'Number': 2, 'IsIndexedRead': True},
                {'NumCycles': 8, 'Number': 3, 'IsIndexedRead': True},
                {'NumCycles': 151, 'Number': 4, 'IsIndexedRead': False}]
-
         self.assertEqual(obs, exp)
 
         obs = pipeline.process_run_info_file('tests/data/RunInfo_Good2.xml')
-
         exp = [{'NumCycles': 151, 'Number': 1, 'IsIndexedRead': False},
                {'NumCycles': 8, 'Number': 2, 'IsIndexedRead': True},
                {'NumCycles': 151, 'Number': 3, 'IsIndexedRead': False}]
+        self.assertEqual(obs, exp)
 
+        obs = pipeline.process_run_info_file('tests/data/RunInfo_Good3.xml')
+        exp = [{'IsIndexedRead': True, 'IsReverseComplement': False,
+                'NumCycles': 12, 'Number': 1},
+               {'IsIndexedRead': False, 'IsReverseComplement': False,
+                'NumCycles': 151, 'Number': 2},
+               {'IsIndexedRead': False, 'IsReverseComplement': False,
+                'NumCycles': 151, 'Number': 3}]
         self.assertEqual(obs, exp)
 
         # a ValueError should be raised when a file that is obviously not

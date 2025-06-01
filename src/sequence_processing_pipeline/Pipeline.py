@@ -1009,17 +1009,17 @@ class Pipeline:
             # the contents of each Read element are highly regular.
             # for now, process w/out installing xml2dict or other
             # library into Qiita env.
-            found = findall('<Read (.+?) />', reads)
+            found = findall('<Read (.+?)/>', reads)
 
             results = []
             for item in found:
-                attributes = item.split(' ')
+                attributes = item.strip().split(' ')
                 d = {}
                 for attribute in attributes:
                     k, v = attribute.split('=')
                     if k in ['NumCycles', 'Number']:
                         v = int(v.strip('"'))
-                    elif k in ['IsIndexedRead']:
+                    elif k in ['IsIndexedRead', 'IsReverseComplement']:
                         v = v.strip('"')
                         v = False if v == 'N' else True
                     else:

@@ -1,4 +1,5 @@
 import re
+from os import basename
 
 
 PAIR_UNDERSCORE = (re.compile(r'_R1_'), '_R1_', '_R2_')
@@ -51,7 +52,18 @@ def iter_paired_files(files):
     r1 = iter(files)
     r2 = iter(files)
 
+    regex = re.compile(r'^(.*)_S\d{1,4}_L\d{3}')
     for r1_fp, r2_fp in zip(r1, r2):
+        # the idea behind this loop is that the pairs should be from the same
+        # sample (fwd/rev); however, if something fails before getting here
+        # there is no assurance that the pairs are actually from the same sample;
+        # for example, if sample A fails fwd and sample B fails rev, it will get
+        # to this point and try to work on that pair; thus, we are checking a
+        # minimal prefix overlap
+        pr1, pr2 = regex.search(basename(r1_fp)), regex.search(basename(r2_fp))
+        if not pr1 or not pr2 or pr1[1] != pr2[1]:
+            raise ValueError(f'{pr1} & {pr2} prefix do not match.')
+
         matched = False
         for pattern, r1_exp, r2_exp in PAIR_TESTS:
             if pattern.search(r1_fp):
