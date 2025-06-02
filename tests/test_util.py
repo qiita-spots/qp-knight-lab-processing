@@ -40,6 +40,9 @@ class TestUtil(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Mismatch prefixes"):
             list(iter_paired_files(files))
 
+        files = ['/foo/bar/a_R1_001.fastq.gz', '/foo/bar/ab_R2_001.fastq.gz']
+        with self.assertRaisesRegex(ValueError, "Mismatch prefixes"):
+            list(iter_paired_files(files))
 
 if __name__ == '__main__':
     unittest.main()
