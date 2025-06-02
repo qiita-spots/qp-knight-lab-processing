@@ -44,5 +44,6 @@ class TestUtil(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Mismatch prefixes"):
             list(iter_paired_files(files))
 
+
 if __name__ == '__main__':
     unittest.main()
