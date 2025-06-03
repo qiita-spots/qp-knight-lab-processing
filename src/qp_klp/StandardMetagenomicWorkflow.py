@@ -30,6 +30,10 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
         # specific children requiring specific parameters.
         self.qclient = self.kwargs['qclient']
 
+        self.overwrite_run_with_project_names = False
+        if 'overwrite_run_with_project_names' in self.kwargs:
+            self.overwrite_run_with_project_names = \
+                self.kwargs['overwrite_run_with_project_names']
         self.pipeline = Pipeline(self.kwargs['config_fp'],
                                  self.kwargs['run_identifier'],
                                  self.kwargs['uif_path'],
@@ -196,6 +200,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                   # set 'update_qiita' to False to avoid updating Qiita DB
                   # and copying files into uploads dir. Useful for testing.
                   'update_qiita': True,
-                  'is_restart': True}
+                  'is_restart': True,
+                  'overwrite_run_with_project_names': True}
 
         super().__init__(**kwargs)

@@ -911,7 +911,7 @@ class Pipeline:
 
         return False
 
-    def _generate_dummy_sample_sheet(self, first_read, last_read,
+    def _generate_dummy_sample_sheet(self, read_len,
                                      indexed_reads, dummy_sample_id):
         # create object and initialize header
         sheet = AmpliconSampleSheet()
@@ -926,11 +926,11 @@ class Pipeline:
         # generate override_cycles string
         tmp = [f"N{x['NumCycles']}" for x in indexed_reads]
         tmp = ';'.join(tmp)
-        override_cycles = f"Y{first_read};{tmp};Y{last_read}"
+        override_cycles = f"Y{read_len};{tmp};Y{read_len}"
 
         # set Reads and Settings according to input values
         # we'll get this from the code on the server
-        sheet.Reads = [first_read, last_read]
+        sheet.Reads = [read_len, read_len]
         sheet.Settings['OverrideCycles'] = override_cycles
         sheet.Settings['MaskShortReads'] = '1'
         sheet.Settings['CreateFastqForIndexReads'] = '1'
@@ -973,31 +973,19 @@ class Pipeline:
         else:
             raise ValueError("run_dir %s not found." % run_dir)
 
-        # assumptions are first and last reads are non-indexed and there
-        # are always two. Between them there is either 1 or 2 indexed
-        # reads. If this is not true, raise an Error.
-
-        if len(reads) < 3 or len(reads) > 4:
-            # there must be a first and last read w/a minimum of one read
-            # in the middle and maximum two in the middle.
+        # the assumptions are: if we have 3 reads we should only have 1
+        # index; and if we have 4 reads, 2 should be index
+        len_reads = len(reads)
+        len_index_reads = len([r for r in reads if r['IsIndexedRead']])
+        if (len_reads == 3 and len_index_reads != 1) or (
+                len_reads == 4 and len_reads != 2):
             raise ValueError("RunInfo.xml contains abnormal reads.")
-
-        first_read = reads.pop(0)
-        last_read = reads.pop()
-
-        if (first_read['IsIndexedRead'] is True or
-                last_read['IsIndexedRead'] is True):
-            raise ValueError("RunInfo.xml contains abnormal reads.")
-
-        # confirm the interior read(s) are indexed ones.
-        for read in reads:
-            if read['IsIndexedRead'] is False:
-                raise ValueError("RunInfo.xml contains abnormal reads.")
+        len_cycles = [r['NumCycles']
+                      for r in reads if not r['IsIndexedRead']][0]
 
         dummy_sample_id = basename(run_dir) + '_SMPL1'
 
-        sheet = self._generate_dummy_sample_sheet(first_read['NumCycles'],
-                                                  last_read['NumCycles'],
+        sheet = self._generate_dummy_sample_sheet(len_cycles,
                                                   reads, dummy_sample_id)
 
         with open(output_fp, 'w') as f:

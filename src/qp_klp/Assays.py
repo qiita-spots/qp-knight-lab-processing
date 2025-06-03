@@ -590,6 +590,24 @@ class MetaOmic(Assay):
             for prep_fp in self.prep_file_paths[study_id]:
                 metadata = Assay._parse_prep_file(prep_fp)
                 afact_name, is_repl = self._generate_artifact_name(prep_fp)
+
+                # the preps are created by seqpro within the GenPrepFileJob;
+                # thus, the "best" place to overwrite the values of the
+                # metadata are here
+                if self.overwrite_run_with_project_names:
+                    # making a copy just to have a backup in case of any
+                    # debug is needed
+                    copyfile(prep_fp, f'{prep_fp}.bk')
+                    with open(prep_fp, 'r') as fp:
+                        text = fp.read()
+                    sid = basename(prep_fp).split('.')[1]
+                    rid = afact_name.rsplit('_', 1)[0]
+                    text = text.replace(
+                        afact_name, sid).replace(rid, sid)
+                    with open(prep_fp, 'w') as fp:
+                        fp.write(text)
+                    afact_name = sid
+
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         'job-id': self.master_qiita_job_id,
