@@ -146,6 +146,11 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 ValueError(f'The run_prefix {rp} from {k} has {_d.shape[0]} '
                            'matches with files')
 
+            if 'index' not in vals:
+                vals['index'] = ''
+            if 'index2' not in vals:
+                vals['index2'] = ''
+
             sample = {
                 'sample sheet Sample_ID': rp.replace('.', '_'),
                 'Sample': k.replace('_', '.'),
