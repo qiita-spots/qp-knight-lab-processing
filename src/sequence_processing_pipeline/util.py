@@ -1,4 +1,5 @@
 import re
+from os.path import basename
 
 
 PAIR_UNDERSCORE = (re.compile(r'_R1_'), '_R1_', '_R2_')
@@ -68,10 +69,11 @@ def iter_paired_files(files):
                 # using find(), r1_prefix and r2_prefix will be the following:
                 # r1_prefix will be: LS_8_22_2014
                 # r2_prefix will be: LS_8_22_2014_R1_SRE_S3_L007
-                r1_prefix = r1_fp[:r1_fp.rfind(r1_exp)]
-                r2_prefix = r2_fp[:r2_fp.rfind(r2_exp)]
-
-                if r1_prefix != r2_prefix:
+                # NOTE: we need to use basename to be sure that we are not
+                #       comparing the folder name
+                r1_prefix = basename(r1_fp[:r1_fp.rfind(r1_exp)])
+                r2_prefix = basename(r2_fp[:r2_fp.rfind(r2_exp)])
+                if not r1_prefix or not r2_prefix or r1_prefix != r2_prefix:
                     raise ValueError(f"Mismatch prefixes:\n{r1_prefix}\n"
                                      f"{r2_prefix}")
 

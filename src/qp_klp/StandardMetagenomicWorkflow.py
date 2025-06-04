@@ -30,6 +30,10 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
         # specific children requiring specific parameters.
         self.qclient = self.kwargs['qclient']
 
+        self.overwrite_prep_with_original = False
+        if 'overwrite_prep_with_original' in self.kwargs:
+            self.overwrite_prep_with_original = \
+                self.kwargs['overwrite_prep_with_original']
         self.pipeline = Pipeline(self.kwargs['config_fp'],
                                  self.kwargs['run_identifier'],
                                  self.kwargs['uif_path'],
@@ -93,6 +97,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                                 'please generate one.')
         df_summary = pd.read_html(html_summary)[0]
         pt.set_index('sample_name', inplace=True)
+        pt.to_csv(f'{out_dir}/original-prep.csv', sep='\t')
 
         project_name = f'qiita-{pid}-{aid}_{sid}'
         # PrepNuQCWorkflow piggy backs on StandardMetagenomicWorkflow and
@@ -141,6 +146,11 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 ValueError(f'The run_prefix {rp} from {k} has {_d.shape[0]} '
                            'matches with files')
 
+            if 'index' not in vals:
+                vals['index'] = ''
+            if 'index2' not in vals:
+                vals['index2'] = ''
+
             sample = {
                 'sample sheet Sample_ID': rp.replace('.', '_'),
                 'Sample': k.replace('_', '.'),
@@ -153,10 +163,9 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 'Project Plate': '',
                 'Project Name': project_name,
                 'Well': '',
-                '# Reads': int(_d.reads.sum()),
+                '# Reads': f'{_d.reads.sum()}',
                 'Lane': '1'}
             data.append(sample)
-
         sheet = make_sample_sheet(
             metadata, pd.DataFrame(data), 'NovaSeqXPlus', [1])
 
@@ -196,6 +205,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                   # set 'update_qiita' to False to avoid updating Qiita DB
                   # and copying files into uploads dir. Useful for testing.
                   'update_qiita': True,
-                  'is_restart': True}
+                  'is_restart': True,
+                  'overwrite_prep_with_original': True}
 
         super().__init__(**kwargs)
