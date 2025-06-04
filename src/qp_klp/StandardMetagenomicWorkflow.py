@@ -157,10 +157,9 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 'Project Plate': '',
                 'Project Name': project_name,
                 'Well': '',
-                '# Reads': int(_d.reads.sum()),
+                '# Reads': f'{_d.reads.sum()}',
                 'Lane': '1'}
             data.append(sample)
-
         sheet = make_sample_sheet(
             metadata, pd.DataFrame(data), 'NovaSeqXPlus', [1])
 

@@ -594,7 +594,8 @@ class MetaOmic(Assay):
                 # the preps are created by seqpro within the GenPrepFileJob;
                 # thus, the "best" place to overwrite the values of the
                 # metadata are here
-                if self.overwrite_run_with_project_names:
+                if hasattr(self, 'overwrite_run_with_project_names') and \
+                        self.overwrite_run_with_project_names:
                     # making a copy just to have a backup in case of any
                     # debug is needed
                     copyfile(prep_fp, f'{prep_fp}.bk')
