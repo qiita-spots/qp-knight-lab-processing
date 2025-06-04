@@ -911,8 +911,8 @@ class Pipeline:
 
         return False
 
-    def _generate_dummy_sample_sheet(self, read_len,
-                                     indexed_reads, dummy_sample_id):
+    def _generate_dummy_sample_sheet(self, index_cycles, non_index_cycles,
+                                     len_index, dummy_sample_id):
         # create object and initialize header
         sheet = AmpliconSampleSheet()
         sheet.Header['IEMFileVersion'] = '4'
@@ -924,13 +924,13 @@ class Pipeline:
         sheet.Header['Chemistry'] = 'Amplicon'
 
         # generate override_cycles string
-        tmp = [f"N{x['NumCycles']}" for x in indexed_reads]
+        tmp = [f"N{index_cycles}" for i in range(len_index)]
         tmp = ';'.join(tmp)
-        override_cycles = f"Y{read_len};{tmp};Y{read_len}"
+        override_cycles = f"Y{non_index_cycles};{tmp};Y{non_index_cycles}"
 
         # set Reads and Settings according to input values
         # we'll get this from the code on the server
-        sheet.Reads = [read_len, read_len]
+        sheet.Reads = [non_index_cycles, non_index_cycles]
         sheet.Settings['OverrideCycles'] = override_cycles
         sheet.Settings['MaskShortReads'] = '1'
         sheet.Settings['CreateFastqForIndexReads'] = '1'
@@ -975,18 +975,19 @@ class Pipeline:
 
         # the assumptions are: if we have 3 reads we should only have 1
         # index; and if we have 4 reads, 2 should be index
-        len_reads = len(reads)
-        len_index_reads = len([r for r in reads if r['IsIndexedRead']])
-        if (len_reads == 3 and len_index_reads != 1) or (
-                len_reads == 4 and len_reads != 2):
+        index_reads = [r for r in reads if r['IsIndexedRead']]
+        non_index_reads = [r for r in reads if not r['IsIndexedRead']]
+        len_index_reads = len(index_reads)
+        len_non_index_reads = len(non_index_reads)
+        if len_non_index_reads != 2 or (len_index_reads != 1 and
+                                        len_index_reads != 2):
             raise ValueError("RunInfo.xml contains abnormal reads.")
-        len_cycles = [r['NumCycles']
-                      for r in reads if not r['IsIndexedRead']][0]
-
         dummy_sample_id = basename(run_dir) + '_SMPL1'
 
-        sheet = self._generate_dummy_sample_sheet(len_cycles,
-                                                  reads, dummy_sample_id)
+        sheet = self._generate_dummy_sample_sheet(
+                index_reads[0]['NumCycles'],
+                non_index_reads[0]['NumCycles'],
+                len_index_reads, dummy_sample_id)
 
         with open(output_fp, 'w') as f:
             sheet.write(f, 1)
