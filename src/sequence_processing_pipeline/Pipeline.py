@@ -28,7 +28,7 @@ _PROJECT_NAME_KEY = 'project_name'
 class InstrumentUtils():
     types = {'A': 'NovaSeq 6000', 'D': 'HiSeq 2500', 'FS': 'iSeq',
              'K': 'HiSeq 4000', 'LH': 'NovaSeq X Plus', 'M': 'MiSeq',
-             'MN': 'MiniSeq',
+             'MN': 'MiniSeq', 'SH': 'MiSeq i100',
              # SN – RapidRun which is HiSeq 2500
              'SN': 'RapidRun'}
 
