@@ -12,7 +12,6 @@ from shutil import rmtree
 from os import environ, remove, getcwd
 import re
 from qp_klp.WorkflowFactory import WorkflowFactory
-from qp_klp.Workflows import Workflow
 from metapool import load_sample_sheet
 from collections import defaultdict
 from random import randint
@@ -902,48 +901,6 @@ class TestWorkflows(TestCase):
         exp = open_job_script(self, "tests/data/tellread_test.sbatch")
 
         self.assertEqual(obs, exp)
-
-    def test_foo(self):
-        test_names = [
-            # single additional occurance: R1
-            ("ABC_7_04_1776_R1_SRE_S3_L007_R1_001.trimmed.fastq.gz", "R1"),
-            ("ABC_7_04_1776_R1_SRE_S3_L007_R2_001.trimmed.fastq.gz", "R2"),
-            ("ABC_7_04_1776_R1_SRE_S3_L007_I1_001.trimmed.fastq.gz", "I1"),
-            ("ABC_7_04_1776_R1_SRE_S3_L007_I2_001.trimmed.fastq.gz", "I2"),
-
-            # test w/dots.
-            ("ABC_7_04_1776.R1.SRE_S3_L007.R1.001.trimmed.fastq.gz", "R1"),
-            ("ABC_7_04_1776.R1.SRE_S3_L007.R2.001.trimmed.fastq.gz", "R2"),
-            ("ABC_7_04_1776.R1.SRE_S3_L007.I1.001.trimmed.fastq.gz", "I1"),
-            ("ABC_7_04_1776.R1.SRE_S3_L007.I2.001.trimmed.fastq.gz", "I2"),
-
-            # single additional occurance: R2
-            ("ABC_7_04_1776_R2_SRE_S3_L007_R1_001.trimmed.fastq.gz", "R1"),
-            ("ABC_7_04_1776_R2_SRE_S3_L007_R2_001.trimmed.fastq.gz", "R2"),
-            ("ABC_7_04_1776_R2_SRE_S3_L007_I1_001.trimmed.fastq.gz", "I1"),
-            ("ABC_7_04_1776_R2_SRE_S3_L007_I2_001.trimmed.fastq.gz", "I2"),
-
-            # single additional occurance: In
-            ("ABC_7_04_1776_I2_SRE_S3_L007_R1_001.trimmed.fastq.gz", "R1"),
-            ("ABC_7_04_1776_I1_SRE_S3_L007_R2_001.trimmed.fastq.gz", "R2"),
-            ("ABC_7_04_1776_I2_SRE_S3_L007_I1_001.trimmed.fastq.gz", "I1"),
-            ("ABC_7_04_1776_I1_SRE_S3_L007_I2_001.trimmed.fastq.gz", "I2"),
-
-            # no additional occurances
-            ("ABC_7_04_1776_SRE_S3_L007_R1_001.trimmed.fastq.gz", "R1"),
-            ("ABC_7_04_1776_SRE_S3_L007_R2_001.trimmed.fastq.gz", "R2"),
-            ("ABC_7_04_1776_SRE_S3_L007_I1_001.trimmed.fastq.gz", "I1"),
-            ("ABC_7_04_1776_SRE_S3_L007_I2_001.trimmed.fastq.gz", "I2"),
-
-            # two additional occurances
-            ("ABC_7_04_1776_I2_SRE.R1.S3_L007_R1_001.trimmed.fastq.gz", "R1"),
-            ("ABC_7_04_1776_I1_SRE.R1.S3_L007_R2_001.trimmed.fastq.gz", "R2"),
-            ("ABC_7_04_1776_I2_SRE.R1.S3_L007_I1_001.trimmed.fastq.gz", "I1"),
-            ("ABC_7_04_1776_I1_SRE.R1.S3_L007_I2_001.trimmed.fastq.gz", "I2"),
-        ]
-
-        for file_name, exp in test_names:
-            self.assertEqual(Workflow._determine_orientation(file_name), exp)
 
 
 if __name__ == '__main__':

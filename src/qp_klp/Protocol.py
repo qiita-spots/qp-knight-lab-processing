@@ -3,15 +3,15 @@ from sequence_processing_pipeline.TellReadJob import TellReadJob
 from sequence_processing_pipeline.SeqCountsJob import SeqCountsJob
 from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
 from sequence_processing_pipeline.PipelineError import PipelineError
+from sequence_processing_pipeline.util import determine_orientation
 from os.path import join, split
 from re import match
 from os import makedirs, rename, walk
 from metapool import load_sample_sheet
+from metapool.sample_sheet import PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ
 
 
 PROTOCOL_NAME_NONE = "None"
-PROTOCOL_NAME_ILLUMINA = "Illumina"
-PROTOCOL_NAME_TELLSEQ = "TellSeq"
 
 
 class Protocol():
@@ -152,7 +152,7 @@ class TellSeq(Protocol):
         with open(files_to_count_path, 'w') as f:
             for root, _, files in walk(self.raw_fastq_files_path):
                 for _file in files:
-                    if self._determine_orientation(_file) in ['R1', 'R2']:
+                    if determine_orientation(_file) in ['R1', 'R2']:
                         print(join(root, _file), file=f)
 
         job = SeqCountsJob(self.pipeline.run_dir,

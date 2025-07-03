@@ -620,6 +620,7 @@ class MetaOmic(Assay):
 
     def load_preps_into_qiita(self):
         data = []
+        empty_projects = []
         for project, _, qiita_id in self.special_map:
             fastq_files = self._get_postqc_fastq_files(
                 self.pipeline.output_path, project)
@@ -639,9 +640,19 @@ class MetaOmic(Assay):
                 if is_repl:
                     working_set = self._copy_files(working_set)
 
+                # let's check if any of the values is empty so
+                # we can raise an error with all the empty projects
+                for v in working_set.values():
+                    if not v:
+                        empty_projects.append(project)
+
                 data.append(self._load_prep_into_qiita(
                     self.qclient, prep_id, artifact_name, qiita_id, project,
                     working_set, ARTIFACT_TYPE_METAOMICS))
+
+        if empty_projects:
+            ep = set(empty_projects)
+            raise ValueError(f'These projects have no files: {ep}')
 
         df = pd.DataFrame(data)
         opath = join(self.pipeline.output_path, 'touched_studies.html')

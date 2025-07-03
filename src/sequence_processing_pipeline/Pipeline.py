@@ -8,6 +8,7 @@ from metapool import (load_sample_sheet, AmpliconSampleSheet, is_blank,
                       PROJECT_SHORT_NAME_KEY, PROJECT_FULL_NAME_KEY,
                       CONTAINS_REPLICATES_KEY)
 from metapool.plate import ErrorMessage, WarningMessage
+from metapool.prep import PREP_MF_COLUMNS, INSTRUMENT_LOOKUP as IL
 from sequence_processing_pipeline.Job import Job
 from sequence_processing_pipeline.PipelineError import PipelineError
 import logging
@@ -17,7 +18,6 @@ import pandas as pd
 from collections import defaultdict
 from datetime import datetime
 from xml.etree import ElementTree as ET
-from metapool.prep import PREP_MF_COLUMNS
 
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -56,11 +56,10 @@ class InstrumentUtils():
         else:
             code = code.group(1)
 
-        # map instrument code to a name string and return it, if possible.
-        try:
-            return InstrumentUtils.types[code]
-        except KeyError:
+        _df = IL[IL['machine prefix'] == code]
+        if _df.shape[0] != 1:
             raise ValueError(f"Instrument code '{code}' is of unknown type")
+        return _df['Machine type'].values[0]
 
     @staticmethod
     def get_date(run_directory):

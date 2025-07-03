@@ -97,7 +97,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                                 'please generate one.')
         df_summary = pd.read_html(html_summary)[0]
         pt.set_index('sample_name', inplace=True)
-        pt.to_csv(f'{out_dir}/original-prep.csv', sep='\t')
+        pt.to_csv(f'{out_dir}/original-prep-no-changes.csv', sep='\t')
 
         project_name = f'qiita-{pid}-{aid}_{sid}'
         # PrepNuQCWorkflow piggy backs on StandardMetagenomicWorkflow and
@@ -127,8 +127,9 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
 
         data = []
         regex = re.compile(r'^(.*)_S\d{1,4}_L\d{3}')
-        for k, vals in pt.iterrows():
-            k = k.split('.', 1)[-1]
+        new_prep = pt.copy()
+        for i, (sn, vals) in enumerate(iter(pt.iterrows())):
+            k = sn.split('.', 1)[-1]
             rp = vals['run_prefix']
             # to simplify things we will use the run_prefix as the
             # Sample_ID as this column is a requirement for
@@ -146,15 +147,19 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 ValueError(f'The run_prefix {rp} from {k} has {_d.shape[0]} '
                            'matches with files')
 
+            # making sure that the index are unique for each row; note that
+            # this is required for make_sample_sheet but ignored downstream
             if 'index' not in vals:
-                vals['index'] = ''
+                vals['index'] = 'G'*i
             if 'index2' not in vals:
-                vals['index2'] = ''
+                vals['index2'] = 'A'*i
 
+            rp = rp.replace('.', '_')
+            k = k.replace('_', '.')
             sample = {
-                'sample sheet Sample_ID': rp.replace('.', '_'),
-                'Sample': k.replace('_', '.'),
-                'SampleID': k.replace('_', '.'),
+                'sample sheet Sample_ID': rp,
+                'Sample': k,
+                'SampleID': k,
                 'i7 name': '',
                 'i7 sequence': vals['index'],
                 'i5 name': '',
@@ -166,12 +171,18 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 '# Reads': f'{_d.reads.sum()}',
                 'Lane': '1'}
             data.append(sample)
+            # updating the
+            new_prep.at[sn, 'run_prefix'] = rp
+        new_prep.to_csv(f'{out_dir}/original-prep.csv', sep='\t')
         sheet = make_sample_sheet(
-            metadata, pd.DataFrame(data), 'NovaSeqXPlus', [1])
+            metadata, pd.DataFrame(data), 'NovaSeqX', [1])
 
         new_sample_sheet = out_path('sample-sheet.csv')
         with open(new_sample_sheet, 'w') as f:
             sheet.write(f, 1)
+        restart_me_fp = out_path('restart_me')
+        with open(restart_me_fp, 'w') as f:
+            f.write(f'{run_identifier}\n{new_sample_sheet}')
 
         # now that we have a sample_sheet we can fake the
         # ConvertJob folder so we are ready for the restart
@@ -187,8 +198,11 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
 
         for fs in files.values():
             for f in fs:
+                # modifying the filename bn so it matches the expectations
+                # of the downstream pipeline: no .trimmed and . in the name
                 bn = basename(f['filepath']).replace(
-                    '.trimmed.fastq.gz', '.fastq.gz')
+                    '.trimmed.fastq.gz', '.fastq.gz')[:-9].replace(
+                        '.', '_') + '.fastq.gz'
                 copyfile(f['filepath'], f'{project_folder}/{bn}')
 
         # create job_completed file to skip this step

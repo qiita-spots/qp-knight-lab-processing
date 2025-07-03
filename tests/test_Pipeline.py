@@ -2396,21 +2396,20 @@ class TestInstrumentUtils(unittest.TestCase):
         exp = {'231108_M04586_0992_000000000-L7342': {'id': 'M04586',
                                                       'type': 'MiSeq',
                                                       'date': '2023-11-08'},
-               '200320_K00180_0957_AHCYKKBBXY_PE150_Knight': {'id': 'K00180',
-                                                              'type': ('HiSeq '
-                                                                       '4000'),
-                                                              'date': ('2020-0'
-                                                                       '3-20')
+               '200320_K00180_0957_AHCYKKBBXY_PE150_Knight': {
+                   'id': 'K00180',
+                   'type': ('HiSeq'),
+                   'date': ('2020-03-20')
                                                               },
                '20220912_FS10001773_27_BSE39218-1017': {'id': 'FS10001773',
                                                         'type': 'iSeq',
                                                         'date': '2022-09-12'},
                '231215_LH00444_0031_B222WHFLT4': {'id': 'LH00444',
-                                                  'type': 'NovaSeq X Plus',
+                                                  'type': 'NovaSeq',
                                                   'date': '2023-12-16'},
                '190809_D00611_0709_AH3CKJBCX3_RKL0040_StudyB_36-39_2': {
                    'id': 'D00611',
-                   'type': 'HiSeq 2500',
+                   'type': 'HiSeq/RR',
                    'date': '2019-08-09'},
                '231215_A01535_0435_BH23F5DSXC': {'id': 'A01535',
                                                  'type': 'NovaSeq 6000',
