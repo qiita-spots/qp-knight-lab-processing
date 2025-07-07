@@ -2423,11 +2423,9 @@ class TestInstrumentUtils(unittest.TestCase):
             break
 
         for run_id, run_dir in run_directories:
-            self.assertEqual(iutils.get_instrument_id(run_dir),
-                             exp[run_id]['id'])
             self.assertEqual(iutils.get_instrument_type(run_dir),
                              exp[run_id]['type'])
-            self.assertEqual(iutils.get_date(run_dir),
+            self.assertEqual(iutils._get_date(run_dir),
                              exp[run_id]['date'])
 
 

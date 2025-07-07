@@ -6,7 +6,7 @@ from os.path import join, exists, isdir, basename
 from metapool import (load_sample_sheet, AmpliconSampleSheet, is_blank,
                       parse_project_name, SAMPLE_NAME_KEY, QIITA_ID_KEY,
                       PROJECT_SHORT_NAME_KEY, PROJECT_FULL_NAME_KEY,
-                      CONTAINS_REPLICATES_KEY)
+                      CONTAINS_REPLICATES_KEY, get_model_by_instrument_id)
 from metapool.plate import ErrorMessage, WarningMessage
 from sequence_processing_pipeline.Job import Job
 from sequence_processing_pipeline.PipelineError import PipelineError
@@ -26,14 +26,8 @@ _PROJECT_NAME_KEY = 'project_name'
 
 
 class InstrumentUtils():
-    types = {'A': 'NovaSeq 6000', 'D': 'HiSeq 2500', 'FS': 'iSeq',
-             'K': 'HiSeq 4000', 'LH': 'NovaSeq X Plus', 'M': 'MiSeq',
-             'MN': 'MiniSeq',
-             # SN – RapidRun which is HiSeq 2500
-             'SN': 'RapidRun'}
-
     @staticmethod
-    def get_instrument_id(run_directory):
+    def _get_instrument_id(run_directory):
         run_info = join(run_directory, 'RunInfo.xml')
 
         if not exists(run_info):
@@ -46,24 +40,11 @@ class InstrumentUtils():
 
     @staticmethod
     def get_instrument_type(run_directory):
-        # extract all letters at the beginning of the string, stopping
-        # at the first digit.
-        code = match(r"^(.*?)\d.*",
-                     InstrumentUtils.get_instrument_id(run_directory))
-
-        if code is None:
-            raise ValueError("Could not determine instrument code")
-        else:
-            code = code.group(1)
-
-        # map instrument code to a name string and return it, if possible.
-        try:
-            return InstrumentUtils.types[code]
-        except KeyError:
-            raise ValueError(f"Instrument code '{code}' is of unknown type")
+        instrument_id = InstrumentUtils._get_instrument_id(run_directory)
+        return get_model_by_instrument_id(instrument_id)
 
     @staticmethod
-    def get_date(run_directory):
+    def _get_date(run_directory):
         run_info = join(run_directory, 'RunInfo.xml')
 
         if not exists(run_info):
