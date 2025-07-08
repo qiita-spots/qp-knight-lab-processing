@@ -1,10 +1,31 @@
-import re
+from re import compile as REC
 from os.path import basename
 
 
-PAIR_UNDERSCORE = (re.compile(r'_R1_'), '_R1_', '_R2_')
-PAIR_DOT = (re.compile(r'\.R1\.'), '.R1.', '.R2.')
+PAIR_UNDERSCORE = (REC(r'_R1_'), '_R1_', '_R2_')
+PAIR_DOT = (REC(r'\.R1\.'), '.R1.', '.R2.')
 PAIR_TESTS = (PAIR_UNDERSCORE, PAIR_DOT)
+FILES_REGEX = {
+    'SPP': {
+        'fastq': REC(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.fastq\.gz$'),
+        'interleave_fastq': REC(
+            r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.interleave\.fastq\.gz$'),
+        'html': REC(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.html$'),
+        'json': REC(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.json$'),
+    },
+    'per_sample_FASTQ': {
+        'fastq': REC(r'^(.*)[_|.]R\d\.fastq\.gz$'),
+        'interleave_fastq': REC(r'^(.*)[_|.]R\d\.interleave\.fastq\.gz$'),
+        'html': REC(r'^(.*).html$'),
+        'json':  REC(r'^(.*).json$')
+    },
+    'qebil': {
+        'fastq': REC(r'^(.*)_R\d_ebi\.fastq\.gz$'),
+        'interleave_fastq': REC(r'^(.*)_R\d_ebi\.interleave\.fastq\.gz$'),
+        'html': REC(r'^(.*).html$'),
+        'json':  REC(r'^(.*).json$')
+    }
+}
 
 
 def determine_orientation(file_name):

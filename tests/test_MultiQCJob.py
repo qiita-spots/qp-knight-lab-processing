@@ -125,7 +125,9 @@ class TestMultiQCJob(unittest.TestCase):
                "step=${SLURM_ARRAY_TASK_ID}",
                "cmd0=$(head -n $step tests/data/"
                "output_dir2/MultiQCJob/MultiQCJob.array-details | tail -n 1)",
-               "eval $cmd0", "echo \"Cmd Completed: $cmd0\" > logs/MultiQCJob_"
+               "eval $cmd0", "if [ $? -eq 1 ]; then",
+               "    echo \"multiqc failed.\"", "    exit 1", "fi",
+               "echo \"Cmd Completed: $cmd0\" > logs/MultiQCJob_"
                "$step.completed"]
 
         with open(job_script_path, 'r') as f:

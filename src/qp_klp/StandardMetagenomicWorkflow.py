@@ -1,9 +1,9 @@
 from functools import partial
 import pandas as pd
-import re
 from os.path import basename, join
 from os import makedirs
 from metapool.sample_sheet import make_sample_sheet
+from sequence_processing_pipeline.util import FILES_REGEX
 from pathlib import Path
 from shutil import copyfile
 
@@ -34,6 +34,10 @@ class StandardMetagenomicWorkflow(Workflow, Metagenomic, Illumina):
         if 'overwrite_prep_with_original' in self.kwargs:
             self.overwrite_prep_with_original = \
                 self.kwargs['overwrite_prep_with_original']
+        if 'files_regex' in self.kwargs:
+            self.files_regex = self.kwargs['files_regex']
+        else:
+            self.files_regex = 'SPP'
         self.pipeline = Pipeline(self.kwargs['config_fp'],
                                  self.kwargs['run_identifier'],
                                  self.kwargs['uif_path'],
@@ -105,6 +109,41 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
         # using the same value for all jobs (including in the test code)
         run_identifier = '250225_LH00444_0301_B22N7T2LT4'
 
+        # first, let's create the ConvertJob folder so we are ready for
+        # the restart and copy the files we are going to process
+        self.raw_fastq_files_path = out_path('ConvertJob')
+        project_folder = out_path('ConvertJob', project_name)
+        makedirs(project_folder, exist_ok=True)
+        # while creating the folders we can define which FILES_REGEX
+        # these files are using
+        fformat = None
+        for fs in files.values():
+            for f in fs:
+                # modifying the filename bn so it matches the expectations
+                # of the downstream pipeline: no .trimmed and . in the name
+                bn = basename(f['filepath']).replace(
+                    '.trimmed.fastq.gz', '.fastq.gz')[:-9].replace(
+                        '.', '_') + '.fastq.gz'
+                copyfile(f['filepath'], f'{project_folder}/{bn}')
+                # we need to determine the FILES_REGEX based on the first file
+                # if the rest do not match we need to raise an error
+                if fformat is None:
+                    fformat = [fn for fn, rxs in FILES_REGEX.items()
+                               if rxs['fastq'].search(bn) is not None]
+                    if not fformat:
+                        raise ValueError(
+                            f'None of the FILES_REGEX profiles matches {bn}, '
+                            'please contact the admins.')
+                    elif len(fformat) != 1:
+                        raise ValueError(
+                            f'{bn} matched multiple FILES_REGEX: {fformat}, '
+                            'please contact admins.')
+                    fformat = fformat[0]
+                else:
+                    raise ValueError(
+                        f'{bn} did not match {fformat} in FILES_REGEX, '
+                        'please contact admins.')
+
         metadata = {
             'Bioinformatics': [{
                 'Sample_Project': project_name,
@@ -126,7 +165,6 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
         }
 
         data = []
-        regex = re.compile(r'^(.*)_S\d{1,4}_L\d{3}')
         new_prep = pt.copy()
         for i, (sn, vals) in enumerate(iter(pt.iterrows())):
             k = sn.split('.', 1)[-1]
@@ -137,7 +175,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
             # keep it simple for special cases (like tubeids). However,
             # run_prefix could have appended the cell/lane info so we need
             # to remove it, if present
-            srp = regex.search(rp)
+            srp = FILES_REGEX['SPP']['fastq'].search(rp)
             if srp is not None:
                 rp = srp[1]
 
@@ -184,26 +222,11 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
         with open(restart_me_fp, 'w') as f:
             f.write(f'{run_identifier}\n{new_sample_sheet}')
 
-        # now that we have a sample_sheet we can fake the
-        # ConvertJob folder so we are ready for the restart
-        self.raw_fastq_files_path = out_path('ConvertJob')
-        project_folder = out_path('ConvertJob', project_name)
-        makedirs(project_folder, exist_ok=True)
-
         # creating Demultiplex_Stats.csv
         reports_folder = out_path('ConvertJob', 'Reports')
         makedirs(reports_folder, exist_ok=True)
         self.reports_path = f'{reports_folder}/Demultiplex_Stats.csv'
         pd.DataFrame(data).set_index('SampleID').to_csv(self.reports_path)
-
-        for fs in files.values():
-            for f in fs:
-                # modifying the filename bn so it matches the expectations
-                # of the downstream pipeline: no .trimmed and . in the name
-                bn = basename(f['filepath']).replace(
-                    '.trimmed.fastq.gz', '.fastq.gz')[:-9].replace(
-                        '.', '_') + '.fastq.gz'
-                copyfile(f['filepath'], f'{project_folder}/{bn}')
 
         # create job_completed file to skip this step
         Path(f'{self.raw_fastq_files_path}/job_completed').touch()
@@ -220,6 +243,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                   # and copying files into uploads dir. Useful for testing.
                   'update_qiita': True,
                   'is_restart': True,
+                  'files_regex': fformat,
                   'overwrite_prep_with_original': True}
 
         super().__init__(**kwargs)
