@@ -6,7 +6,8 @@ from os.path import join, exists, isdir, basename
 from metapool import (load_sample_sheet, AmpliconSampleSheet, is_blank,
                       parse_project_name, SAMPLE_NAME_KEY, QIITA_ID_KEY,
                       PROJECT_SHORT_NAME_KEY, PROJECT_FULL_NAME_KEY,
-                      CONTAINS_REPLICATES_KEY, get_model_by_instrument_id)
+                      CONTAINS_REPLICATES_KEY, get_model_by_instrument_id,
+                      PROFILE_NAME_KEY)
 from metapool.plate import ErrorMessage, WarningMessage
 from sequence_processing_pipeline.Job import Job
 from sequence_processing_pipeline.PipelineError import PipelineError
@@ -41,7 +42,8 @@ class InstrumentUtils():
     @staticmethod
     def get_instrument_type(run_directory):
         instrument_id = InstrumentUtils._get_instrument_id(run_directory)
-        return get_model_by_instrument_id(instrument_id)
+        return get_model_by_instrument_id(
+            instrument_id, model_key=PROFILE_NAME_KEY)
 
     @staticmethod
     def _get_date(run_directory):
