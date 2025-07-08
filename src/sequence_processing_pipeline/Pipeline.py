@@ -11,7 +11,7 @@ from metapool.plate import ErrorMessage, WarningMessage
 from sequence_processing_pipeline.Job import Job
 from sequence_processing_pipeline.PipelineError import PipelineError
 import logging
-from re import findall, search, match
+from re import findall, search
 import sample_sheet
 import pandas as pd
 from collections import defaultdict
