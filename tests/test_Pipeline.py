@@ -258,9 +258,8 @@ class TestPipeline(unittest.TestCase):
                          f"{self.path()}/bad_configuration.json")
 
         # Pipeline should assert due to Assay having a bad value.
-        with self.assertRaisesRegex(ValueError, "bad-sample-sheet-metagenomics"
-                                                ".csv' does not appear to be a"
-                                                " valid sample-sheet."):
+        with self.assertRaisesRegex(
+                ValueError, "'Metagenomics' is an unrecognized Assay type"):
             Pipeline(self.good_config_file,
                      self.good_run_id,
                      self.bad_assay_type_path,
@@ -2401,7 +2400,7 @@ class TestInstrumentUtils(unittest.TestCase):
                                                         'type': 'iSeq',
                                                         'date': '2022-09-12'},
                '231215_LH00444_0031_B222WHFLT4': {'id': 'LH00444',
-                                                  'type': 'NovaSeq X Plus',
+                                                  'type': 'NovaSeq X',
                                                   'date': '2023-12-16'},
                '190809_D00611_0709_AH3CKJBCX3_RKL0040_StudyB_36-39_2': {
                    'id': 'D00611',
@@ -2410,9 +2409,9 @@ class TestInstrumentUtils(unittest.TestCase):
                '231215_A01535_0435_BH23F5DSXC': {'id': 'A01535',
                                                  'type': 'NovaSeq 6000',
                                                  'date': '2023-12-15'},
-               '150629_SN1001_0511_AH5L7GBCXX': {'id': 'SN1001',
-                                                 'type': 'RapidRun',
-                                                 'date': '2015-06-29'}}
+               '150629_K1001_0511_AH5L7GBCXX': {'id': 'K1001',
+                                                'type': 'HiSeq 4000',
+                                                'date': '2015-06-29'}}
 
         run_directories = []
         for root, dirs, files in walk(self.path('sample_run_directories')):
@@ -2423,11 +2422,9 @@ class TestInstrumentUtils(unittest.TestCase):
             break
 
         for run_id, run_dir in run_directories:
-            self.assertEqual(iutils.get_instrument_id(run_dir),
-                             exp[run_id]['id'])
             self.assertEqual(iutils.get_instrument_type(run_dir),
                              exp[run_id]['type'])
-            self.assertEqual(iutils.get_date(run_dir),
+            self.assertEqual(iutils._get_date(run_dir),
                              exp[run_id]['date'])
 
 

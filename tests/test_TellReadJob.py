@@ -13,10 +13,10 @@ class TestTellReadJob(unittest.TestCase):
                              'TellReadJob', 'tellread_test.sbatch')
         self.exp = self.path('data', 'tellseq_output', 'tellread_test.sbatch')
 
-        # where 150629_SN1001_0511_AH5L7GBCXX is a run-directory that already
+        # where 150629_K1001_0511_AH5L7GBCXX is a run-directory that already
         # exists.
         self.run_dir = self.path('data', 'sample_run_directories',
-                                 '150629_SN1001_0511_AH5L7GBCXX')
+                                 '150629_K1001_0511_AH5L7GBCXX')
 
         self.output_path = self.path('2caa8226-cf69-45a3-bd40-1e90ec3d18d0')
 
@@ -30,7 +30,7 @@ class TestTellReadJob(unittest.TestCase):
         self.jmem = "16"
         self.modules_to_load = ["singularity_3.6.4"]
         self.qiita_job_id = "2caa8226-cf69-45a3-bd40-1e90ec3d18d0"
-        self.label = "150629_SN1001_0511_AH5L7GBCXX-test"
+        self.label = "150629_K1001_0511_AH5L7GBCXX-test"
         self.reference_base = ""
         self.reference_map = ""
         self.tmp1_path = join(self.output_path, "TellReadJob", "output",

@@ -33,7 +33,7 @@
     <ServiceRun>false</ServiceRun>
     <ApplicationName>HiSeq Control Software</ApplicationName>
     <ApplicationVersion>2.2.58</ApplicationVersion>
-    <RunID>150629_SN1001_0511_AH5L7GBCXX</RunID>
+    <RunID>150629_K1001_0511_AH5L7GBCXX</RunID>
     <RunStartDate>150629</RunStartDate>
     <IntegrationMode>Standalone</IntegrationMode>
     <BaseSpaceSettings>
@@ -44,7 +44,7 @@
       <RunMonitoringOnly>false</RunMonitoringOnly>
       <PlannedRun>false</PlannedRun>
     </BaseSpaceSettings>
-    <ScannerID>SN1001</ScannerID>
+    <ScannerID>K1001</ScannerID>
     <ScanNumber>511</ScanNumber>
     <ComputerName>DGZN8DQ1</ComputerName>
     <FPGAVersion>3.10.3</FPGAVersion>
@@ -131,7 +131,7 @@
     <Resume>false</Resume>
     <ResumeCycle>0</ResumeCycle>
     <SupportMultipleSurfacesInUI>true</SupportMultipleSurfacesInUI>
-    <TempFolder>D:\Illumina\HiSeqTemp\150629_SN1001_0511_AH5L7GBCXX</TempFolder>
+    <TempFolder>D:\Illumina\HiSeqTemp\150629_K1001_0511_AH5L7GBCXX</TempFolder>
     <RecipeFragmentVersion>1.5.21.0</RecipeFragmentVersion>
     <PromptForPeReagents>false</PromptForPeReagents>
     <MockRun>false</MockRun>
