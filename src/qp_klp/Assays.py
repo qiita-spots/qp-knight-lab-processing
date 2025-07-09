@@ -478,6 +478,8 @@ class MetaOmic(Assay):
         # a pipeline object.
         config = self.pipeline.get_software_configuration('nu-qc')
 
+        if not hasattr(self, 'files_regex'):
+            self.files_regex = 'SPP'
         # base quality control used by multiple Assay types.
         job = NuQCJob(self.raw_fastq_files_path,
                       self.pipeline.output_path,

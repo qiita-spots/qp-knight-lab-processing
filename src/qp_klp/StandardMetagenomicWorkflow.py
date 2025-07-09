@@ -139,7 +139,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                             f'{bn} matched multiple FILES_REGEX: {fformat}, '
                             'please contact admins.')
                     fformat = fformat[0]
-                else:
+                elif FILES_REGEX[fformat]['fastq'].search(bn) is None:
                     raise ValueError(
                         f'{bn} did not match {fformat} in FILES_REGEX, '
                         'please contact admins.')
