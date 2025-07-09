@@ -119,6 +119,13 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
         fformat = None
         for fs in files.values():
             for f in fs:
+                # if f is None it means that the file doesn't exist and the
+                # only case this can happen is if the artifact only has fwd
+                # reads
+                if f is None:
+                    raise ValueError(
+                        'The artifact seems to be missing reverse reads; if '
+                        'this is incorrect, please let admins know.')
                 # modifying the filename bn so it matches the expectations
                 # of the downstream pipeline: no .trimmed and . in the name
                 bn = basename(f['filepath']).replace(
@@ -128,6 +135,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 # we need to determine the FILES_REGEX based on the first file
                 # if the rest do not match we need to raise an error
                 if fformat is None:
+                    first_bn = bn
                     fformat = [fn for fn, rxs in FILES_REGEX.items()
                                if rxs['fastq'].search(bn) is not None]
                     if not fformat:
@@ -141,7 +149,8 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                     fformat = fformat[0]
                 elif FILES_REGEX[fformat]['fastq'].search(bn) is None:
                     raise ValueError(
-                        f'{bn} did not match {fformat} in FILES_REGEX, '
+                        f'MIXED FORMAT! `{bn}` did not match `{fformat}` '
+                        f'picked by `{first_bn}` in "FILES_REGEX", '
                         'please contact admins.')
 
         metadata = {

@@ -4,7 +4,8 @@ from os.path import basename
 
 PAIR_UNDERSCORE = (REC(r'_R1_'), '_R1_', '_R2_')
 PAIR_DOT = (REC(r'\.R1\.'), '.R1.', '.R2.')
-PAIR_TESTS = (PAIR_UNDERSCORE, PAIR_DOT)
+SIMPLE_PAIR_UNDERSCAOTE = (REC(r'_R1'), '_R1', '_R2')
+PAIR_TESTS = (PAIR_UNDERSCORE, PAIR_DOT, SIMPLE_PAIR_UNDERSCAOTE)
 FILES_REGEX = {
     'SPP': {
         'fastq': REC(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.fastq\.gz$'),
@@ -24,7 +25,13 @@ FILES_REGEX = {
         'interleave_fastq': REC(r'^(.*)_R\d_ebi\.interleave\.fastq\.gz$'),
         'html': REC(r'^(.*).html$'),
         'json':  REC(r'^(.*).json$')
-    }
+    },
+    'simple_per_sample_FASTQ': {
+        'fastq': REC(r'^(.*)_\d\.fastq\.gz$'),
+        'interleave_fastq': REC(r'^(.*)_\d\.interleave\.fastq\.gz$'),
+        'html': REC(r'^(.*).html$'),
+        'json':  REC(r'^(.*).json$')
+    },
 }
 
 
@@ -44,7 +51,7 @@ def determine_orientation(file_name):
     # orientation as part of their filenames as well. e.g.:
     # ABC_7_04_1776_R1_SRE_S3_L007_R2_001.trimmed.fastq.gz
     for o in orientations:
-        variations = [f"_{o}_", f".{o}."]
+        variations = [f"_{o}_", f".{o}.", f'_{o}']
         for v in variations:
             # rfind searches from the end of the string, rather than
             # its beginning. It returns the position in the string
