@@ -9,7 +9,7 @@ from metapool import (load_sample_sheet, AmpliconSampleSheet, is_blank,
                       CONTAINS_REPLICATES_KEY, get_model_by_instrument_id,
                       PROFILE_NAME_KEY)
 from metapool.plate import ErrorMessage, WarningMessage
-from metapool.prep import PREP_MF_COLUMNS, INSTRUMENT_LOOKUP as IL
+from metapool.prep import PREP_MF_COLUMNS
 from sequence_processing_pipeline.Job import Job
 from sequence_processing_pipeline.PipelineError import PipelineError
 import logging
@@ -896,6 +896,16 @@ class Pipeline:
 
     def _generate_dummy_sample_sheet(self, index_cycles, non_index_cycles,
                                      len_index, dummy_sample_id):
+        """
+        Helper function to generate a dummy (no demux) amplicon sample sheet
+        if possible. Else return project_name and None.
+        :param index_cycles: The lenght of the index (barcodes),
+        in cycles (bps)
+        :param non_index_cycles: The lenght of the non index (reads),
+        in cycles (bps)
+        :param len_index: How many index are expected; in general = 2
+        :return: sample_sheet
+        """
         # create object and initialize header
         sheet = AmpliconSampleSheet()
         sheet.Header['IEMFileVersion'] = '4'
