@@ -84,8 +84,7 @@ class WorkflowFactoryTests(PluginTestCase):
         kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
                   "illumina/bad_sheet1.csv"}
 
-        msg = ("'tests/data/sample-sheets/metagenomic/illumina/"
-               "bad_sheet1.csv' does not appear to be a valid sample-sheet.")
+        msg = "'not_a_metag' is an unrecognized SheetType"
 
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)
@@ -95,8 +94,7 @@ class WorkflowFactoryTests(PluginTestCase):
         kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
                   "illumina/bad_sheet2.csv"}
 
-        msg = ("'tests/data/sample-sheets/metagenomic/illumina/"
-               "bad_sheet2.csv' does not appear to be a valid sample-sheet.")
+        msg = "'NotMetagenomic' is an unrecognized Assay type"
 
         with self.assertRaisesRegex(ValueError, msg):
             WorkflowFactory.generate_workflow(**kwargs)

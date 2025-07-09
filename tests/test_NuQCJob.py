@@ -944,10 +944,7 @@ class TestNuQCJob(unittest.TestCase):
             sheet.write(f)
 
         with self.assertRaisesRegex(
-            ValueError,
-            "tmp-sample-sheet.csv' does "
-            "not appear to be a valid "
-            "sample-sheet.",
+            ValueError, "'NotMetagenomic' is an unrecognized Assay type",
         ):
             NuQCJob(
                 self.fastq_root_path,
@@ -1017,10 +1014,7 @@ class TestNuQCJob(unittest.TestCase):
 
     def test_assay_value(self):
         with self.assertRaisesRegex(
-            ValueError,
-            "bad-sample-sheet-metagenomics"
-            ".csv' does not appear to be a"
-            " valid sample-sheet.",
+            ValueError, "'Metagenomics' is an unrecognized Assay type",
         ):
             NuQCJob(
                 self.fastq_root_path,

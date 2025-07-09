@@ -6,13 +6,14 @@ from os.path import join, exists, isdir, basename
 from metapool import (load_sample_sheet, AmpliconSampleSheet, is_blank,
                       parse_project_name, SAMPLE_NAME_KEY, QIITA_ID_KEY,
                       PROJECT_SHORT_NAME_KEY, PROJECT_FULL_NAME_KEY,
-                      CONTAINS_REPLICATES_KEY)
+                      CONTAINS_REPLICATES_KEY, get_model_by_instrument_id,
+                      PROFILE_NAME_KEY)
 from metapool.plate import ErrorMessage, WarningMessage
 from metapool.prep import PREP_MF_COLUMNS, INSTRUMENT_LOOKUP as IL
 from sequence_processing_pipeline.Job import Job
 from sequence_processing_pipeline.PipelineError import PipelineError
 import logging
-from re import findall, search, match
+from re import findall, search
 import sample_sheet
 import pandas as pd
 from collections import defaultdict
@@ -26,14 +27,8 @@ _PROJECT_NAME_KEY = 'project_name'
 
 
 class InstrumentUtils():
-    types = {'A': 'NovaSeq 6000', 'D': 'HiSeq 2500', 'FS': 'iSeq',
-             'K': 'HiSeq 4000', 'LH': 'NovaSeq X Plus', 'M': 'MiSeq',
-             'MN': 'MiniSeq', 'SH': 'MiSeq i100',
-             # SN – RapidRun which is HiSeq 2500
-             'SN': 'RapidRun'}
-
     @staticmethod
-    def get_instrument_id(run_directory):
+    def _get_instrument_id(run_directory):
         run_info = join(run_directory, 'RunInfo.xml')
 
         if not exists(run_info):
@@ -46,23 +41,12 @@ class InstrumentUtils():
 
     @staticmethod
     def get_instrument_type(run_directory):
-        # extract all letters at the beginning of the string, stopping
-        # at the first digit.
-        code = match(r"^(.*?)\d.*",
-                     InstrumentUtils.get_instrument_id(run_directory))
-
-        if code is None:
-            raise ValueError("Could not determine instrument code")
-        else:
-            code = code.group(1)
-
-        _df = IL[IL['machine prefix'] == code]
-        if _df.shape[0] != 1:
-            raise ValueError(f"Instrument code '{code}' is of unknown type")
-        return _df['Machine type'].values[0]
+        instrument_id = InstrumentUtils._get_instrument_id(run_directory)
+        return get_model_by_instrument_id(
+            instrument_id, model_key=PROFILE_NAME_KEY)
 
     @staticmethod
-    def get_date(run_directory):
+    def _get_date(run_directory):
         run_info = join(run_directory, 'RunInfo.xml')
 
         if not exists(run_info):
