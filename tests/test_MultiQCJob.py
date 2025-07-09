@@ -126,7 +126,7 @@ class TestMultiQCJob(unittest.TestCase):
                "cmd0=$(head -n $step tests/data/"
                "output_dir2/MultiQCJob/MultiQCJob.array-details | tail -n 1)",
                "eval $cmd0", "if [ $? -eq 1 ]; then",
-               "    echo \"multiqc failed.\"", "    exit 1", "fi",
+               "echo \"multiqc failed.\"", "exit 1", "fi",
                "echo \"Cmd Completed: $cmd0\" > logs/MultiQCJob_"
                "$step.completed"]
 
