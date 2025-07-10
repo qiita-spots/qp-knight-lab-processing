@@ -157,7 +157,7 @@ class Workflow():
     def generate_sifs(self):
         """
         Generates sample-info files for each project, containing
-        metadata on BLANKS.
+        metadata on blanks.
         """
         from_qiita = {}
 
@@ -208,7 +208,7 @@ class Workflow():
             # Prepend study_id to make them compatible w/list from Qiita.
             df['sample_name'] = f'{study_id}.' + df['sample_name'].astype(str)
 
-            # SIFs only contain BLANKs. Get the list of potentially new BLANKs.
+            # SIFs only contain blanks. Get the list of potentially new blanks.
             blanks = df['sample_name'].tolist()
             if len(blanks) == 0:
                 # we have nothing to do so let's return early
@@ -217,14 +217,12 @@ class Workflow():
             # Get list of samples already registered in Qiita
             # (will include any already-registered blanks)
             from_qiita = self.qclient.get(f'/api/v1/study/{study_id}/samples')
-            from_qiita = [x for x in from_qiita if
-                          x.startswith(f'{study_id}.BLANK')]
 
             # Generate list of blanks that need to be ADDED to Qiita.
             new_blanks = (set(blanks) | set(from_qiita)) - set(from_qiita)
 
             if len(new_blanks):
-                # Generate dummy entries for each new BLANK, if any.
+                # Generate dummy entries for each new blank, if any.
                 url = f'/api/v1/study/{study_id}/samples/info'
                 logging.debug(url)
                 categories = self.qclient.get(url)['categories']
