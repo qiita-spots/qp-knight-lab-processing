@@ -36,6 +36,7 @@ class Workflow():
         self.output_path = None
         self.pipeline = None
         self.prep_copy_index = 0
+        self.dereplicated_input_file_paths = None
         self.prep_file_paths = None
         self.qclient = None
         self.run_prefixes = {}
@@ -160,10 +161,10 @@ class Workflow():
         metadata on blanks.
         """
 
-        # generate SIF files with paths to the prep file(s) (multiples when
-        # there are replicates) as additional metadata input.
+        # generate SIF files with paths to the input file(s) (multiples when
+        # there are replicates)
         self.sifs = self.pipeline.generate_sample_info_files(
-            self.prep_file_paths)
+            self.dereplicated_input_file_paths)
 
         return self.sifs
 

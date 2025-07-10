@@ -609,11 +609,12 @@ class Pipeline:
 
         return df
 
-    def generate_sample_info_files(self, prep_file_paths):
+    def generate_sample_info_files(self, dereplicated_input_file_paths):
         """
         Generate sample-information files in self.output_path.
-        :param prep_file_paths: a dictionary keyed by study_id, with each value
-            being a list of the prep file paths for that study
+        :param dereplicated_input_file_paths: a list of input files (either
+        sample-sheets or pre-prep files) that have been dereplicated (split
+        into separate files for each replicate).
         :return: A list of paths to sample-information-files.
         """
         if self.pipeline_type == Pipeline.AMPLICON_PTYPE:
@@ -633,14 +634,12 @@ class Pipeline:
             df = pd.DataFrame(blanks_dicts_list)
         else:
             all_controls = []
-            for curr_study_id in prep_file_paths:
-                for curr_prep_path in prep_file_paths[curr_study_id]:
-                    curr_sample_sheet = load_sample_sheet(curr_prep_path)
-                    curr_controls = \
-                        curr_sample_sheet.get_denormalized_controls_list()
-                    all_controls.extend(curr_controls)
-                # next path
-            # next study_id
+            for curr_input_path in dereplicated_input_file_paths:
+                curr_sample_sheet = load_sample_sheet(curr_input_path)
+                curr_controls = \
+                    curr_sample_sheet.get_denormalized_controls_list()
+                all_controls.extend(curr_controls)
+            # next path
             df = pd.DataFrame(all_controls)
             df.drop_duplicates(inplace=True)
 
