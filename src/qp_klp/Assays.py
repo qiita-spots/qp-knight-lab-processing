@@ -478,6 +478,10 @@ class MetaOmic(Assay):
         # a pipeline object.
         config = self.pipeline.get_software_configuration('nu-qc')
 
+        # files_regex is used with
+        # sequencing_processing_pipeline.util.FILES_REGEX to decide
+        # the file formats to look for. In this case, if self.files_regex
+        # is not defined, just fallback to the SPP expected default regex
         if not hasattr(self, 'files_regex'):
             self.files_regex = 'SPP'
         # base quality control used by multiple Assay types.

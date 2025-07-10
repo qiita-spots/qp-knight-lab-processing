@@ -899,9 +899,9 @@ class Pipeline:
         """
         Helper function to generate a dummy (no demux) amplicon sample sheet
         if possible. Else return project_name and None.
-        :param index_cycles: The lenght of the index (barcodes),
+        :param index_cycles: The length of the index (barcodes),
         in cycles (bps)
-        :param non_index_cycles: The lenght of the non index (reads),
+        :param non_index_cycles: The length of the non index (reads),
         in cycles (bps)
         :param len_index: How many index are expected; in general = 2
         :return: sample_sheet

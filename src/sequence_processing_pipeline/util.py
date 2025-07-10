@@ -43,7 +43,7 @@ def determine_orientation(file_name):
 
     # assume orientation is always present in the file's name.
     # assume that it is of one of the four forms above.
-    # assume that it is always the right-most occurance of the four
+    # assume that it is always the right-most occurrence of the four
     # orientations above.
     # assume that orientation is encapsulated with either '_' or '.'
     # e.g.: '_R1_', '.I2.'.

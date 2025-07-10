@@ -125,9 +125,12 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 if f is None:
                     raise ValueError(
                         'The artifact seems to be missing reverse reads; if '
-                        'this is incorrect, please let admins know.')
+                        'this is incorrect, please let admins know. Remember '
+                        'that NuQC is only implemented for paired reads.')
                 # modifying the filename bn so it matches the expectations
                 # of the downstream pipeline: no .trimmed and . in the name
+                # [:-9] is just to quickly remove .fastq.gz, which is added
+                # after the replaces
                 bn = basename(f['filepath']).replace(
                     '.trimmed.fastq.gz', '.fastq.gz')[:-9].replace(
                         '.', '_') + '.fastq.gz'
@@ -195,7 +198,10 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                            'matches with files')
 
             # making sure that the index are unique for each row; note that
-            # this is required for make_sample_sheet but ignored downstream
+            # this is required for make_sample_sheet but ignored downstream.
+            # Remember that the index/barcodes are basepairs and we are
+            # using G/A as a convenience but it could be C/G or any
+            # combination
             if 'index' not in vals:
                 vals['index'] = 'G'*i
             if 'index2' not in vals:
@@ -218,7 +224,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 '# Reads': f'{_d.reads.sum()}',
                 'Lane': '1'}
             data.append(sample)
-            # updating the
+            # updating the run prefix for the new sample-sheet
             new_prep.at[sn, 'run_prefix'] = rp
         new_prep.to_csv(f'{out_dir}/original-prep.csv', sep='\t')
         sheet = make_sample_sheet(

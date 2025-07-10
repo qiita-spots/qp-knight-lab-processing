@@ -47,7 +47,7 @@ class TestUtil(unittest.TestCase):
 
     def test_determine_orientation(self):
         test_names = [
-            # single additional occurance: R1
+            # single additional occurrence: R1
             ("ABC_7_04_1776_R1_SRE_S3_L007_R1_001.trimmed.fastq.gz", "R1"),
             ("ABC_7_04_1776_R1_SRE_S3_L007_R2_001.trimmed.fastq.gz", "R2"),
             ("ABC_7_04_1776_R1_SRE_S3_L007_I1_001.trimmed.fastq.gz", "I1"),
@@ -59,25 +59,25 @@ class TestUtil(unittest.TestCase):
             ("ABC_7_04_1776.R1.SRE_S3_L007.I1.001.trimmed.fastq.gz", "I1"),
             ("ABC_7_04_1776.R1.SRE_S3_L007.I2.001.trimmed.fastq.gz", "I2"),
 
-            # single additional occurance: R2
+            # single additional occurrence: R2
             ("ABC_7_04_1776_R2_SRE_S3_L007_R1_001.trimmed.fastq.gz", "R1"),
             ("ABC_7_04_1776_R2_SRE_S3_L007_R2_001.trimmed.fastq.gz", "R2"),
             ("ABC_7_04_1776_R2_SRE_S3_L007_I1_001.trimmed.fastq.gz", "I1"),
             ("ABC_7_04_1776_R2_SRE_S3_L007_I2_001.trimmed.fastq.gz", "I2"),
 
-            # single additional occurance: In
+            # single additional occurrence: In
             ("ABC_7_04_1776_I2_SRE_S3_L007_R1_001.trimmed.fastq.gz", "R1"),
             ("ABC_7_04_1776_I1_SRE_S3_L007_R2_001.trimmed.fastq.gz", "R2"),
             ("ABC_7_04_1776_I2_SRE_S3_L007_I1_001.trimmed.fastq.gz", "I1"),
             ("ABC_7_04_1776_I1_SRE_S3_L007_I2_001.trimmed.fastq.gz", "I2"),
 
-            # no additional occurances
+            # no additional occurrences
             ("ABC_7_04_1776_SRE_S3_L007_R1_001.trimmed.fastq.gz", "R1"),
             ("ABC_7_04_1776_SRE_S3_L007_R2_001.trimmed.fastq.gz", "R2"),
             ("ABC_7_04_1776_SRE_S3_L007_I1_001.trimmed.fastq.gz", "I1"),
             ("ABC_7_04_1776_SRE_S3_L007_I2_001.trimmed.fastq.gz", "I2"),
 
-            # two additional occurances
+            # two additional occurrences
             ("ABC_7_04_1776_I2_SRE.R1.S3_L007_R1_001.trimmed.fastq.gz", "R1"),
             ("ABC_7_04_1776_I1_SRE.R1.S3_L007_R2_001.trimmed.fastq.gz", "R2"),
             ("ABC_7_04_1776_I2_SRE.R1.S3_L007_I1_001.trimmed.fastq.gz", "I1"),
