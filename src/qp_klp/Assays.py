@@ -93,9 +93,8 @@ class Assay():
                 continue
 
             for matching_file in matching_files:
-                self._replace_tube_ids_w_sample_names(matching_file,
-                                                       self.tube_id_map[
-                                                           qiita_id])
+                self._replace_tube_ids_w_sample_names(
+                    matching_file, self.tube_id_map[qiita_id])
 
     @classmethod
     def _parse_prep_file(cls, prep_file_path, convert_to_dict=True):
