@@ -159,37 +159,11 @@ class Workflow():
         Generates sample-info files for each project, containing
         metadata on blanks.
         """
-        from_qiita = {}
 
-        for study_id in self.prep_file_paths:
-            url = f'/api/v1/study/{study_id}/samples'
-            logging.debug(url)
-            samples = list(self.qclient.get(url))
-            from_qiita[study_id] = samples
-
-        add_sif_info = []
-
-        qid_pn_map = {proj['qiita_id']: proj['project_name'] for
-                      proj in self.pipeline.get_project_info()}
-
-        # in case we really do need to query for samples again:
-        # assume set of valid study_ids can be determined from prep_file_paths.
-        for study_id in from_qiita:
-            samples = from_qiita[study_id]
-            # generate a list of (sample-name, project-name) pairs.
-            project_name = qid_pn_map[study_id]
-            samples = [(x, project_name) for x in samples]
-            add_sif_info.append(pd.DataFrame(data=samples,
-                                             columns=['sample_name',
-                                                      'project_name']))
-
-        # convert the list of dataframes into a single dataframe.
-        add_sif_info = pd.concat(add_sif_info,
-                                 ignore_index=True).drop_duplicates()
-
-        # generate SIF files with add_sif_info as additional metadata input.
-        # duplicate sample-names and non-blanks will be handled properly.
-        self.sifs = self.pipeline.generate_sample_info_files(add_sif_info)
+        # generate SIF files with paths to the prep file(s) (multiples when
+        # there are replicates) as additional metadata input.
+        self.sifs = self.pipeline.generate_sample_info_files(
+            self.prep_file_paths)
 
         return self.sifs
 

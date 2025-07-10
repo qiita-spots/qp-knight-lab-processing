@@ -609,10 +609,10 @@ class Pipeline:
 
         return df
 
-    def generate_sample_info_files(self, addl_info=None):
+    def generate_sample_info_files(self, prep_file_paths):
         """
         Generate sample-information files in self.output_path.
-        :param addl_info: A df of (sample-name, project-name) pairs.
+        :param prep_file_paths: list of file paths to pre-prep file(s).
         :return: A list of paths to sample-information-files.
         """
         if self.pipeline_type == Pipeline.AMPLICON_PTYPE:
@@ -631,6 +631,19 @@ class Pipeline:
             # next record from mapping file df
             df = pd.DataFrame(blanks_dicts_list)
         else:
+            # TODO: comment this in and remove the code below it in
+            #  this else branch. Commented out currently because I want
+            #  to check if the test I wrote catches the existing bug.
+            # all_controls = []
+            # for curr_path in prep_file_paths:
+            #     curr_sample_sheet = load_sample_sheet(curr_path)
+            #     curr_controls = \
+            #         curr_sample_sheet.get_denormalized_controls_list()
+            #     all_controls.append(curr_controls)
+            # # next path
+            # df = pd.DataFrame(all_controls)
+            # df.drop_duplicates()
+
             controls = self.sample_sheet.get_denormalized_controls_list()
             df = pd.DataFrame(controls)
 
