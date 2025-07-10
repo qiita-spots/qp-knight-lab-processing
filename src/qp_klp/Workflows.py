@@ -201,7 +201,7 @@ class Workflow():
 
         for sif_path in self.sifs:
             # get study_id from sif_file_name ...something_14385_blanks.tsv
-            study_id = sif_path.split('_')[-2]
+            study_id = self.pipeline.get_study_id_from_sif(sif_path)
 
             df = pd.read_csv(sif_path, delimiter='\t', dtype=str)
 
@@ -209,18 +209,18 @@ class Workflow():
             df['sample_name'] = f'{study_id}.' + df['sample_name'].astype(str)
 
             # SIFs only contain BLANKs. Get the list of potentially new BLANKs.
-            blank_ids = [i for i in df['sample_name'] if 'blank' in i.lower()]
-            blanks = df[df['sample_name'].isin(blank_ids)]['sample_name']
+            blanks = df['sample_name'].tolist()
             if len(blanks) == 0:
                 # we have nothing to do so let's return early
                 return
 
-            # Get list of BLANKs already registered in Qiita.
+            # Get list of samples already registered in Qiita
+            # (will include any already-registered blanks)
             from_qiita = self.qclient.get(f'/api/v1/study/{study_id}/samples')
             from_qiita = [x for x in from_qiita if
                           x.startswith(f'{study_id}.BLANK')]
 
-            # Generate list of BLANKs that need to be ADDED to Qiita.
+            # Generate list of blanks that need to be ADDED to Qiita.
             new_blanks = (set(blanks) | set(from_qiita)) - set(from_qiita)
 
             if len(new_blanks):
@@ -322,7 +322,7 @@ class Workflow():
         :return:
         """
         results = [x for x in listdir(self.pipeline.output_path) if
-                   x.endswith('_blanks.tsv')]
+                   self.pipeline.is_sif_fp(x)]
 
         results.sort()
 
@@ -493,10 +493,10 @@ class Workflow():
             else:
                 samples = set(self.pipeline.get_sample_names(p_name))
 
-            # do not include BLANKs. If they are unregistered, we will add
+            # do not include blanks. If they are unregistered, we will add
             # them downstream.
-            samples = {smpl for smpl in samples
-                       if not smpl.startswith('BLANK')}
+            samples = {smpl for smpl in samples if
+                       not self.pipeline.sample_sheet.sample_is_a_blank(smpl)}
 
             msgs.append(f"The total number of samples found in {p_name} that "
                         f"aren't BLANK is: {len(samples)}")
