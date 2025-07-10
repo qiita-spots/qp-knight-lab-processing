@@ -636,7 +636,7 @@ class Pipeline:
                 curr_sample_sheet = load_sample_sheet(curr_path)
                 curr_controls = \
                     curr_sample_sheet.get_denormalized_controls_list()
-                all_controls.append(curr_controls)
+                all_controls.extend(curr_controls)
             # next path
             df = pd.DataFrame(all_controls)
             df.drop_duplicates(inplace=True)
