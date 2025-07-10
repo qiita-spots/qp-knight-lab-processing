@@ -415,7 +415,7 @@ class TestPipeline(unittest.TestCase):
                             Pipeline.METAGENOMIC_PTYPE)
 
         paths = pipeline.generate_sample_info_files(
-            [self.good_sample_sheet_path])
+            {self.qiita_id: [self.good_sample_sheet_path]})
         exp = [(f'{self.path()}/output_dir/{self.good_run_id}'
                 '_StudyA_13059_blanks.tsv'),
                (f'{self.path()}/output_dir/{self.good_run_id}'
@@ -525,7 +525,8 @@ class TestPipeline(unittest.TestCase):
         prep_paths = [self.good_sheet_w_replicates.replace(
             '.csv', f'_demux_{x}.csv') for x in range(1, 4)]
 
-        sif_paths = pipeline.generate_sample_info_files(prep_paths)
+        sif_paths = pipeline.generate_sample_info_files(
+            {self.qiita_id: prep_paths})
 
         # one sif file per study in the sample sheet(s)
         self.assertEqual(len(sif_paths), 2)
@@ -1892,7 +1893,7 @@ class TestAmpliconPipeline(unittest.TestCase):
                             self.qiita_id,
                             Pipeline.AMPLICON_PTYPE)
         paths = pipeline.generate_sample_info_files(
-            [self.good_mapping_file_path])
+            {self.qiita_id: [self.good_mapping_file_path]})
 
         exp = [(f'{self.path()}/output_dir/{self.good_run_id}'
                 '_ABTX_20230208_ABTX_11052_blanks.tsv')]
