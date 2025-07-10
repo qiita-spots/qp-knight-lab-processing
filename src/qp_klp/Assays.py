@@ -166,6 +166,7 @@ class Assay():
             self.convert_raw_to_fastq()
             self.integrate_results()
             self.generate_sequence_counts()
+            self.subsample_reads()
 
         self.update_status("QC-ing reads", 2, 9)
         if "NuQCJob" not in self.skip_steps:

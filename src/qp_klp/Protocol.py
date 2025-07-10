@@ -9,6 +9,8 @@ from re import match
 from os import makedirs, rename, walk
 from metapool import load_sample_sheet
 from metapool.sample_sheet import PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ
+import pandas as pd
+from glob import glob
 
 
 PROTOCOL_NAME_NONE = "None"
@@ -22,6 +24,15 @@ class Protocol():
      initialization.
     """
     protocol_type = PROTOCOL_NAME_NONE
+    MAX_READS = 1
+
+    def subsample_reads(self):
+        df = pd.read_csv(self.reports_path)
+        df = df[df.raw_reads_r1r2 > self.MAX_READS]
+        if df.shape[0]:
+            for sn in df.Sample_ID:
+                files = glob(f'{self.pipeline.output_path}/*/{sn}*.fastq.gz')
+                print(sn, files)
 
 
 class Illumina(Protocol):
