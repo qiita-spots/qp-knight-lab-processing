@@ -12,8 +12,8 @@ from os.path import dirname, abspath, join, exists
 from shutil import copyfile
 from pathlib import Path
 import pandas as pd
-from qp_klp.Protocol import (PROTOCOL_NAME_ILLUMINA,
-                             PROTOCOL_NAME_TELLSEQ)
+from metapool.sample_sheet import (
+    PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ)
 from qp_klp.Assays import (ASSAY_NAME_METAGENOMIC,
                            ASSAY_NAME_METATRANSCRIPTOMIC,
                            ASSAY_NAME_AMPLICON)

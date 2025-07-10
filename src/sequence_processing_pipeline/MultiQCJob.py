@@ -2,7 +2,7 @@ from functools import partial
 from jinja2 import Environment
 from json import dumps
 import logging
-from os import listdir
+from os import listdir, makedirs
 from os.path import join, basename, exists, sep, split
 from sequence_processing_pipeline.Job import Job, KISSLoader
 from sequence_processing_pipeline.PipelineError import (PipelineError,
@@ -164,9 +164,12 @@ class MultiQCJob(Job):
             cmd_head = ['multiqc', '-c', self.multiqc_config_file_path,
                         '--fullnames', '--force']
 
+            # making sure the output folders exist
+            opath = join(self.output_path, 'multiqc', project)
+            makedirs(opath, exist_ok=True)
             # --interactive graphs is set to True in MultiQC configuration
             # file and hence this switch was redunant and now removed.
-            cmd_tail = ['-o', join(self.output_path, 'multiqc', project)]
+            cmd_tail = ['-o', opath]
 
             array_cmds.append(' '.join(cmd_head + input_path_list + cmd_tail))
 

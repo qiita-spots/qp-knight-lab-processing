@@ -9,6 +9,7 @@ from metapool import (load_sample_sheet, AmpliconSampleSheet, is_blank,
                       CONTAINS_REPLICATES_KEY, get_model_by_instrument_id,
                       PROFILE_NAME_KEY)
 from metapool.plate import ErrorMessage, WarningMessage
+from metapool.prep import PREP_MF_COLUMNS
 from sequence_processing_pipeline.Job import Job
 from sequence_processing_pipeline.PipelineError import PipelineError
 import logging
@@ -18,7 +19,6 @@ import pandas as pd
 from collections import defaultdict
 from datetime import datetime
 from xml.etree import ElementTree as ET
-from metapool.prep import PREP_MF_COLUMNS
 
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -894,8 +894,18 @@ class Pipeline:
 
         return False
 
-    def _generate_dummy_sample_sheet(self, first_read, last_read,
-                                     indexed_reads, dummy_sample_id):
+    def _generate_dummy_sample_sheet(self, index_cycles, non_index_cycles,
+                                     len_index, dummy_sample_id):
+        """
+        Helper function to generate a dummy (no demux) amplicon sample sheet
+        if possible. Else return project_name and None.
+        :param index_cycles: The length of the index (barcodes),
+        in cycles (bps)
+        :param non_index_cycles: The length of the non index (reads),
+        in cycles (bps)
+        :param len_index: How many index are expected; in general = 2
+        :return: sample_sheet
+        """
         # create object and initialize header
         sheet = AmpliconSampleSheet()
         sheet.Header['IEMFileVersion'] = '4'
@@ -907,13 +917,13 @@ class Pipeline:
         sheet.Header['Chemistry'] = 'Amplicon'
 
         # generate override_cycles string
-        tmp = [f"N{x['NumCycles']}" for x in indexed_reads]
+        tmp = [f"N{index_cycles}" for i in range(len_index)]
         tmp = ';'.join(tmp)
-        override_cycles = f"Y{first_read};{tmp};Y{last_read}"
+        override_cycles = f"Y{non_index_cycles};{tmp};Y{non_index_cycles}"
 
         # set Reads and Settings according to input values
         # we'll get this from the code on the server
-        sheet.Reads = [first_read, last_read]
+        sheet.Reads = [non_index_cycles, non_index_cycles]
         sheet.Settings['OverrideCycles'] = override_cycles
         sheet.Settings['MaskShortReads'] = '1'
         sheet.Settings['CreateFastqForIndexReads'] = '1'
@@ -956,32 +966,21 @@ class Pipeline:
         else:
             raise ValueError("run_dir %s not found." % run_dir)
 
-        # assumptions are first and last reads are non-indexed and there
-        # are always two. Between them there is either 1 or 2 indexed
-        # reads. If this is not true, raise an Error.
-
-        if len(reads) < 3 or len(reads) > 4:
-            # there must be a first and last read w/a minimum of one read
-            # in the middle and maximum two in the middle.
+        # the assumptions are: if we have 3 reads we should only have 1
+        # index; and if we have 4 reads, 2 should be index
+        index_reads = [r for r in reads if r['IsIndexedRead']]
+        non_index_reads = [r for r in reads if not r['IsIndexedRead']]
+        len_index_reads = len(index_reads)
+        len_non_index_reads = len(non_index_reads)
+        if len_non_index_reads != 2 or (len_index_reads != 1 and
+                                        len_index_reads != 2):
             raise ValueError("RunInfo.xml contains abnormal reads.")
-
-        first_read = reads.pop(0)
-        last_read = reads.pop()
-
-        if (first_read['IsIndexedRead'] is True or
-                last_read['IsIndexedRead'] is True):
-            raise ValueError("RunInfo.xml contains abnormal reads.")
-
-        # confirm the interior read(s) are indexed ones.
-        for read in reads:
-            if read['IsIndexedRead'] is False:
-                raise ValueError("RunInfo.xml contains abnormal reads.")
-
         dummy_sample_id = basename(run_dir) + '_SMPL1'
 
-        sheet = self._generate_dummy_sample_sheet(first_read['NumCycles'],
-                                                  last_read['NumCycles'],
-                                                  reads, dummy_sample_id)
+        sheet = self._generate_dummy_sample_sheet(
+                index_reads[0]['NumCycles'],
+                non_index_reads[0]['NumCycles'],
+                len_index_reads, dummy_sample_id)
 
         with open(output_fp, 'w') as f:
             sheet.write(f, 1)
@@ -992,17 +991,17 @@ class Pipeline:
             # the contents of each Read element are highly regular.
             # for now, process w/out installing xml2dict or other
             # library into Qiita env.
-            found = findall('<Read (.+?) />', reads)
+            found = findall('<Read (.+?)/>', reads)
 
             results = []
             for item in found:
-                attributes = item.split(' ')
+                attributes = item.strip().split(' ')
                 d = {}
                 for attribute in attributes:
                     k, v = attribute.split('=')
                     if k in ['NumCycles', 'Number']:
                         v = int(v.strip('"'))
-                    elif k in ['IsIndexedRead']:
+                    elif k in ['IsIndexedRead', 'IsReverseComplement']:
                         v = v.strip('"')
                         v = False if v == 'N' else True
                     else:

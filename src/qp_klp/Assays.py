@@ -478,6 +478,12 @@ class MetaOmic(Assay):
         # a pipeline object.
         config = self.pipeline.get_software_configuration('nu-qc')
 
+        # files_regex is used with
+        # sequencing_processing_pipeline.util.FILES_REGEX to decide
+        # the file formats to look for. In this case, if self.files_regex
+        # is not defined, just fallback to the SPP expected default regex
+        if not hasattr(self, 'files_regex'):
+            self.files_regex = 'SPP'
         # base quality control used by multiple Assay types.
         job = NuQCJob(self.raw_fastq_files_path,
                       self.pipeline.output_path,
@@ -500,7 +506,8 @@ class MetaOmic(Assay):
                       config['additional_fastq_tags'],
                       bucket_size=config['bucket_size'],
                       length_limit=config['length_limit'],
-                      cores_per_task=config['cores_per_task'])
+                      cores_per_task=config['cores_per_task'],
+                      files_regex=self.files_regex)
 
         if 'NuQCJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
@@ -588,8 +595,18 @@ class MetaOmic(Assay):
 
         for study_id in self.prep_file_paths:
             for prep_fp in self.prep_file_paths[study_id]:
-                metadata = Assay._parse_prep_file(prep_fp)
                 afact_name, is_repl = self._generate_artifact_name(prep_fp)
+
+                # the preps are created by seqpro within the GenPrepFileJob;
+                # thus, the "best" place to overwrite the values of the
+                # metadata are here
+                if hasattr(self, 'overwrite_prep_with_original') and \
+                        self.overwrite_prep_with_original:
+                    sid = basename(prep_fp).split('.')[1]
+                    afact_name = sid
+                    prep_fp = f'{self.pipeline.output_path}/original-prep.csv'
+
+                metadata = Assay._parse_prep_file(prep_fp)
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         'job-id': self.master_qiita_job_id,
@@ -610,6 +627,7 @@ class MetaOmic(Assay):
 
     def load_preps_into_qiita(self):
         data = []
+        empty_projects = []
         for project, _, qiita_id in self.special_map:
             fastq_files = self._get_postqc_fastq_files(
                 self.pipeline.output_path, project)
@@ -629,9 +647,19 @@ class MetaOmic(Assay):
                 if is_repl:
                     working_set = self._copy_files(working_set)
 
+                # let's check if any of the values is empty so
+                # we can raise an error with all the empty projects
+                for v in working_set.values():
+                    if not v:
+                        empty_projects.append(project)
+
                 data.append(self._load_prep_into_qiita(
                     self.qclient, prep_id, artifact_name, qiita_id, project,
                     working_set, ARTIFACT_TYPE_METAOMICS))
+
+        if empty_projects:
+            ep = set(empty_projects)
+            raise ValueError(f'These projects have no files: {ep}')
 
         df = pd.DataFrame(data)
         opath = join(self.pipeline.output_path, 'touched_studies.html')
