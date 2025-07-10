@@ -201,7 +201,7 @@ class Workflow():
 
         for sif_path in self.sifs:
             # get study_id from sif_file_name ...something_14385_blanks.tsv
-            study_id = self.pipeline.get_study_id_from_sif(sif_path)
+            study_id = self.pipeline.get_qiita_id_from_sif_fp(sif_path)
 
             df = pd.read_csv(sif_path, delimiter='\t', dtype=str)
 
