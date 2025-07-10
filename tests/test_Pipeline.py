@@ -1891,7 +1891,8 @@ class TestAmpliconPipeline(unittest.TestCase):
                             self.output_file_path,
                             self.qiita_id,
                             Pipeline.AMPLICON_PTYPE)
-        paths = pipeline.generate_sample_info_files()
+        paths = pipeline.generate_sample_info_files(
+            [self.good_mapping_file_path])
 
         exp = [(f'{self.path()}/output_dir/{self.good_run_id}'
                 '_ABTX_20230208_ABTX_11052_blanks.tsv')]
