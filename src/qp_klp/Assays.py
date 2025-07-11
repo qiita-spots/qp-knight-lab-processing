@@ -264,7 +264,7 @@ class Assay():
 
         # store the warnings, if they exist so they are packed with the
         # final results
-        if self.warnings:
+        if self.assay_warnings:
             wfp = f'{self.pipeline.output_path}/final_results/WARNINGS.txt'
             with open(wfp) as f:
                 f.write('\n'.join(self.warnings))
