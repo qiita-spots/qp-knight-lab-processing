@@ -25,7 +25,9 @@ class Protocol():
      initialization.
     """
     protocol_type = PROTOCOL_NAME_NONE
-    MAX_READS = 1
+    # this value was selected by looking at all the successful NuQC/SPP jobs,
+    # the max sequeces were: 712,497,596
+    MAX_READS = 720000000
 
     def subsample_reads(self):
         if self.assay_type == 'Amplicon':
@@ -52,19 +54,19 @@ class Protocol():
                 for f in files:
                     dn = dirname(f)
                     bn = basename(f)
-                    msg = (f'{sn} ({bn}) had {row[read_col]} sequences, '
-                           f'subsampling to {self.MAX_READS}')
                     nbn = join(dn, bn.replace('fastq.gz', 'subsampled.gz'))
                     cmd = f'mv {f} {nbn}'
-                    so, se, rv = system_call(cmd)
+                    _, se, rv = system_call(cmd)
                     if rv != 0 or se:
                         raise ValueError(f'Error during mv: {cmd}. {se}')
-                    cmd = (f'seqtk sample -s 42 {dn}/{nbn} {self.MAX_READS} '
+                    cmd = (f'seqtk sample -s 42 {nbn} {self.MAX_READS} '
                            f'| gzip > {f}')
-                    so, se, rv = system_call(cmd)
+                    _, se, rv = system_call(cmd)
                     if rv != 0 or se:
                         raise ValueError(f'Error during mv: {cmd}. {se}')
-                    self.assay_warnings.append(msg)
+                    self.assay_warnings.append(
+                        f'{sn} ({bn}) had {row[read_col]} sequences, '
+                        f'subsampling to {self.MAX_READS}')
 
 
 class Illumina(Protocol):
