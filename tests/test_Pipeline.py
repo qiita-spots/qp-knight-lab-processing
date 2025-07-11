@@ -528,11 +528,14 @@ class TestPipeline(unittest.TestCase):
         sif_paths = pipeline.generate_sample_info_files(sample_sheet_paths)
 
         # one sif file per study in the sample sheet(s)
-        self.assertEqual(len(sif_paths), 2)
+        # self.assertEqual(len(sif_paths), 2)
 
         for curr_sif_path in sif_paths:
             with open(curr_sif_path, 'r') as f:
                 curr_obs_lines = f.readlines()
+                # TODO: remove and replace with real testing once done
+                #  debugging file contents
+                self.assertEqual([""], curr_obs_lines)
 
                 # confirm that each file contains the expected header.
                 header = curr_obs_lines[0].strip()
