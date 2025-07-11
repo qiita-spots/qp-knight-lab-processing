@@ -48,21 +48,22 @@ class Protocol():
         if df.shape[0]:
             for _, row in df.iterrows():
                 sn = row[index_col]
-                files = glob(f'{self.pipeline.output_path}/*/{sn}*.fastq.gz')
+                files = glob(f'{self.raw_fastq_files_path}/*/{sn}*.fastq.gz')
                 for f in files:
                     dn = dirname(f)
                     bn = basename(f)
                     msg = (f'{sn} ({bn}) had {row[read_col]} sequences, '
                            f'subsampling to {self.MAX_READS}')
-                    nbn = dn.replace('fastq.gz', 'subsampled.gz')
-                    so, se, rv = system_call(f'mv {f} {nbn}')
+                    nbn = join(dn, bn.replace('fastq.gz', 'subsampled.gz'))
+                    cmd = f'mv {f} {nbn}'
+                    so, se, rv = system_call(cmd)
                     if rv != 0 or se:
-                        raise ValueError('Error during mv: {msg}')
-                    so, se, rv = system_call(
-                        'seqtk sample -s 42 '
-                        f'{dn}/{nbn} {self.MAX_READS} | gzip > {f}')
+                        raise ValueError(f'Error during mv: {cmd}. {se}')
+                    cmd = (f'seqtk sample -s 42 {dn}/{nbn} {self.MAX_READS} '
+                           f'| gzip > {f}')
+                    so, se, rv = system_call(cmd)
                     if rv != 0 or se:
-                        raise ValueError('Error during seqtk: {msg}')
+                        raise ValueError(f'Error during mv: {cmd}. {se}')
                     self.assay_warnings.append(msg)
 
 

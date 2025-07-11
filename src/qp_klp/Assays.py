@@ -262,6 +262,13 @@ class Assay():
         self.update_status("Generating packaging commands", 8, 9)
         self.generate_commands()
 
+        # store the warnings, if they exist so they are packed with the
+        # final results
+        if self.warnings:
+            wfp = f'{self.pipeline.output_path}/final_results/WARNINGS.txt'
+            with open(wfp) as f:
+                f.write('\n'.join(self.warnings))
+
         self.update_status("Packaging results", 9, 9)
         if self.update:
             self.execute_commands()
