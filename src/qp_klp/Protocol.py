@@ -4,13 +4,14 @@ from sequence_processing_pipeline.SeqCountsJob import SeqCountsJob
 from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
 from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.util import determine_orientation
-from os.path import join, split
+from os.path import join, split, basename, dirname
 from re import match
 from os import makedirs, rename, walk
 from metapool import load_sample_sheet
 from metapool.sample_sheet import PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ
 import pandas as pd
 from glob import glob
+from qiita_client.util import system_call
 
 
 PROTOCOL_NAME_NONE = "None"
@@ -27,6 +28,9 @@ class Protocol():
     MAX_READS = 1
 
     def subsample_reads(self):
+        if self.assay_type == 'Amplicon':
+            return
+
         df = pd.read_csv(self.reports_path)
         if 'raw_reads_r1r2' in df.columns:
             # this is a TellSeq run: SeqCounts.csv
@@ -42,9 +46,24 @@ class Protocol():
                 'please let an admin know.')
         df = df[df[read_col] > self.MAX_READS]
         if df.shape[0]:
-            for sn in df[index_col]:
+            for _, row in df.iterrows():
+                sn = row[index_col]
                 files = glob(f'{self.pipeline.output_path}/*/{sn}*.fastq.gz')
-                print(sn, files)
+                for f in files:
+                    dn = dirname(f)
+                    bn = basename(f)
+                    msg = (f'{sn} ({bn}) had {row[read_col]} sequences, '
+                           f'subsampling to {self.MAX_READS}')
+                    nbn = dn.replace('fastq.gz', 'subsampled.gz')
+                    so, se, rv = system_call(f'mv {f} {nbn}')
+                    if rv != 0 or se:
+                        raise ValueError('Error during mv: {msg}')
+                    so, se, rv = system_call(
+                        'seqtk sample -s 42 '
+                        f'{dn}/{nbn} {self.MAX_READS} | gzip > {f}')
+                    if rv != 0 or se:
+                        raise ValueError('Error during seqtk: {msg}')
+                    self.assay_warnings.append(msg)
 
 
 class Illumina(Protocol):

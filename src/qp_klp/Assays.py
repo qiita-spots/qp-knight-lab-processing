@@ -35,6 +35,7 @@ class Assay():
     w/'_'.
     """
     assay_type = ASSAY_NAME_NONE
+    assay_warnings = []
 
     @classmethod
     def _replace_tube_ids_w_sample_names(cls, prep_file_path, tube_id_map):
