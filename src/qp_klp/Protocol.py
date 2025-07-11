@@ -55,9 +55,10 @@ class Protocol():
                 # as prefix of their filename
                 files = glob(f'{self.raw_fastq_files_path}/*/{sn}*.fastq.gz')
                 # for each file let's get their folder (dn) and filename (bn),
-                # then create a fullpath with with dn and bn where we are changing
-                # the filename from fastq.gz to full.gz; then subsample this full.gz
-                # to a new file with the correct fastq.gz via seqtk
+                # then create a fullpath with with dn and bn where we are
+                # changing the filename from fastq.gz to full.gz; then
+                # subsample this full.gz to a new file with the correct
+                # fastq.gz via seqtk
                 for f in files:
                     dn = dirname(f)
                     bn = basename(f)
