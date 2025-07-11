@@ -40,6 +40,8 @@ class TestPipeline(unittest.TestCase):
         self.runinfo_file = self.path(self.good_run_id, 'RunInfo.xml')
         self.rtacomplete_file = self.path(self.good_run_id, 'RTAComplete.txt')
         self.good_sheet_w_replicates = self.path('good_sheet_w_replicates.csv')
+        self.good_sheet_w_reps_and_context_fp = self.path(
+            'good_sheet_w_replicates_and_context.csv')
 
         # making backups of the files so they can be restored at the end
         self.runinfo_file_bk = self.runinfo_file + '.bk'
@@ -513,10 +515,11 @@ class TestPipeline(unittest.TestCase):
                 exp = exp_last_lines[some_name]
                 self.assertEqual(obs, exp)
 
-    def test_generate_sample_information_files_with_multiple_preps(self):
-        # test sample-information-file generation.
+    def _help_test_generate_sample_information_files_with_multiple_preps(
+            self, sample_sheet_path, expected_blanks_by_qiita_id):
+
         pipeline = Pipeline(self.good_config_file, self.good_run_id,
-                            self.good_sheet_w_replicates,
+                            sample_sheet_path,
                             self.output_file_path, self.qiita_id,
                             Pipeline.METAGENOMIC_PTYPE)
 
@@ -527,36 +530,62 @@ class TestPipeline(unittest.TestCase):
 
         sif_paths = pipeline.generate_sample_info_files(sample_sheet_paths)
 
-        # one sif file per study in the sample sheet(s)
-        # self.assertEqual(len(sif_paths), 2)
+        self.assertEqual(len(sif_paths), len(expected_blanks_by_qiita_id))
 
         for curr_sif_path in sif_paths:
+            sif_qiita_id = Pipeline.get_qiita_id_from_sif_fp(curr_sif_path)
+            self.assertIn(sif_qiita_id, expected_blanks_by_qiita_id)
+            curr_expected_blanks = expected_blanks_by_qiita_id[sif_qiita_id]
+
             with open(curr_sif_path, 'r') as f:
                 curr_obs_lines = f.readlines()
-                # TODO: remove and replace with real testing once done
-                #  debugging file contents
-                self.assertEqual([""], curr_obs_lines)
 
                 # confirm that each file contains the expected header.
                 header = curr_obs_lines[0].strip()
                 self.assertEqual(header, '\t'.join(Pipeline.sif_header))
 
                 # confirm that the file contains the expected number of lines:
-                # 1 header + 2 blanks
-                self.assertEqual(len(curr_obs_lines), 3)
+                # 1 header + # blanks
+                curr_expected_len = len(curr_expected_blanks) + 1
+                self.assertEqual(len(curr_obs_lines), curr_expected_len)
 
-                # for lines 2 and 3, get the value before the first tab
+                # for lines after header, get the value before the first tab
                 # and confirm that it matches the expected blank name--
                 # i.e., that the *second* well location, which is present in
                 # the full replicate sample sheet, has been removed.
                 curr_sample_names = []
-                for line_num in range(1, 3):
+                for line_num in range(1, curr_expected_len + 1):
                     obs = curr_obs_lines[line_num].strip().split('\t')[0]
                     curr_sample_names.append(obs)
 
                 # don't care what order the blanks appear in
                 self.assertEqual(
-                    set(curr_sample_names), {'BLANK.40.12G', 'BLANK.43.12H'})
+                    set(curr_sample_names), set(curr_expected_blanks))
+
+    def test_generate_sample_information_files_multiple_preps_no_context(self):
+        # there's no sample context section in the input sample sheet, and
+        # the blanks are linked to only one project in the data table, so there
+        # is only one SIF generated
+        expected_blanks_by_qiita_id = {
+            '11661': ['BLANK.40.12G', 'BLANK.43.12H'],
+        }
+
+        self._help_test_generate_sample_information_files_with_multiple_preps(
+            self.good_sheet_w_replicates, expected_blanks_by_qiita_id)
+
+    def test_generate_sample_information_files_multiple_preps_w_context(self):
+        # there's a sample context section in the input sample sheet, and it
+        # indicates that there are blanks belonging to three different
+        # projects (although not all blanks belong to each project!)
+        # so there are three SIFs generated, one for each project.
+        expected_blanks_by_qiita_id = {
+            '11661': ['BLANK.40.12G', 'BLANK.43.12H'],
+            '10317': ['BLANK.41.12G', 'BLANK.41.12H'],
+            '11223': ['BLANK.42.12G']
+        }
+
+        self._help_test_generate_sample_information_files_with_multiple_preps(
+            self.good_sheet_w_reps_and_context_fp, expected_blanks_by_qiita_id)
 
     def test_get_sample_ids(self):
         exp_sample_ids = ['CDPH-SAL__Salmonella__Typhi__MDL-143',
