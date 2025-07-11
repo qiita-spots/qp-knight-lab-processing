@@ -525,7 +525,7 @@ class TestPipeline(unittest.TestCase):
 
         # the good sheet with replicates is decomposed into three
         # sample sheets, one for each replicate.
-        sample_sheet_paths = [self.good_sheet_w_replicates.replace(
+        sample_sheet_paths = [sample_sheet_path.replace(
             '.csv', f'_demux_{x}.csv') for x in range(1, 4)]
 
         sif_paths = pipeline.generate_sample_info_files(sample_sheet_paths)
@@ -555,7 +555,11 @@ class TestPipeline(unittest.TestCase):
                 # the full replicate sample sheet, has been removed.
                 curr_sample_names = []
                 for line_num in range(1, curr_expected_len + 1):
-                    obs = curr_obs_lines[line_num].strip().split('\t')[0]
+                    # TODO: remove print after debugging
+                    print(f"line_num: {line_num}")
+                    curr_line = curr_obs_lines[line_num]
+                    curr_line_pieces = curr_line.strip().split('\t')
+                    obs = curr_line_pieces[0]
                     curr_sample_names.append(obs)
 
                 # don't care what order the blanks appear in
