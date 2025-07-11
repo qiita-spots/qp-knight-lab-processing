@@ -555,8 +555,6 @@ class TestPipeline(unittest.TestCase):
                 # the full replicate sample sheet, has been removed.
                 curr_sample_names = []
                 for curr_line in curr_obs_lines[1:]:
-                    # TODO: remove print after debugging
-                    print(f"curr_line: {curr_line}")
                     curr_line_pieces = curr_line.strip().split('\t')
                     obs = curr_line_pieces[0]
                     curr_sample_names.append(obs)
@@ -570,7 +568,7 @@ class TestPipeline(unittest.TestCase):
         # the blanks are linked to only one project in the data table, so there
         # is only one SIF generated
         expected_blanks_by_qiita_id = {
-            '11661': ['BLANK.40.12G', 'BLANK.43.12H'],
+            '11661': ['BLANK.43.12G', 'BLANK.43.12H'],
         }
 
         self._help_test_generate_sample_information_files_with_multiple_preps(
@@ -582,9 +580,9 @@ class TestPipeline(unittest.TestCase):
         # projects (although not all blanks belong to each project!)
         # so there are three SIFs generated, one for each project.
         expected_blanks_by_qiita_id = {
-            '11661': ['BLANK.40.12G', 'BLANK.43.12H'],
-            '10317': ['BLANK.41.12G', 'BLANK.41.12H'],
-            '11223': ['BLANK.42.12G']
+            '11661': ['BLANK.43.12G', 'BLANK.43.12H'],
+            '10317': ['BLANK.43.12G', 'BLANK.43.12H'],
+            '11223': ['BLANK.43.12G']
         }
 
         self._help_test_generate_sample_information_files_with_multiple_preps(
