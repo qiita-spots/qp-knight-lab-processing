@@ -46,15 +46,22 @@ class Protocol():
             raise ValueError(
                 'Not sure how to check for seq counts to subsample, '
                 'please let an admin know.')
+        # df will keep any rows/samples with more than the self.MAX_READS
         df = df[df[read_col] > self.MAX_READS]
         if df.shape[0]:
             for _, row in df.iterrows():
                 sn = row[index_col]
+                # look for any sample (fwd/rev pairs) that have the sample_name
+                # as prefix of their filename
                 files = glob(f'{self.raw_fastq_files_path}/*/{sn}*.fastq.gz')
+                # for each file let's get their folder (dn) and filename (bn),
+                # then create a fullpath with with dn and bn where we are changing
+                # the filename from fastq.gz to full.gz; then subsample this full.gz
+                # to a new file with the correct fastq.gz via seqtk
                 for f in files:
                     dn = dirname(f)
                     bn = basename(f)
-                    nbn = join(dn, bn.replace('fastq.gz', 'subsampled.gz'))
+                    nbn = join(dn, bn.replace('fastq.gz', 'full.gz'))
                     cmd = f'mv {f} {nbn}'
                     _, se, rv = system_call(cmd)
                     if rv != 0 or se:
@@ -63,7 +70,7 @@ class Protocol():
                            f'| gzip > {f}')
                     _, se, rv = system_call(cmd)
                     if rv != 0 or se:
-                        raise ValueError(f'Error during mv: {cmd}. {se}')
+                        raise ValueError(f'Error during seqtk: {cmd}. {se}')
                     self.assay_warnings.append(
                         f'{sn} ({bn}) had {row[read_col]} sequences, '
                         f'subsampling to {self.MAX_READS}')
