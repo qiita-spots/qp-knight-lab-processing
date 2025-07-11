@@ -267,7 +267,7 @@ class Assay():
         if self.assay_warnings:
             wfp = f'{self.pipeline.output_path}/final_results/WARNINGS.txt'
             with open(wfp, 'w') as f:
-                f.write('\n'.join(self.warnings))
+                f.write('\n'.join(self.assay_warnings))
 
         self.update_status("Packaging results", 9, 9)
         if self.update:
