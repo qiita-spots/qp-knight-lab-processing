@@ -30,17 +30,19 @@ class Protocol():
         df = pd.read_csv(self.reports_path)
         if 'raw_reads_r1r2' in df.columns:
             # this is a TellSeq run: SeqCounts.csv
-            col = 'raw_reads_r1r2'
+            read_col = 'raw_reads_r1r2'
+            index_col = 'Sample_ID'
         elif '# Reads' in df.columns:
             # this is a Illumina: Demultiplex_Stats.csv
-            col = '# Reads'
+            read_col = '# Reads'
+            index_col = 'SampleID'
         else:
             raise ValueError(
                 'Not sure how to check for seq counts to subsample, '
                 'please let an admin know.')
-        df = df[df[col] > self.MAX_READS]
+        df = df[df[read_col] > self.MAX_READS]
         if df.shape[0]:
-            for sn in df.Sample_ID:
+            for sn in df[index_col]:
                 files = glob(f'{self.pipeline.output_path}/*/{sn}*.fastq.gz')
                 print(sn, files)
 
