@@ -1,0 +1,60 @@
+[Header],,,,,,,,,,,
+IEMFileVersion,4,,,,,,,,,,
+SheetType,standard_metag,,,,,,,,,,
+SheetVersion,101,,,,,,,,,,
+Investigator Name,Knight,,,,,,,,,,
+Experiment Name,RKL0042,,,,,,,,,,
+Date,2/26/20,,,,,,,,,,
+Workflow,GenerateFASTQ,,,,,,,,,,
+Application,FASTQ Only,,,,,,,,,,
+Assay,Metagenomic,,,,,,,,,,
+Description,,,,,,,,,,,
+Chemistry,Default,,,,,,,,,,
+,,,,,,,,,,,
+[Reads],,,,,,,,,,,
+150,,,,,,,,,,,
+150,,,,,,,,,,,
+,,,,,,,,,,,
+[Settings],,,,,,,,,,,
+ReverseComplement,0,,,,,,,,,,
+,,,,,,,,,,,
+[Data],,,,,,,,,,,
+Sample_ID,Sample_Name,well_id_384,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,destination_well_384,sample_plate,source_well_384,well_description
+RMA_KHP_rpoS_Mage_Q97N_B10,RMA.KHP.rpoS.Mage.Q97N,B10,iTru7_114_12,AAGTCGAG,iTru5_05_A,TGGCACTA,Feist_11661,B10,Feist_11661_P43,A9,yellow_quadrant
+RMA_KHP_rpoS_Mage_Q97E_B12,RMA.KHP.rpoS.Mage.Q97E,B12,iTru7_201_01,TGCCTCAA,iTru5_06_A,CCATGAAC,Feist_11661,B12,Feist_11661_P43,A11,yellow_quadrant
+JBI_KHP_HGL_021_B14,JBI.KHP.HGL.021,B14,iTru7_201_02,TATCGGTC,iTru5_07_A,GGTTGTCA,Feist_11661,B14,Feist_11661_P43,A13,yellow_quadrant
+JBI_KHP_HGL_022_B16,JBI.KHP.HGL.022,B16,iTru7_201_03,ATCTGACC,iTru5_08_A,GCCAATAC,Feist_11661,B16,Feist_11661_P43,A15,yellow_quadrant
+JBI_KHP_HGL_023_B18,JBI.KHP.HGL.023,B18,iTru7_201_04,TATTCGCC,iTru5_09_A,AACCTCCT,Feist_11661,B18,Feist_11661_P43,A17,yellow_quadrant
+BLANK_43_12G_B2,BLANK.43.12G,B2,iTru7_114_08,AATTCGGT,iTru5_01_A,GTATTAGC,Feist_11661,B2,Feist_11661_P43,A1,yellow_quadrant
+JBI_KHP_HGL_024_B20,JBI.KHP.HGL.024,B20,iTru7_201_05,CACAGACT,iTru5_10_A,AGCTACCA,Feist_11661,B20,Feist_11661_P43,A19,yellow_quadrant
+AP581451B02_B22,AP581451B02,B22,iTru7_108_05,GCTGAGAG,iTru5_09_A,CTCTCAGA,NYU_BMS_Melanoma_13059,B22,NYU_BMS_Melanoma_13059_P1,A21,yellow_quadrant
+EP256645B01_B24,EP256645B01,B24,iTru7_108_06,GCCGCATA,iTru5_10_A,TCGTCTGA,NYU_BMS_Melanoma_13059,B24,NYU_BMS_Melanoma_13059_P1,A23,yellow_quadrant
+BLANK_43_12H_B4,BLANK.43.12H,B4,iTru7_114_09,TCGGACTT,iTru5_02_A,CACTGAAG,Feist_11661,B4,Feist_11661_P43,A3,yellow_quadrant
+TMI_test_1_B6,TMI.test.1,B6,iTru7_114_10,TCGGTAAC,iTru5_03_A,AGTCGCTT,TMI_10317,B6,Feist_11661_P43,A5,yellow_quadrant
+Other_test_2_B8,Other.test.2,B8,iTru7_114_11,CATGTGTG,iTru5_04_A,CACAGGAA,Other_11223,B8,Feist_11661_P43,A7,yellow_quadrant
+EP987683A01_D10,EP987683A01,D10,iTru7_108_11,GCAAGCAA,iTru5_03_B,TGAGCTGT,NYU_BMS_Melanoma_13059,D10,NYU_BMS_Melanoma_13059_P1,C9,yellow_quadrant
+AP959450A03_D12,AP959450A03,D12,iTru7_108_12,GGTTCGAG,iTru5_04_B,CGTCAAGA,NYU_BMS_Melanoma_13059,D12,NYU_BMS_Melanoma_13059_P1,C11,yellow_quadrant
+SP464350A04_D14,SP464350A04,D14,iTru7_109_01,GTCGTCTT,iTru5_05_B,AAGCATCG,NYU_BMS_Melanoma_13059,D14,NYU_BMS_Melanoma_13059_P1,C13,yellow_quadrant
+EP121011B01_D16,EP121011B01,D16,iTru7_109_04,GCGGTTAC,iTru5_08_B,ACCTCTTC,NYU_BMS_Melanoma_13059,D16,NYU_BMS_Melanoma_13059_P1,C15,yellow_quadrant
+EP112567B02_D2,EP112567B02,D2,iTru7_108_07,GGAGTACC,iTru5_11_A,CAATAGCC,NYU_BMS_Melanoma_13059,D2,NYU_BMS_Melanoma_13059_P1,C1,yellow_quadrant
+EP337425B01_D4,EP337425B01,D4,iTru7_108_08,CGGGTATC,iTru5_12_A,CATTCGTC,NYU_BMS_Melanoma_13059,D4,NYU_BMS_Melanoma_13059_P1,C3,yellow_quadrant
+LP127890A01_D6,LP127890A01,D6,iTru7_108_09,TGTCTAGG,iTru5_01_B,AGTGGCAA,NYU_BMS_Melanoma_13059,D6,NYU_BMS_Melanoma_13059_P1,C5,yellow_quadrant
+EP159692B04_D8,EP159692B04,D8,iTru7_108_10,AGGCACTG,iTru5_02_B,GTGGTATG,NYU_BMS_Melanoma_13059,D8,NYU_BMS_Melanoma_13059_P1,C7,yellow_quadrant
+,,,,,,,,,,,
+[Bioinformatics],,,,,,,,,,,
+Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,,,,
+Feist_11661,11661,False,AACC,GGTT,False,Nextera,Equipment,,,,
+NYU_BMS_Melanoma_13059,13059,False,AACC,GGTT,False,Knight Lab Kapa HP,Equipment,,,,
+TMI_10317,10317,False,AACC,GGTT,False,Knight Lab Kapa HP,Eqiiperiment,,,,
+Other_11223,11223,False,AACC,GGTT,False,Knight Lab Kapa HP,Eqiiperiment,,,,
+,,,,,,,,,,,
+[Contact],,,,,,,,,,,
+Email,Sample_Project,,,,,,,,,,
+person@domain.edu,Feist_11661,,,,,,,,,,
+another_person@domain.edu,NYU_BMS_Melanoma_13059,,,,,,,,,,
+,,,,,,,,,,,
+[SampleContext],,,,,,,,,,,
+sample_name,sample_type,primary_qiita_study,secondary_qiita_studies,,,,,,,,
+BLANK.43.12G,control blank,11661,10317;11223,,,,,,,,
+BLANK.43.12H,control blank,11661,10317,,,,,,,,
+,,,,,,,,,,,

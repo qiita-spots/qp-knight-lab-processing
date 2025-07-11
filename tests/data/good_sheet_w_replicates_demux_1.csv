@@ -1,0 +1,53 @@
+[Header],,,,,,,,,,,,
+IEMFileVersion,4,,,,,,,,,,,
+SheetType,standard_metag,,,,,,,,,,,
+SheetVersion,100,,,,,,,,,,,
+Investigator Name,Knight,,,,,,,,,,,
+Experiment Name,RKL0042,,,,,,,,,,,
+Date,2020-02-26,,,,,,,,,,,
+Workflow,GenerateFASTQ,,,,,,,,,,,
+Application,FASTQ Only,,,,,,,,,,,
+Assay,Metagenomic,,,,,,,,,,,
+Description,,,,,,,,,,,,
+Chemistry,Default,,,,,,,,,,,
+,,,,,,,,,,,,
+[Reads],,,,,,,,,,,,
+150,,,,,,,,,,,,
+150,,,,,,,,,,,,
+,,,,,,,,,,,,
+[Settings],,,,,,,,,,,,
+ReverseComplement,0,,,,,,,,,,,
+,,,,,,,,,,,,
+[Data],,,,,,,,,,,,
+lane,Sample_Name,source_well_384,destination_well_384,sample_plate,well_id_384,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,well_description,Sample_ID
+1,BLANK.43.12G,A1,A1,StudyB_11661_P43,A1,iTru7_114_08,CCGACTAT,iTru5_01_A,AAGGCTGA,StudyB_11661,blue_quadrant,BLANK_43_12G_A1
+1,RMA.KHP.rpoS.Mage.Q97E,A11,A11,StudyB_11661_P43,A11,iTru7_201_01,AACACCAC,iTru5_06_A,CATCTGCT,StudyB_11661,blue_quadrant,RMA_KHP_rpoS_Mage_Q97E_A11
+1,JBI.KHP.HGL.021,A13,A13,StudyB_11661_P43,A13,iTru7_201_02,AACTTGCC,iTru5_07_A,GAAGGTTC,StudyB_11661,blue_quadrant,JBI_KHP_HGL_021_A13
+1,JBI.KHP.HGL.022,A15,A15,StudyB_11661_P43,A15,iTru7_201_03,CGTATCTC,iTru5_08_A,CTCTCAGA,StudyB_11661,blue_quadrant,JBI_KHP_HGL_022_A15
+1,JBI.KHP.HGL.023,A17,A17,StudyB_11661_P43,A17,iTru7_201_04,CAATGTGG,iTru5_09_A,GAAGAGGT,StudyB_11661,blue_quadrant,JBI_KHP_HGL_023_A17
+1,JBI.KHP.HGL.024,A19,A19,StudyB_11661_P43,A19,iTru7_201_05,GGTACGAA,iTru5_10_A,TCGTCTGA,StudyB_11661,blue_quadrant,JBI_KHP_HGL_024_A19
+1,AP581451B02,A21,A21,StudyA_13059_P1,A21,iTru7_108_05,TCTGAGAG,iTru5_09_A,CTCTCAGA,StudyA_13059,blue_quadrant,AP581451B02_A21
+1,EP256645B01,A23,A23,StudyA_13059_P1,A23,iTru7_108_06,ACCGCATA,iTru5_10_A,TCGTCTGA,StudyA_13059,blue_quadrant,EP256645B01_A23
+1,BLANK.43.12H,A3,A3,StudyB_11661_P43,A3,iTru7_114_09,ACCGACAA,iTru5_02_A,CGATCGAT,StudyB_11661,blue_quadrant,BLANK_43_12H_A3
+1,RMA.KHP.rpoS.Mage.Q97D,A5,A5,StudyB_11661_P43,A5,iTru7_114_10,CCGACTAT,iTru5_03_A,TTACCGAG,StudyB_11661,blue_quadrant,RMA_KHP_rpoS_Mage_Q97D_A5
+1,RMA.KHP.rpoS.Mage.Q97L,A7,A7,StudyB_11661_P43,A7,iTru7_114_11,CTTCGCAA,iTru5_04_A,AAGACACC,StudyB_11661,blue_quadrant,RMA_KHP_rpoS_Mage_Q97L_A7
+1,RMA.KHP.rpoS.Mage.Q97N,A9,A9,StudyB_11661_P43,A9,iTru7_114_12,GCCTTGTT,iTru5_05_A,GTCCTAAG,StudyB_11661,blue_quadrant,RMA_KHP_rpoS_Mage_Q97N_A9
+1,EP112567B02,C1,C1,StudyA_13059_P1,C1,iTru7_108_07,GAAGTACC,iTru5_11_A,CAATAGCC,StudyA_13059,blue_quadrant,EP112567B02_C1
+1,AP959450A03,C11,C11,StudyA_13059_P1,C11,iTru7_108_12,TGTTCGAG,iTru5_04_B,CGTCAAGA,StudyA_13059,blue_quadrant,AP959450A03_C11
+1,SP464350A04,C13,C13,StudyA_13059_P1,C13,iTru7_109_01,CTCGTCTT,iTru5_05_B,AAGCATCG,StudyA_13059,blue_quadrant,SP464350A04_C13
+1,EP121011B01,C15,C15,StudyA_13059_P1,C15,iTru7_109_04,TCGGTTAC,iTru5_08_B,ACCTCTTC,StudyA_13059,blue_quadrant,EP121011B01_C15
+1,EP337425B01,C3,C3,StudyA_13059_P1,C3,iTru7_108_08,CAGGTATC,iTru5_12_A,CATTCGTC,StudyA_13059,blue_quadrant,EP337425B01_C3
+1,LP127890A01,C5,C5,StudyA_13059_P1,C5,iTru7_108_09,TCTCTAGG,iTru5_01_B,AGTGGCAA,StudyA_13059,blue_quadrant,LP127890A01_C5
+1,EP159692B04,C7,C7,StudyA_13059_P1,C7,iTru7_108_10,AAGCACTG,iTru5_02_B,GTGGTATG,StudyA_13059,blue_quadrant,EP159692B04_C7
+1,EP987683A01,C9,C9,StudyA_13059_P1,C9,iTru7_108_11,CCAAGCAA,iTru5_03_B,TGAGCTGT,StudyA_13059,blue_quadrant,EP987683A01_C9
+,,,,,,,,,,,,
+[Bioinformatics],,,,,,,,,,,,
+Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,,,,,
+StudyB_11661,11661,False,AACC,GGTT,False,Nextera,Equipment,,,,,
+StudyA_13059,13059,False,AACC,GGTT,False,Knight Lab Kapa HP,Equipment,,,,,
+,,,,,,,,,,,,
+[Contact],,,,,,,,,,,,
+Email,Sample_Project,,,,,,,,,,,
+person@domain.edu,StudyB_11661,,,,,,,,,,,
+another_person@domain.edu,StudyA_13059,,,,,,,,,,,
+,,,,,,,,,,,,

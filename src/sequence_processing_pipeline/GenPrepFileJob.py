@@ -27,6 +27,7 @@ class GenPrepFileJob(Job):
         self.seqpro_path = seqpro_path
         self.qiita_job_id = qiita_job_id
         self.is_amplicon = is_amplicon
+        self.dereplicated_input_file_paths = None
         self.prep_file_paths = None
         self.commands = []
         self.has_replicates = False
@@ -119,6 +120,10 @@ class GenPrepFileJob(Job):
 
                 # overwrite default setting
                 file_paths = self._write_to_file(demux_sample_sheet(fp))
+
+        # if no replicate demuxing was needed, then this will be a list
+        # containing only the original input file path.
+        self.dereplicated_input_file_paths = file_paths
 
         for fp in file_paths:
             # generate a seqpro command-line using the new sample-sheet.

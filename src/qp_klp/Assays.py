@@ -36,8 +36,7 @@ class Assay():
     """
     assay_type = ASSAY_NAME_NONE
 
-    @classmethod
-    def _replace_tube_ids_w_sample_names(cls, prep_file_path, tube_id_map):
+    def _replace_tube_ids_w_sample_names(self, prep_file_path, tube_id_map):
         """
         Helper method for overwrite_prep_files().
         :param prep_file_path: The path to a generated prep-info file.
@@ -53,8 +52,8 @@ class Assay():
         df['old_sample_name'] = df['sample_name']
         for i in df.index:
             sample_name = df.at[i, "sample_name"]
-            # blanks do not get their names swapped.
-            if sample_name.startswith('BLANK'):
+            if self.pipeline.sample_sheet.sample_is_a_blank(sample_name):
+                # blanks do not get their names swapped.
                 continue
 
             # remove leading zeroes if they exist to match Qiita results.
@@ -94,9 +93,8 @@ class Assay():
                 continue
 
             for matching_file in matching_files:
-                Assay._replace_tube_ids_w_sample_names(matching_file,
-                                                       self.tube_id_map[
-                                                           qiita_id])
+                self._replace_tube_ids_w_sample_names(
+                    matching_file, self.tube_id_map[qiita_id])
 
     @classmethod
     def _parse_prep_file(cls, prep_file_path, convert_to_dict=True):
@@ -386,6 +384,7 @@ class Amplicon(Assay):
         if 'GenPrepFileJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
 
+        self.dereplicated_input_file_paths = job.dereplicated_input_file_paths
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates
 
@@ -583,6 +582,7 @@ class MetaOmic(Assay):
         if 'GenPrepFileJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
 
+        self.dereplicated_input_file_paths = job.dereplicated_input_file_paths
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates
 
