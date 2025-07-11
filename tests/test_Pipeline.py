@@ -554,10 +554,9 @@ class TestPipeline(unittest.TestCase):
                 # i.e., that the *second* well location, which is present in
                 # the full replicate sample sheet, has been removed.
                 curr_sample_names = []
-                for line_num in range(1, curr_expected_len + 1):
+                for curr_line in curr_obs_lines[1:]:
                     # TODO: remove print after debugging
-                    print(f"line_num: {line_num}")
-                    curr_line = curr_obs_lines[line_num]
+                    print(f"curr_line: {curr_line}")
                     curr_line_pieces = curr_line.strip().split('\t')
                     obs = curr_line_pieces[0]
                     curr_sample_names.append(obs)
