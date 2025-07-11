@@ -52,7 +52,7 @@ class Assay():
         df['old_sample_name'] = df['sample_name']
         for i in df.index:
             sample_name = df.at[i, "sample_name"]
-            if self.pipeline.sample_sheet.sample_name_is_blank(sample_name):
+            if self.pipeline.sample_sheet.sample_is_a_blank(sample_name):
                 # blanks do not get their names swapped.
                 continue
 
