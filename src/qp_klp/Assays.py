@@ -35,6 +35,7 @@ class Assay():
     w/'_'.
     """
     assay_type = ASSAY_NAME_NONE
+    assay_warnings = []
 
     @classmethod
     def _replace_tube_ids_w_sample_names(cls, prep_file_path, tube_id_map):
@@ -166,6 +167,7 @@ class Assay():
             self.convert_raw_to_fastq()
             self.integrate_results()
             self.generate_sequence_counts()
+            self.subsample_reads()
 
         self.update_status("QC-ing reads", 2, 9)
         if "NuQCJob" not in self.skip_steps:
@@ -259,6 +261,13 @@ class Assay():
 
         self.update_status("Generating packaging commands", 8, 9)
         self.generate_commands()
+
+        # store the warnings, if they exist so they are packed with the
+        # final results
+        if self.assay_warnings:
+            wfp = f'{self.pipeline.output_path}/final_results/WARNINGS.txt'
+            with open(wfp, 'w') as f:
+                f.write('\n'.join(self.assay_warnings))
 
         self.update_status("Packaging results", 9, 9)
         if self.update:
