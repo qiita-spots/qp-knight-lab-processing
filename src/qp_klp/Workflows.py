@@ -468,8 +468,8 @@ class Workflow():
 
             # do not include blanks. If they are unregistered, we will add
             # them downstream.
-            samples = {smpl for smpl in samples if
-                       not self.pipeline.sample_sheet.sample_is_a_blank(smpl)}
+            samples = {smpl for smpl in samples
+                       if not smpl.startswith('BLANK')}
 
             msgs.append(f"The total number of samples found in {p_name} that "
                         f"aren't BLANK is: {len(samples)}")
