@@ -148,6 +148,7 @@ jobs:
           export QP_KLP_CONFIG_FP=`pwd`/tests/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
           pip --version
+          pip freeze
           pip freeze | grep test
           nosetests --with-doctest --with-coverage -v --cover-package qp_klp,sequence_processing_pipeline
 
