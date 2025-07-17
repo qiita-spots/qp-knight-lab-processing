@@ -226,7 +226,6 @@ class WorkflowFactoryTests(PluginTestCase):
         #                changed and is no longer 'invalid input '
         #                'syntax for type uuid: "78901"; leaving this
         #                note for future reference
-
         with self.assertRaisesRegex(
                 RuntimeError, "Request 'post https://localhost:21174/"
                 "qiita_db/prep_template/' did not succeed"):

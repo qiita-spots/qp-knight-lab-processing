@@ -39,7 +39,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
-          python-version: 3.9.21
+          python-version: 3.9
 
       - name: Basic dependencies install
         env:
@@ -147,9 +147,6 @@ jobs:
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           export QP_KLP_CONFIG_FP=`pwd`/tests/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
-          python --version
-          pip --version
-          pip freeze
           nosetests --with-doctest --with-coverage -v --cover-package qp_klp,sequence_processing_pipeline
 
       - uses: codecov/codecov-action@v3
