@@ -39,7 +39,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
-          python-version: 3.9
+          python-version: 3.9.21
 
       - name: Basic dependencies install
         env:
@@ -150,7 +150,6 @@ jobs:
           python --version
           pip --version
           pip freeze
-          pip freeze | grep test
           nosetests --with-doctest --with-coverage -v --cover-package qp_klp,sequence_processing_pipeline
 
       - uses: codecov/codecov-action@v3
