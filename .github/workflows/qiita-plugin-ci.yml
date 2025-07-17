@@ -143,11 +143,12 @@ jobs:
           COVER_PACKAGE: ${{ matrix.cover_package }}
         run: |
           conda activate klp
-          pip freeze | grep test
           export QIITA_ROOTCA_CERT=`pwd`/qiita-dev/qiita_core/support_files/ci_rootca.crt
           export QIITA_CONFIG_FP=`pwd`/qiita-dev/qiita_core/support_files/config_test_local.cfg
           export QP_KLP_CONFIG_FP=`pwd`/tests/configuration.json
           export PYTHONWARNINGS="ignore:Certificate for localhost has no \`subjectAltName\`"
+          pip --version
+          pip freeze | grep test
           nosetests --with-doctest --with-coverage -v --cover-package qp_klp,sequence_processing_pipeline
 
       - uses: codecov/codecov-action@v3
