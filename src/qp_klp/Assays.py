@@ -613,6 +613,13 @@ class MetaOmic(Assay):
                         self.overwrite_prep_with_original:
                     sid = basename(prep_fp).split('.')[1]
                     afact_name = sid
+                    print('**********************')
+                    print('**********************')
+                    print('**********************')
+                    print('overwrite_prep_with_original exists {self.overwrite_prep_with_original}')
+                    print('**********************')
+                    print('**********************')
+                    print('**********************')
                     prep_fp = f'{self.pipeline.output_path}/original-prep.csv'
 
                 metadata = Assay._parse_prep_file(prep_fp)
