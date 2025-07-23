@@ -7,7 +7,7 @@
 # -----------------------------------------------------------------------------
 from qp_klp.WorkflowFactory import WorkflowFactory
 from unittest import main
-from os import makedirs
+from os import makedirs, mkdir
 from os.path import dirname, abspath, join, exists
 from shutil import copyfile
 from pathlib import Path
@@ -117,6 +117,10 @@ class WorkflowFactoryTests(PluginTestCase):
         if 'index' in dict(samples[0]).keys():
             tellseq = False
 
+        # making sure we start with an empty folder
+        rmtree(self.output_dir)
+        mkdir(self.output_dir)
+
         # inject Convert/NuQC/FastQC/MultiQC/GenPrepFileJob files so we can
         # move down the pipeline; first let's create the base folders
         if tellseq:
@@ -222,13 +226,8 @@ class WorkflowFactoryTests(PluginTestCase):
         # and the system is trying to create the preps.
         # Note: Qiita job_id's are UUID in the database and this tests
         # uses 78901 as the job_id so the db complains about the format
-        # Note 07.17.25: for whatever reason the reponse for this test
-        #                changed and is no longer 'invalid input '
-        #                'syntax for type uuid: "78901"; leaving this
-        #                note for future reference
-        with self.assertRaisesRegex(
-                RuntimeError, "Request 'post https://localhost:21174/"
-                "qiita_db/prep_template/' did not succeed"):
+        with self.assertRaisesRegex(RuntimeError, 'invalid input '
+                                    'syntax for type uuid: "78901"'):
             wf.execute_pipeline()
 
     def test_metatranscriptomic_workflow_creation(self):
