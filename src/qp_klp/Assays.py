@@ -615,12 +615,12 @@ class MetaOmic(Assay):
                     afact_name = sid
                     prep_fp = f'{self.pipeline.output_path}/original-prep.csv'
 
+                metadata = Assay._parse_prep_file(prep_fp)
                 print('**********')
                 print(f'{prep_fp}')
                 print('**********')
+                print(metadata)
                 print('**********')
-
-                metadata = Assay._parse_prep_file(prep_fp)
                 data = {'prep_info': dumps(metadata),
                         'study': study_id,
                         'job-id': self.master_qiita_job_id,
