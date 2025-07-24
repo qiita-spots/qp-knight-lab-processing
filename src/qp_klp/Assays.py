@@ -601,14 +601,9 @@ class MetaOmic(Assay):
         :return: A dict of lists of prep-ids, keyed by study-id.
         """
         results = defaultdict(list)
-
-        print('******************************')
-        print('******************************')
-        print(self.prep_file_paths)
+        # sorting to assure order
         for study_id in sorted(self.prep_file_paths, key=lambda x: int(x)):
             for prep_fp in self.prep_file_paths[study_id]:
-                print('   ', study_id, prep_fp)
-
                 afact_name, is_repl = self._generate_artifact_name(prep_fp)
 
                 # the preps are created by seqpro within the GenPrepFileJob;
@@ -635,9 +630,6 @@ class MetaOmic(Assay):
                 results[study_id].append((prep_id, afact_name, is_repl))
                 self.run_prefixes[prep_id] = [metadata[sample]['run_prefix']
                                               for sample in metadata]
-
-        print('******************************')
-        print('******************************')
 
         self.touched_studies_prep_info = results
         return results

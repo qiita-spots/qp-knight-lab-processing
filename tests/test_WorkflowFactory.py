@@ -7,7 +7,7 @@
 # -----------------------------------------------------------------------------
 from qp_klp.WorkflowFactory import WorkflowFactory
 from unittest import main
-from os import makedirs, mkdir
+from os import makedirs
 from os.path import dirname, abspath, join, exists
 from shutil import copyfile
 from pathlib import Path
@@ -116,10 +116,6 @@ class WorkflowFactoryTests(PluginTestCase):
         tellseq = True
         if 'index' in dict(samples[0]).keys():
             tellseq = False
-
-        # making sure we start with an empty folder
-        rmtree(self.output_dir)
-        mkdir(self.output_dir)
 
         # inject Convert/NuQC/FastQC/MultiQC/GenPrepFileJob files so we can
         # move down the pipeline; first let's create the base folders
