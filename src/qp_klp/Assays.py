@@ -605,7 +605,7 @@ class MetaOmic(Assay):
         print('******************************')
         print('******************************')
         print(self.prep_file_paths)
-        for study_id in sorted(self.prep_file_paths):
+        for study_id in sorted(self.prep_file_paths, key=lambda x: int(x)):
             for prep_fp in self.prep_file_paths[study_id]:
                 print('   ', study_id, prep_fp)
 
