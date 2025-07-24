@@ -112,6 +112,8 @@ class WorkflowFactoryTests(PluginTestCase):
         '''This is a helper method for testing that all the steps are run
            when testing wf.execute_pipeline()
         '''
+        print(wf.pipeline.sample_sheet.path)
+        print(wf.pipeline.sample_sheet.samples)
         samples = wf.pipeline.sample_sheet.samples
         tellseq = True
         if 'index' in dict(samples[0]).keys():
