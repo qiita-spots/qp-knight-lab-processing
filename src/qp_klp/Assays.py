@@ -395,6 +395,7 @@ class Amplicon(Assay):
         if 'GenPrepFileJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
 
+        self.dereplicated_input_file_paths = job.dereplicated_input_file_paths
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates
 
@@ -592,6 +593,7 @@ class MetaOmic(Assay):
         if 'GenPrepFileJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
 
+        self.dereplicated_input_file_paths = job.dereplicated_input_file_paths
         self.prep_file_paths = job.prep_file_paths
         self.has_replicates = job.has_replicates
 

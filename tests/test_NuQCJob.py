@@ -2263,7 +2263,7 @@ class TestNuQCJob(unittest.TestCase):
         trimmed_only_path = self.path("NuQCJob", "only-adapter-filtered")
 
         # test _move_trimmed_files() by verifying that only the interleave
-        # fastq files from the NYU project are moved.
+        # fastq files from the nyu project are moved.
         job._move_trimmed_files("StudyA_13059", trimmed_only_path)
 
         new_path = join(trimmed_only_path, "StudyA_13059")

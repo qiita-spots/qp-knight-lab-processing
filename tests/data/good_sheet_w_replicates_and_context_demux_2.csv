@@ -1,0 +1,60 @@
+[Header],,,,,,,,,,,
+IEMFileVersion,4,,,,,,,,,,
+SheetType,standard_metag,,,,,,,,,,
+SheetVersion,101,,,,,,,,,,
+Investigator Name,Knight,,,,,,,,,,
+Experiment Name,RKL0042,,,,,,,,,,
+Date,2/26/20,,,,,,,,,,
+Workflow,GenerateFASTQ,,,,,,,,,,
+Application,FASTQ Only,,,,,,,,,,
+Assay,Metagenomic,,,,,,,,,,
+Description,,,,,,,,,,,
+Chemistry,Default,,,,,,,,,,
+,,,,,,,,,,,
+[Reads],,,,,,,,,,,
+150,,,,,,,,,,,
+150,,,,,,,,,,,
+,,,,,,,,,,,
+[Settings],,,,,,,,,,,
+ReverseComplement,0,,,,,,,,,,
+,,,,,,,,,,,
+[Data],,,,,,,,,,,
+Sample_ID,Sample_Name,well_id_384,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,destination_well_384,sample_plate,source_well_384,well_description
+RMA_KHP_rpoS_Mage_Q97N_A10,RMA.KHP.rpoS.Mage.Q97N,A10,iTru7_114_12,GAAGTACC,iTru5_05_A,TGTTCGAG,ProjectF_11661,A10,ProjectF_11661_P43,A9,green_quadrant
+RMA_KHP_rpoS_Mage_Q97E_A12,RMA.KHP.rpoS.Mage.Q97E,A12,iTru7_201_01,AGTGGCAA,iTru5_06_A,TACTCCAG,ProjectF_11661,A12,ProjectF_11661_P43,A11,green_quadrant
+JBI_KHP_HGL_021_A14,JBI.KHP.HGL.021,A14,iTru7_201_02,CAGGAATC,iTru5_07_A,CTCGTCTT,ProjectF_11661,A14,ProjectF_11661_P43,A13,green_quadrant
+JBI_KHP_HGL_022_A16,JBI.KHP.HGL.022,A16,iTru7_201_03,GTGGAATG,iTru5_08_A,GATACCTG,ProjectF_11661,A16,ProjectF_11661_P43,A15,green_quadrant
+JBI_KHP_HGL_023_A18,JBI.KHP.HGL.023,A18,iTru7_201_04,TCTCAAGG,iTru5_09_A,CGAACTGT,ProjectF_11661,A18,ProjectF_11661_P43,A17,green_quadrant
+BLANK_43_12G_A2,BLANK.43.12G,A2,iTru7_114_08,TCTGAGAG,iTru5_01_A,AAGCACTG,ProjectF_11661,A2,ProjectF_11661_P43,A1,green_quadrant
+JBI_KHP_HGL_024_A20,JBI.KHP.HGL.024,A20,iTru7_201_05,TGAGATGT,iTru5_10_A,ACCTCTTC,ProjectF_11661,A20,ProjectF_11661_P43,A19,green_quadrant
+AP581451B02_A22,AP581451B02,A22,iTru7_108_05,TCTGAAAG,iTru5_09_A,ATCTCAGA,ProjectN_13059,A22,ProjectN_13059_P1,A21,green_quadrant
+EP256645B01_A24,EP256645B01,A24,iTru7_108_06,ACAGCATA,iTru5_10_A,TGGTCTGA,ProjectN_13059,A24,ProjectN_13059_P1,A23,green_quadrant
+BLANK_43_12H_A4,BLANK.43.12H,A4,iTru7_114_09,CAATAGCC,iTru5_02_A,CGTCAAGA,ProjectF_11661,A4,ProjectF_11661_P43,A3,green_quadrant
+TMI_test_1_A6,TMI.test.1,A6,iTru7_114_10,ACCGCATA,iTru5_03_A,CCAAGCAA,TMI_10317,A6,ProjectF_11661_P43,A5,green_quadrant
+Other_test_2_A8,Other.test.2,A8,iTru7_114_11,CATTCGTC,iTru5_04_A,AAGCATCG,Other_11223,A8,ProjectF_11661_P43,A7,green_quadrant
+EP987683A01_C10,EP987683A01,C10,iTru7_108_11,ACAAGCAA,iTru5_03_B,TGAGCTGT,ProjectN_13059,C10,ProjectN_13059_P1,C9,green_quadrant
+AP959450A03_C12,AP959450A03,C12,iTru7_108_12,AGTTCGAG,iTru5_04_B,CGTCCAGA,ProjectN_13059,C12,ProjectN_13059_P1,C11,green_quadrant
+SP464350A04_C14,SP464350A04,C14,iTru7_109_01,ATCGTCTT,iTru5_05_B,AAGAATCG,ProjectN_13059,C14,ProjectN_13059_P1,C13,green_quadrant
+EP121011B01_C16,EP121011B01,C16,iTru7_109_04,ACGGTTAC,iTru5_08_B,ACCACTTC,ProjectN_13059,C16,ProjectN_13059_P1,C15,green_quadrant
+EP112567B02_C2,EP112567B02,C2,iTru7_108_07,GAAATACC,iTru5_11_A,CATTAGCC,ProjectN_13059,C2,ProjectN_13059_P1,C1,green_quadrant
+EP337425B01_C4,EP337425B01,C4,iTru7_108_08,CAGATATC,iTru5_12_A,CAGTCGTC,ProjectN_13059,C4,ProjectN_13059_P1,C3,green_quadrant
+LP127890A01_C6,LP127890A01,C6,iTru7_108_09,TCTATAGG,iTru5_01_B,AGTCGCAA,ProjectN_13059,C6,ProjectN_13059_P1,C5,green_quadrant
+EP159692B04_C8,EP159692B04,C8,iTru7_108_10,AAGTTATG,iTru5_02_B,GTGGAATG,ProjectN_13059,C8,ProjectN_13059_P1,C7,green_quadrant
+,,,,,,,,,,,
+[Bioinformatics],,,,,,,,,,,
+Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,,,,
+ProjectF_11661,11661,False,AACC,GGTT,False,Nextera,Equipment,,,,
+ProjectN_13059,13059,False,AACC,GGTT,False,Knight Lab Kapa HP,Equipment,,,,
+TMI_10317,10317,False,AACC,GGTT,False,Knight Lab Kapa HP,Eqiiperiment,,,,
+Other_11223,11223,False,AACC,GGTT,False,Knight Lab Kapa HP,Eqiiperiment,,,,
+,,,,,,,,,,,
+[Contact],,,,,,,,,,,
+Email,Sample_Project,,,,,,,,,,
+person@domain.edu,ProjectF_11661,,,,,,,,,,
+another_person@domain.edu,ProjectN_13059,,,,,,,,,,
+,,,,,,,,,,,
+[SampleContext],,,,,,,,,,,
+sample_name,sample_type,primary_qiita_study,secondary_qiita_studies,,,,,,,,
+BLANK.43.12G,control blank,11661,10317;11223,,,,,,,,
+BLANK.43.12H,control blank,11661,10317,,,,,,,,
+,,,,,,,,,,,

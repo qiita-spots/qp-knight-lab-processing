@@ -40,6 +40,8 @@ class TestPipeline(unittest.TestCase):
         self.runinfo_file = self.path(self.good_run_id, 'RunInfo.xml')
         self.rtacomplete_file = self.path(self.good_run_id, 'RTAComplete.txt')
         self.good_sheet_w_replicates = self.path('good_sheet_w_replicates.csv')
+        self.good_sheet_w_reps_and_context_fp = self.path(
+            'good_sheet_w_replicates_and_context.csv')
 
         # making backups of the files so they can be restored at the end
         self.runinfo_file_bk = self.runinfo_file + '.bk'
@@ -414,7 +416,8 @@ class TestPipeline(unittest.TestCase):
                             self.output_file_path, self.qiita_id,
                             Pipeline.METAGENOMIC_PTYPE)
 
-        paths = pipeline.generate_sample_info_files()
+        paths = pipeline.generate_sample_info_files(
+            [self.good_sample_sheet_path])
         exp = [(f'{self.path()}/output_dir/{self.good_run_id}'
                 '_StudyA_13059_blanks.tsv'),
                (f'{self.path()}/output_dir/{self.good_run_id}'
@@ -512,61 +515,78 @@ class TestPipeline(unittest.TestCase):
                 exp = exp_last_lines[some_name]
                 self.assertEqual(obs, exp)
 
-    def test_generate_sample_information_files_with_additional_meta(self):
-        # TODO: With recent changes is this needed?
-        # test sample-information-file generation.
+    def _help_test_generate_sample_information_files_with_multiple_preps(
+            self, sample_sheet_path, expected_blanks_by_qiita_id):
+
         pipeline = Pipeline(self.good_config_file, self.good_run_id,
-                            self.good_sample_sheet_path,
+                            sample_sheet_path,
                             self.output_file_path, self.qiita_id,
                             Pipeline.METAGENOMIC_PTYPE)
 
-        # create a dataframe with duplicate information to pass to
-        # generate_sample_information_files(). Confirm that the duplicates
-        # are dropped. Confirm 'NOTBLANK_999A' is also filtered out.
-        df = pd.DataFrame(data=[('BLANK999_999A', 'StudyA_13059'),
-                                ('BLANK999_999A', 'StudyA_13059'),
-                                ('NOTBLANK_999A', 'StudyA_13059')],
-                          columns=['sample_name', 'project_name'])
+        # the good sheet with replicates is decomposed into three
+        # sample sheets, one for each replicate.
+        sample_sheet_paths = [sample_sheet_path.replace(
+            '.csv', f'_demux_{x}.csv') for x in range(1, 4)]
 
-        sif_path = pipeline.generate_sample_info_files(addl_info=df)
+        sif_paths = pipeline.generate_sample_info_files(sample_sheet_paths)
 
-        # get the path for the StudyA dataset.
-        sif_path = [x for x in sif_path if 'StudyA' in x][0]
+        self.assertEqual(len(sif_paths), len(expected_blanks_by_qiita_id))
 
-        exp_first_line = ("BLANK1.1A\t2021-10-21\t193\t"
-                          "Control\tNegative\tSterile water blank\t"
-                          "Sterile water blank\turban biome\t"
-                          "research facility\tsterile water\t"
-                          "misc environment\tUSA:CA:San Diego\t"
-                          "BLANK1.1A\t32.5\t-117.25\tcontrol blank\t"
-                          "metagenome\t256318\tBLANK1.1A\t"
-                          "StudyA\tTRUE\tUCSD\tFALSE")
+        for curr_sif_path in sif_paths:
+            sif_qiita_id = Pipeline.get_qiita_id_from_sif_fp(curr_sif_path)
+            self.assertIn(sif_qiita_id, expected_blanks_by_qiita_id)
+            curr_expected_blanks = expected_blanks_by_qiita_id[sif_qiita_id]
 
-        exp_last_line = ("BLANK4.4H\t2021-10-21\t193\tControl\tNegative\t"
-                         "Sterile water blank\tSterile water blank\t"
-                         "urban biome\tresearch facility\tsterile water\t"
-                         "misc environment\tUSA:CA:San Diego\tBLANK4.4H\t"
-                         "32.5\t-117.25\tcontrol blank\tmetagenome\t256318\t"
-                         "BLANK4.4H\tStudyA\tTRUE\tUCSD\tFALSE")
+            with open(curr_sif_path, 'r') as f:
+                curr_obs_lines = f.readlines()
 
-        with open(sif_path, 'r') as f:
-            obs_lines = f.readlines()
+                # confirm that each file contains the expected header.
+                header = curr_obs_lines[0].strip()
+                self.assertEqual(header, '\t'.join(Pipeline.sif_header))
 
-            # confirm that each file contains the expected header.
-            header = obs_lines[0].strip()
-            self.assertEqual(header, '\t'.join(Pipeline.sif_header))
+                # confirm that the file contains the expected number of lines:
+                # 1 header + # blanks
+                curr_expected_len = len(curr_expected_blanks) + 1
+                self.assertEqual(len(curr_obs_lines), curr_expected_len)
 
-            # confirm that the first line of each file is as expected.
-            obs = obs_lines[1].strip()
-            exp = exp_first_line
+                # for lines after header, get the value before the first tab
+                # and confirm that it matches the expected blank name--
+                # i.e., that the *second* well location, which is present in
+                # the full replicate sample sheet, has been removed.
+                curr_sample_names = []
+                for curr_line in curr_obs_lines[1:]:
+                    curr_line_pieces = curr_line.strip().split('\t')
+                    obs = curr_line_pieces[0]
+                    curr_sample_names.append(obs)
 
-            self.assertEqual(obs, exp)
+                # don't care what order the blanks appear in
+                self.assertEqual(
+                    set(curr_sample_names), set(curr_expected_blanks))
 
-            # confirm that the last line of each file is as expected.
-            obs = obs_lines[-1].strip()
-            exp = exp_last_line
+    def test_generate_sample_information_files_multiple_preps_no_context(self):
+        # there's no sample context section in the input sample sheet, and
+        # the blanks are linked to only one project in the data table, so there
+        # is only one SIF generated
+        expected_blanks_by_qiita_id = {
+            '11661': ['BLANK.43.12G', 'BLANK.43.12H'],
+        }
 
-            self.assertEqual(obs, exp)
+        self._help_test_generate_sample_information_files_with_multiple_preps(
+            self.good_sheet_w_replicates, expected_blanks_by_qiita_id)
+
+    def test_generate_sample_information_files_multiple_preps_w_context(self):
+        # there's a sample context section in the input sample sheet, and it
+        # indicates that there are blanks belonging to three different
+        # projects (although not all blanks belong to each project!)
+        # so there are three SIFs generated, one for each project.
+        expected_blanks_by_qiita_id = {
+            '11661': ['BLANK.43.12G', 'BLANK.43.12H'],
+            '10317': ['BLANK.43.12G', 'BLANK.43.12H'],
+            '11223': ['BLANK.43.12G']
+        }
+
+        self._help_test_generate_sample_information_files_with_multiple_preps(
+            self.good_sheet_w_reps_and_context_fp, expected_blanks_by_qiita_id)
 
     def test_get_sample_ids(self):
         exp_sample_ids = ['CDPH-SAL__Salmonella__Typhi__MDL-143',
@@ -1625,7 +1645,7 @@ class TestPipeline(unittest.TestCase):
                      ('Foobar', None),
                      ('', None),
                      (None, None)],
-            'False': [('NYU_BMS_Mel_13059', ('NYU_BMS_Mel_13059', '13059')),
+            'False': [('ProjectN_13059', ('ProjectN_13059', '13059')),
                       ('StudyB_11661', ('StudyB_11661', '11661')),
                       ('StudyC_6123', ('StudyC_6123', '6123')),
                       ('bar.baz_123', ('bar.baz_123', '123')),
@@ -1904,7 +1924,8 @@ class TestAmpliconPipeline(unittest.TestCase):
                             self.output_file_path,
                             self.qiita_id,
                             Pipeline.AMPLICON_PTYPE)
-        paths = pipeline.generate_sample_info_files()
+        paths = pipeline.generate_sample_info_files(
+            [self.good_mapping_file_path])
 
         exp = [(f'{self.path()}/output_dir/{self.good_run_id}'
                 '_ABTX_20230208_ABTX_11052_blanks.tsv')]

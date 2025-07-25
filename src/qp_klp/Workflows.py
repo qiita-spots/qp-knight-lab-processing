@@ -37,6 +37,7 @@ class Workflow():
         self.output_path = None
         self.pipeline = None
         self.prep_copy_index = 0
+        self.dereplicated_input_file_paths = None
         self.prep_file_paths = None
         self.qclient = None
         self.run_prefixes = {}
@@ -158,39 +159,13 @@ class Workflow():
     def generate_sifs(self):
         """
         Generates sample-info files for each project, containing
-        metadata on BLANKS.
+        metadata on blanks.
         """
-        from_qiita = {}
 
-        for study_id in self.prep_file_paths:
-            url = f'/api/v1/study/{study_id}/samples'
-            logging.debug(url)
-            samples = list(self.qclient.get(url))
-            from_qiita[study_id] = samples
-
-        add_sif_info = []
-
-        qid_pn_map = {proj['qiita_id']: proj['project_name'] for
-                      proj in self.pipeline.get_project_info()}
-
-        # in case we really do need to query for samples again:
-        # assume set of valid study_ids can be determined from prep_file_paths.
-        for study_id in from_qiita:
-            samples = from_qiita[study_id]
-            # generate a list of (sample-name, project-name) pairs.
-            project_name = qid_pn_map[study_id]
-            samples = [(x, project_name) for x in samples]
-            add_sif_info.append(pd.DataFrame(data=samples,
-                                             columns=['sample_name',
-                                                      'project_name']))
-
-        # convert the list of dataframes into a single dataframe.
-        add_sif_info = pd.concat(add_sif_info,
-                                 ignore_index=True).drop_duplicates()
-
-        # generate SIF files with add_sif_info as additional metadata input.
-        # duplicate sample-names and non-blanks will be handled properly.
-        self.sifs = self.pipeline.generate_sample_info_files(add_sif_info)
+        # generate SIF files with paths to the input file(s) (multiples when
+        # there are replicates)
+        self.sifs = self.pipeline.generate_sample_info_files(
+            self.dereplicated_input_file_paths)
 
         return self.sifs
 
@@ -202,30 +177,28 @@ class Workflow():
 
         for sif_path in self.sifs:
             # get study_id from sif_file_name ...something_14385_blanks.tsv
-            study_id = sif_path.split('_')[-2]
+            study_id = self.pipeline.get_qiita_id_from_sif_fp(sif_path)
 
             df = pd.read_csv(sif_path, delimiter='\t', dtype=str)
 
             # Prepend study_id to make them compatible w/list from Qiita.
             df['sample_name'] = f'{study_id}.' + df['sample_name'].astype(str)
 
-            # SIFs only contain BLANKs. Get the list of potentially new BLANKs.
-            blank_ids = [i for i in df['sample_name'] if 'blank' in i.lower()]
-            blanks = df[df['sample_name'].isin(blank_ids)]['sample_name']
+            # SIFs only contain blanks. Get the list of potentially new blanks.
+            blanks = df['sample_name'].tolist()
             if len(blanks) == 0:
                 # we have nothing to do so let's return early
                 return
 
-            # Get list of BLANKs already registered in Qiita.
+            # Get list of samples already registered in Qiita
+            # (will include any already-registered blanks)
             from_qiita = self.qclient.get(f'/api/v1/study/{study_id}/samples')
-            from_qiita = [x for x in from_qiita if
-                          x.startswith(f'{study_id}.BLANK')]
 
-            # Generate list of BLANKs that need to be ADDED to Qiita.
+            # Generate list of blanks that need to be ADDED to Qiita.
             new_blanks = (set(blanks) | set(from_qiita)) - set(from_qiita)
 
             if len(new_blanks):
-                # Generate dummy entries for each new BLANK, if any.
+                # Generate dummy entries for each new blank, if any.
                 url = f'/api/v1/study/{study_id}/samples/info'
                 logging.debug(url)
                 categories = self.qclient.get(url)['categories']
@@ -324,7 +297,7 @@ class Workflow():
         :return:
         """
         results = [x for x in listdir(self.pipeline.output_path) if
-                   x.endswith('_blanks.tsv')]
+                   self.pipeline.is_sif_fp(x)]
 
         results.sort()
 
@@ -495,7 +468,7 @@ class Workflow():
             else:
                 samples = set(self.pipeline.get_sample_names(p_name))
 
-            # do not include BLANKs. If they are unregistered, we will add
+            # do not include blanks. If they are unregistered, we will add
             # them downstream.
             samples = {smpl for smpl in samples
                        if not smpl.startswith('BLANK')}
