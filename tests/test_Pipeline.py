@@ -1645,7 +1645,7 @@ class TestPipeline(unittest.TestCase):
                      ('Foobar', None),
                      ('', None),
                      (None, None)],
-            'False': [('NYU_BMS_Mel_13059', ('NYU_BMS_Mel_13059', '13059')),
+            'False': [('ProjectN_13059', ('ProjectN_13059', '13059')),
                       ('StudyB_11661', ('StudyB_11661', '11661')),
                       ('StudyC_6123', ('StudyC_6123', '6123')),
                       ('bar.baz_123', ('bar.baz_123', '123')),
