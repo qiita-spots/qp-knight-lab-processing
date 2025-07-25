@@ -601,8 +601,8 @@ class MetaOmic(Assay):
         :return: A dict of lists of prep-ids, keyed by study-id.
         """
         results = defaultdict(list)
-
-        for study_id in self.prep_file_paths:
+        # sorting to assure order
+        for study_id in sorted(self.prep_file_paths, key=lambda x: int(x)):
             for prep_fp in self.prep_file_paths[study_id]:
                 afact_name, is_repl = self._generate_artifact_name(prep_fp)
 

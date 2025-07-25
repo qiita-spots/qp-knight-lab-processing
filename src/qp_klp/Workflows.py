@@ -285,7 +285,8 @@ class Workflow():
 
                    (['failed_samples.html',
                      'touched_studies.html',
-                     'MultiQCJob/multiqc'],
+                     'MultiQCJob/multiqc',
+                     'TellReadJob/QC_Analysis_TellReadJob.html'],
                     'mv', RESULTS_DIR, 'INPUTS_FIRST'),
 
                    (['FastQCJob/multiqc'], 'mv', RESULTS_DIR, 'INPUTS_FIRST')]
