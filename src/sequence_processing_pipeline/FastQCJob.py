@@ -8,6 +8,7 @@ from re import sub
 from sequence_processing_pipeline.Job import Job, KISSLoader
 from sequence_processing_pipeline.PipelineError import (PipelineError,
                                                         JobFailedError)
+from sequence_processing_pipeline.util import determine_orientation
 
 
 class FastQCJob(Job):
@@ -93,14 +94,19 @@ class FastQCJob(Job):
             # folder from consideration if they are present.
             files = [x for x in files if 'only-adapter-filtered' not in x]
 
-            # break files up into R1, R2, I1, I2
-            # assume _R1_ does not occur in the path as well.
-            r1_only = [x for x in files if '_R1_' in x]
-            r2_only = [x for x in files if '_R2_' in x]
-
-            # amplicon runs may or may not have an i2. this is okay.
-            i1_only = [x for x in files if '_I1_' in x]
-            i2_only = [x for x in files if '_I2_' in x]
+            r1_only, r2_only, i1_only, i2_only = [], [], [], []
+            for f in files:
+                o = determine_orientation(f)
+                if o == 'R1':
+                    r1_only.append(f)
+                elif o == 'R2':
+                    r2_only.append(f)
+                elif o == 'I1':
+                    i1_only.append(f)
+                elif o == 'I2':
+                    i2_only.append(f)
+                else:
+                    raise ValueError(f'{f} undefined orientation {o}')
 
             if r1_only:
                 tmp = ' '.join(r1_only)
@@ -118,7 +124,7 @@ class FastQCJob(Job):
                     if is_raw_input:
                         filter_type = 'raw'
                     else:
-                        raise ValueError("indeterminate type")
+                        raise ValueError(f"indeterminate type: {tmp}")
 
                 r1_only.sort()
                 r2_only.sort()

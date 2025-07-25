@@ -29,7 +29,6 @@ class StandardMetatranscriptomicWorkflow(Workflow, Metatranscriptomic,
                                  self.kwargs['job_id'],
                                  ASSAY_NAME_METATRANSCRIPTOMIC,
                                  lane_number=self.kwargs['lane_number'])
-
         self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
                                        self.pipeline.sample_sheet.samples)
 

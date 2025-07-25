@@ -8,10 +8,9 @@ from sequence_processing_pipeline.Pipeline import Pipeline
 from shutil import move
 import logging
 from sequence_processing_pipeline.Commands import split_similar_size_bins
-from sequence_processing_pipeline.util import iter_paired_files
+from sequence_processing_pipeline.util import iter_paired_files, FILES_REGEX
 from jinja2 import Environment
 from glob import glob
-import re
 from sys import executable
 
 
@@ -25,7 +24,7 @@ class NuQCJob(Job):
                  samtools_path, modules_to_load, qiita_job_id,
                  max_array_length, known_adapters_path, movi_path, gres_value,
                  pmls_path, additional_fastq_tags, bucket_size=8,
-                 length_limit=100, cores_per_task=4):
+                 length_limit=100, cores_per_task=4, files_regex='SPP'):
         """
         Submit a slurm job where the contents of fastq_root_dir are processed
         using fastp, minimap2, and samtools. Human-genome sequences will be
@@ -52,6 +51,7 @@ class NuQCJob(Job):
         :param cores_per_task: Number of CPU cores per node to request.
         :param additional_fastq_tags: A list of fastq tags to preserve during
         filtering.
+        :param files_regex: the FILES_REGEX to use for parsing files
         """
         super().__init__(fastq_root_dir,
                          output_path,
@@ -107,13 +107,11 @@ class NuQCJob(Job):
 
         self.batch_prefix = f"hds-{self.qiita_job_id}"
         self.minimum_bytes = 3100
-        self.fastq_regex = re.compile(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}'
-                                      r'\.fastq\.gz$')
-        self.interleave_fastq_regex = re.compile(r'^(.*)_S\d{1,4}_L\d{3}_R\d'
-                                                 r'_\d{3}\.interleave\.fastq'
-                                                 r'\.gz$')
-        self.html_regex = re.compile(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.html$')
-        self.json_regex = re.compile(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.json$')
+        self.fastq_regex = FILES_REGEX[files_regex]['fastq']
+        self.interleave_fastq_regex = FILES_REGEX[
+            files_regex]['interleave_fastq']
+        self.html_regex = FILES_REGEX[files_regex]['html']
+        self.json_regex = FILES_REGEX[files_regex]['json']
 
         self._validate_project_data()
 

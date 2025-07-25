@@ -5,8 +5,8 @@ from .StandardMetatranscriptomicWorkflow import \
 from .TellseqMetagenomicWorkflow import TellSeqMetagenomicWorkflow
 from sequence_processing_pipeline.Pipeline import Pipeline
 from metapool import load_sample_sheet
+from metapool.sample_sheet import SAMPLE_SHEETS_BY_PROTOCOL as SSBP
 from .Assays import METAOMIC_ASSAY_NAMES, ASSAY_NAME_AMPLICON
-from .Protocol import PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ
 from .Workflows import WorkflowError
 
 
@@ -16,17 +16,10 @@ class WorkflowFactory():
                  StandardAmpliconWorkflow,
                  TellSeqMetagenomicWorkflow]
 
-    ST_TO_IN_MAP = {PROTOCOL_NAME_ILLUMINA: ['standard_metag',
-                                             'standard_metat',
-                                             'absquant_metag',
-                                             'absquant_metat'],
-                    PROTOCOL_NAME_TELLSEQ: ['tellseq_metag',
-                                            'tellseq_absquant']}
-
     @classmethod
     def _get_instrument_type(cls, sheet):
-        for instrument_type in cls.ST_TO_IN_MAP:
-            if sheet.Header['SheetType'] in cls.ST_TO_IN_MAP[instrument_type]:
+        for instrument_type in SSBP:
+            if sheet.Header['SheetType'] in SSBP[instrument_type]:
                 return instrument_type
 
     @classmethod

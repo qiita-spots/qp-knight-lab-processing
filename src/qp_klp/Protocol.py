@@ -3,15 +3,18 @@ from sequence_processing_pipeline.TellReadJob import TellReadJob
 from sequence_processing_pipeline.SeqCountsJob import SeqCountsJob
 from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
 from sequence_processing_pipeline.PipelineError import PipelineError
-from os.path import join, split
+from sequence_processing_pipeline.util import determine_orientation
+from os.path import join, split, basename, dirname
 from re import match
 from os import makedirs, rename, walk
 from metapool import load_sample_sheet
+from metapool.sample_sheet import PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ
+import pandas as pd
+from glob import glob
+from qiita_client.util import system_call
 
 
 PROTOCOL_NAME_NONE = "None"
-PROTOCOL_NAME_ILLUMINA = "Illumina"
-PROTOCOL_NAME_TELLSEQ = "TellSeq"
 
 
 class Protocol():
@@ -22,6 +25,56 @@ class Protocol():
      initialization.
     """
     protocol_type = PROTOCOL_NAME_NONE
+    # this value was selected by looking at all the successful NuQC/SPP jobs,
+    # the max sequeces were: 712,497,596
+    MAX_READS = 720000000
+
+    def subsample_reads(self):
+        if self.assay_type == 'Amplicon':
+            return
+
+        df = pd.read_csv(self.reports_path)
+        if 'raw_reads_r1r2' in df.columns:
+            # this is a TellSeq run: SeqCounts.csv
+            read_col = 'raw_reads_r1r2'
+            index_col = 'Sample_ID'
+        elif '# Reads' in df.columns:
+            # this is a Illumina: Demultiplex_Stats.csv
+            read_col = '# Reads'
+            index_col = 'SampleID'
+        else:
+            raise ValueError(
+                'Not sure how to check for seq counts to subsample, '
+                'please let an admin know.')
+        # df will keep any rows/samples with more than the self.MAX_READS
+        df = df[df[read_col] > self.MAX_READS]
+        if df.shape[0]:
+            for _, row in df.iterrows():
+                sn = row[index_col]
+                # look for any sample (fwd/rev pairs) that have the sample_name
+                # as prefix of their filename
+                files = glob(f'{self.raw_fastq_files_path}/*/{sn}*.fastq.gz')
+                # for each file let's get their folder (dn) and filename (bn),
+                # then create a fullpath with with dn and bn where we are
+                # changing the filename from fastq.gz to full.gz; then
+                # subsample this full.gz to a new file with the correct
+                # fastq.gz via seqtk
+                for f in files:
+                    dn = dirname(f)
+                    bn = basename(f)
+                    nbn = join(dn, bn.replace('fastq.gz', 'full.gz'))
+                    cmd = f'mv {f} {nbn}'
+                    _, se, rv = system_call(cmd)
+                    if rv != 0 or se:
+                        raise ValueError(f'Error during mv: {cmd}. {se}')
+                    cmd = (f'seqtk sample -s 42 {nbn} {self.MAX_READS} '
+                           f'| gzip > {f}')
+                    _, se, rv = system_call(cmd)
+                    if rv != 0 or se:
+                        raise ValueError(f'Error during seqtk: {cmd}. {se}')
+                    self.assay_warnings.append(
+                        f'{sn} ({bn}) had {row[read_col]} sequences, '
+                        f'subsampling to {self.MAX_READS}')
 
 
 class Illumina(Protocol):
@@ -152,7 +205,7 @@ class TellSeq(Protocol):
         with open(files_to_count_path, 'w') as f:
             for root, _, files in walk(self.raw_fastq_files_path):
                 for _file in files:
-                    if self._determine_orientation(_file) in ['R1', 'R2']:
+                    if determine_orientation(_file) in ['R1', 'R2']:
                         print(join(root, _file), file=f)
 
         job = SeqCountsJob(self.pipeline.run_dir,

@@ -2350,20 +2350,25 @@ class TestAmpliconPipeline(unittest.TestCase):
                             Pipeline.AMPLICON_PTYPE)
 
         obs = pipeline.process_run_info_file('tests/data/RunInfo_Good1.xml')
-
         exp = [{'NumCycles': 151, 'Number': 1, 'IsIndexedRead': False},
                {'NumCycles': 8, 'Number': 2, 'IsIndexedRead': True},
                {'NumCycles': 8, 'Number': 3, 'IsIndexedRead': True},
                {'NumCycles': 151, 'Number': 4, 'IsIndexedRead': False}]
-
         self.assertEqual(obs, exp)
 
         obs = pipeline.process_run_info_file('tests/data/RunInfo_Good2.xml')
-
         exp = [{'NumCycles': 151, 'Number': 1, 'IsIndexedRead': False},
                {'NumCycles': 8, 'Number': 2, 'IsIndexedRead': True},
                {'NumCycles': 151, 'Number': 3, 'IsIndexedRead': False}]
+        self.assertEqual(obs, exp)
 
+        obs = pipeline.process_run_info_file('tests/data/RunInfo_Good3.xml')
+        exp = [{'IsIndexedRead': True, 'IsReverseComplement': False,
+                'NumCycles': 12, 'Number': 1},
+               {'IsIndexedRead': False, 'IsReverseComplement': False,
+                'NumCycles': 151, 'Number': 2},
+               {'IsIndexedRead': False, 'IsReverseComplement': False,
+                'NumCycles': 151, 'Number': 3}]
         self.assertEqual(obs, exp)
 
         # a ValueError should be raised when a file that is obviously not
@@ -2411,11 +2416,10 @@ class TestInstrumentUtils(unittest.TestCase):
         exp = {'231108_M04586_0992_000000000-L7342': {'id': 'M04586',
                                                       'type': 'MiSeq',
                                                       'date': '2023-11-08'},
-               '200320_K00180_0957_AHCYKKBBXY_PE150_Knight': {'id': 'K00180',
-                                                              'type': ('HiSeq '
-                                                                       '4000'),
-                                                              'date': ('2020-0'
-                                                                       '3-20')
+               '200320_K00180_0957_AHCYKKBBXY_PE150_Knight': {
+                   'id': 'K00180',
+                   'type': ('HiSeq 4000'),
+                   'date': ('2020-03-20')
                                                               },
                '20220912_FS10001773_27_BSE39218-1017': {'id': 'FS10001773',
                                                         'type': 'iSeq',
