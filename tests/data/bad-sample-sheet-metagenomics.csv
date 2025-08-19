@@ -19,7 +19,7 @@ Chemistry,Default,,,,,,,,,,
 ReverseComplement,0,,,,,,,,,,
 ,,,,,,,,,,,
 [Data],,,,,,,,,,,
-Lane,Sample_ID,Sample_Name,Sample_Plate,well_id_384,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,syndna_pool_number,Well_description
+Lane,Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,syndna_pool_number,Well_description
 1,CDPH-SAL__Salmonella__Typhi__MDL-143,CDPH-SAL..Salmonella..Typhi..MDL-143,StudyB_11661_P40,A1,iTru7_107_07,CCGACTAT,iTru5_01_A,ACCGACAA,StudyB_11661,pool1,CDPH-SAL_Salmonella Typhi_MDL-143
 1,CDPH-SAL_Salmonella_Typhi_MDL-144,CDPH-SAL.Salmonella.Typhi.MDL-144,StudyB_11661_P40,C1,iTru7_107_08,CCGACTAT,iTru5_02_A,CTTCGCAA,StudyB_11661,pool2,CDPH-SAL_Salmonella Typhi_MDL-144
 1,CDPH-SAL_Salmonella_Typhi_MDL-145,CDPH-SAL.Salmonella.Typhi.MDL-145,StudyB_11661_P40,E1,iTru7_107_09,GCCTTGTT,iTru5_03_A,AACACCAC,StudyB_11661,pool1,CDPH-SAL_Salmonella Typhi_MDL-145
