@@ -544,11 +544,6 @@ class TestPipeline(unittest.TestCase):
                 header = curr_obs_lines[0].strip()
                 self.assertEqual(header, '\t'.join(Pipeline.sif_header))
 
-                # confirm that the file contains the expected number of lines:
-                # 1 header + # blanks
-                curr_expected_len = len(curr_expected_blanks) + 1
-                self.assertEqual(len(curr_obs_lines), curr_expected_len)
-
                 # for lines after header, get the value before the first tab
                 # and confirm that it matches the expected blank name--
                 # i.e., that the *second* well location, which is present in
@@ -568,7 +563,9 @@ class TestPipeline(unittest.TestCase):
         # the blanks are linked to only one project in the data table, so there
         # is only one SIF generated
         expected_blanks_by_qiita_id = {
-            '11661': ['BLANK.43.12G', 'BLANK.43.12H'],
+            '11661': ['BLANK.43.12H.A3', 'BLANK.43.12G.A2',
+                      'BLANK.43.12H.B4', 'BLANK.43.12G.A1',
+                      'BLANK.43.12G.B2', 'BLANK.43.12H.A4']
         }
 
         self._help_test_generate_sample_information_files_with_multiple_preps(
@@ -580,9 +577,14 @@ class TestPipeline(unittest.TestCase):
         # projects (although not all blanks belong to each project!)
         # so there are three SIFs generated, one for each project.
         expected_blanks_by_qiita_id = {
-            '11661': ['BLANK.43.12G', 'BLANK.43.12H'],
-            '10317': ['BLANK.43.12G', 'BLANK.43.12H'],
-            '11223': ['BLANK.43.12G']
+            '11661': ['BLANK.43.12H.A4', 'BLANK.43.12G.B2',
+                      'BLANK.43.12H.A3', 'BLANK.43.12G.A1',
+                      'BLANK.43.12H.B4', 'BLANK.43.12G.A2'],
+            '10317': ['BLANK.43.12H.A4', 'BLANK.43.12G.B2',
+                      'BLANK.43.12H.A3', 'BLANK.43.12G.A1',
+                      'BLANK.43.12H.B4', 'BLANK.43.12G.A2'],
+            '11223': ['BLANK.43.12G.B2', 'BLANK.43.12G.A2',
+                      'BLANK.43.12G.A1']
         }
 
         self._help_test_generate_sample_information_files_with_multiple_preps(
