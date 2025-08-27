@@ -27,6 +27,7 @@ class ConvertJob(Job):
         :param node_count: The number of nodes to request.
         :param nprocs: The maximum number of parallel processes to use.
         :param wall_time_limit: A hard time limit (in min) to bound processing.
+        :param pmem: Amount of memory to be used.
         :param bcl_tool_path: The path to either bcl2fastq or bcl-convert.
         :param modules_to_load: A list of Linux module names to load
         :param qiita_job_id: identify Torque jobs using qiita_job_id
@@ -379,3 +380,118 @@ class ConvertJob(Job):
                 # be provided in the destination path.
                 dst_fp = join(self.output_path, dest_project, split(src_fp)[1])
                 copyfile(src_fp, dst_fp)
+
+
+class ConvertRevioBam2FastqJob(Job):
+    def __init__(self, run_dir, output_path, sample_sheet_path, queue_name,
+                 node_count, nprocs, wall_time_limit, pmem, bam2fastq_path,
+                 modules_to_load, qiita_job_id):
+        """
+        ConvertRevioBam2FastqJob provides a convenient way to run bam2fastq
+        on a directory revio bam files to generate fastq files.
+        :param run_dir: The 'run' directory that contains BCL files.
+        :param output_path: Path where all pipeline-generated files live.
+        :param sample_sheet_path: The path to a sample-sheet.
+        :param queue_name: The name of the Torque queue to use for processing.
+        :param node_count: The number of nodes to request.
+        :param nprocs: The maximum number of parallel processes to use.
+        :param wall_time_limit: A hard time limit (in min) to bound processing.
+        :param pmem: Amount of memory to be used.
+        :param bam2fastq_path: The path to either bcl2fastq or bcl-convert.
+        :param modules_to_load: A list of Linux module names to load
+        :param qiita_job_id: identify Torque jobs using qiita_job_id
+        """
+        super().__init__(run_dir,
+                         output_path,
+                         'ConvertJob',
+                         [bam2fastq_path],
+                         1000,
+                         modules_to_load=modules_to_load)
+
+        # for metagenomics pipelines, sample_sheet_path will reflect a real
+        # sample_sheet file. For amplicon pipelines, sample_sheet_path will
+        # reference a dummy sample_sheet file.
+        self.sample_sheet_path = sample_sheet_path
+        self.queue_name = queue_name
+        self.node_count = node_count
+        self.nprocs = nprocs
+        self.wall_time_limit = wall_time_limit
+        self.pmem = pmem
+        self.bcl_tool = bam2fastq_path
+        self.qiita_job_id = qiita_job_id
+        self.job_script_path = join(self.output_path, f"{self.job_name}.sh")
+        self.suffix = 'fastq.gz'
+        self.fastq_paths = None
+        self.info = None
+
+        self._file_check(self.sample_sheet_path)
+
+        self._generate_job_script()
+
+    def _generate_job_script(self):
+        """
+        Generate a Torque job script for processing supplied root_directory.
+        :return: The path to the newly-created job-script.
+        """
+        lines = []
+
+        lines.append("#!/bin/bash")
+        lines.append(f"#SBATCH --job-name {self.qiita_job_id}_{self.job_name}")
+        lines.append(f"#SBATCH -p {self.queue_name}")
+        lines.append(f'#SBATCH -N {self.node_count}')
+        lines.append(f'#SBATCH -n {self.nprocs}')
+        lines.append("#SBATCH --time %d" % self.wall_time_limit)
+
+        # send an email to the list of users defined below when a job starts,
+        # terminates, or aborts. This is used to confirm that the package's
+        # own reporting mechanism is reporting correctly.
+        lines.append("#SBATCH --mail-type=ALL")
+
+        # list of users to be contacted independently of this package's
+        # notification system, when a job starts, terminates, or gets aborted.
+        lines.append("#SBATCH --mail-user qiita.help@gmail.com")
+
+        lines.append(f"#SBATCH --mem-per-cpu {self.pmem}")
+
+        lines.append("set -x")
+        lines.append('date')
+        lines.append('hostname')
+        lines.append(f'cd {self.root_dir}')
+
+        if self.modules_to_load:
+            lines.append("module load " + ' '.join(self.modules_to_load))
+
+        # for sample
+        # parallel -j 2 --joblog build.log echo 'Built {}' ::: app1 app2 app3
+        # bam2fastq -o ${OUT}/${BARCODE}
+        # ${BASE}/${Run_prefix}.hifi_reads.${BARCODE}.bam
+
+        with open(self.job_script_path, 'w') as f:
+            for line in lines:
+                # remove long spaces in some lines.
+                line = re.sub(r'\s+', ' ', line)
+                f.write(f"{line}\n")
+
+    def run(self, callback=None):
+        """
+        Run BCL2Fastq/BCLConvert conversion
+        :param callback: optional function taking two parameters (id, status)
+                         that is called when a running process's status is
+                         changed.
+        :return:
+        """
+        try:
+            job_info = self.submit_job(self.job_script_path,
+                                       exec_from=self.log_path,
+                                       callback=callback)
+        except JobFailedError as e:
+            # When a job has failed, parse the logs generated by this specific
+            # job to return a more descriptive message to the user.
+            info = self.parse_logs()
+            # prepend just the message component of the Error.
+            info.insert(0, str(e))
+            raise JobFailedError('\n'.join(info))
+
+        self. mark_job_completed()
+
+        logging.info(f'Successful job: {job_info}')

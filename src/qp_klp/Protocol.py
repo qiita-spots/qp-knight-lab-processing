@@ -1,4 +1,5 @@
-from sequence_processing_pipeline.ConvertJob import ConvertJob
+from sequence_processing_pipeline.ConvertJob import (
+    ConvertJob, ConvertRevioBam2FastqJob)
 from sequence_processing_pipeline.TellReadJob import TellReadJob
 from sequence_processing_pipeline.SeqCountsJob import SeqCountsJob
 from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
@@ -8,7 +9,9 @@ from os.path import join, split, basename, dirname
 from re import match
 from os import makedirs, rename, walk
 from metapool import load_sample_sheet
-from metapool.sample_sheet import PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ
+from metapool.sample_sheet import (
+    PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ,
+    PROTOCOL_NAME_PACBIO)
 import pandas as pd
 from glob import glob
 from qiita_client.util import system_call
@@ -369,3 +372,88 @@ class TellSeq(Protocol):
         rename(fastq_file, final_path)
 
         return final_path
+
+
+class PacBio(Protocol):
+    protocol_type = PROTOCOL_NAME_PACBIO
+
+    def convert_raw_to_fastq(self):
+        config = self.pipeline.get_software_configuration('revio')
+
+        job = ConvertRevioBam2FastqJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            self.pipeline.input_file_path,
+            config['queue'],
+            config['nodes'],
+            config['wallclock_time_in_minutes'],
+            config['tellread_mem_limit'],
+            config['modules_to_load'],
+            self.master_qiita_job_id,
+            config['reference_base'],
+            config['reference_map'],
+            config['sing_script_path'],
+            config['tellread_cores'])
+
+        self.raw_fastq_files_path = join(self.pipeline.output_path,
+                                         'ConvertJob')
+        # self.my_sil_path = join(self.pipeline.output_path,
+        #                         'TellReadJob',
+        #                         'sample_index_list_TellReadJob.txt')
+
+        # if ConvertJob already completed, then skip the over the time-
+        # consuming portion but populate the needed member variables.
+        if 'ConvertJob' not in self.skip_steps:
+            job.run(callback=self.job_callback)
+
+        # audit the results to determine which samples failed to convert
+        # properly. Append these to the failed-samples report and also
+        # return the list directly to the caller.
+        failed_samples = job.audit()
+        if hasattr(self, 'fsr'):
+            # NB 16S does not require a failed samples report and
+            # it is not performed by SPP.
+            self.fsr.write(failed_samples, job.__class__.__name__)
+
+        return failed_samples
+
+    # def generate_sequence_counts(self):
+    #     config = self.pipeline.get_software_configuration('tell-seq')
+
+    #     files_to_count_path = join(self.pipeline.output_path,
+    #                                'files_to_count.txt')
+
+    #     with open(files_to_count_path, 'w') as f:
+    #         for root, _, files in walk(self.raw_fastq_files_path):
+    #             for _file in files:
+    #                 if determine_orientation(_file) in ['R1', 'R2']:
+    #                     print(join(root, _file), file=f)
+
+    #     job = SeqCountsJob(self.pipeline.run_dir,
+    #                        self.pipeline.output_path,
+    #                        config['queue'],
+    #                        config['nodes'],
+    #                        config['wallclock_time_in_minutes'],
+    #                        config['normcount_mem_limit'],
+    #                        config['modules_to_load'],
+    #                        self.master_qiita_job_id,
+    #                        config['job_max_array_length'],
+    #                        files_to_count_path,
+    #                        self.pipeline.get_sample_sheet_path(),
+    #                        cores_per_task=config['tellread_cores'])
+
+    #     if 'SeqCountsJob' not in self.skip_steps:
+    #         job.run(callback=self.job_callback)
+
+    #     # if successful, set self.reports_path
+    #     self.reports_path = join(self.pipeline.output_path,
+    #                              'SeqCountsJob',
+    #                              'SeqCounts.csv')
+
+    #     # Do not add an entry to fsr because w/respect to counting, either
+    #     # all jobs are going to fail or none are going to fail. It's not
+    #     # likely that we're going to fail to count sequences for only some
+    #     # of the samples.
+
+    def integrate_results(self):
+        pass
