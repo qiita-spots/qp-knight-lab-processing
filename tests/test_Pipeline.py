@@ -563,8 +563,7 @@ class TestPipeline(unittest.TestCase):
         # the blanks are linked to only one project in the data table, so there
         # is only one SIF generated
         expected_blanks_by_qiita_id = {
-            '11661': ['BLANK.43.12G.A1', 'BLANK.43.12H.A4', 'BLANK.43.12G.A2',
-                      'BLANK.43.12H.A3', 'BLANK.43.12G.B2', 'BLANK.43.12H.B4']
+            '11661': ['BLANK.43.12G', 'BLANK.43.12H']
         }
 
         self._help_test_generate_sample_information_files_with_multiple_preps(
@@ -576,14 +575,9 @@ class TestPipeline(unittest.TestCase):
         # projects (although not all blanks belong to each project!)
         # so there are three SIFs generated, one for each project.
         expected_blanks_by_qiita_id = {
-            '11661': ['BLANK.43.12H.A4', 'BLANK.43.12G.B2',
-                      'BLANK.43.12H.A3', 'BLANK.43.12G.A1',
-                      'BLANK.43.12H.B4', 'BLANK.43.12G.A2'],
-            '10317': ['BLANK.43.12H.A4', 'BLANK.43.12G.B2',
-                      'BLANK.43.12H.A3', 'BLANK.43.12G.A1',
-                      'BLANK.43.12H.B4', 'BLANK.43.12G.A2'],
-            '11223': ['BLANK.43.12G.B2', 'BLANK.43.12G.A2',
-                      'BLANK.43.12G.A1']
+            '11661': ['BLANK.43.12H', 'BLANK.43.12G'],
+            '10317': ['BLANK.43.12H', 'BLANK.43.12G'],
+            '11223': ['BLANK.43.12G']
         }
 
         self._help_test_generate_sample_information_files_with_multiple_preps(
