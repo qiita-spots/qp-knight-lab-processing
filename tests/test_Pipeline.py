@@ -563,7 +563,8 @@ class TestPipeline(unittest.TestCase):
         # the blanks are linked to only one project in the data table, so there
         # is only one SIF generated
         expected_blanks_by_qiita_id = {
-            '11661': ['BLANK.43.12G', 'BLANK.43.12H']
+            '11661': ['BLANK.43.12G.A1', 'BLANK.43.12H.A4', 'BLANK.43.12G.A2',
+                      'BLANK.43.12H.A3', 'BLANK.43.12G.B2', 'BLANK.43.12H.B4']
         }
 
         self._help_test_generate_sample_information_files_with_multiple_preps(
@@ -1675,10 +1676,10 @@ class TestPipeline(unittest.TestCase):
         self.assertEqual(obs, [])
 
         # assert that 'well_id_384' is a reserved word.
-        obs = pipeline.identify_reserved_words(['well_id_384',
+        obs = pipeline.identify_reserved_words(['sample_well',
                                                 'NOT_A_RESERVED_WORD'])
 
-        self.assertEqual(obs, ['well_id_384'])
+        self.assertEqual(obs, ['sample_well'])
 
         # create new pipeline using a/legacy (v90) metagenomic sample-sheet.
         pipeline = Pipeline(self.good_config_file, self.good_run_id,
