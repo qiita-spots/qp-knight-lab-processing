@@ -83,7 +83,7 @@ jobs:
           # seqtk is a conda-installed requirement for metapool and isn't
           # installed automatically by its setup.py.
           conda config --add channels bioconda
-          conda create -q --yes -n klp python=3.9 scipy sklearn 'seqtk>=1.4'
+          conda create -q --yes -n klp python=3.9 scipy scikit-learn 'seqtk>=1.4'
 
           conda activate klp
 
