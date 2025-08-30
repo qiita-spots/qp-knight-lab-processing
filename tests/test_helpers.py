@@ -337,11 +337,11 @@ class TestHelpers(TestCase):
         # step and fake_client is used.
         wf._project_metadata_check()
 
-        self.fake_client.info_in_11661['categories'].append('well_id_384')
-        self.fake_client.info_in_13059['categories'].append('well_id_384')
+        self.fake_client.info_in_11661['categories'].append('sample_well')
+        self.fake_client.info_in_13059['categories'].append('sample_well')
 
-        msg = ("'well_id_384' exists in Qiita study 13059's sample metadata"
-               "\n'well_id_384' exists in Qiita study 11661's sample metadata")
+        msg = ("'sample_well' exists in Qiita study 13059's sample metadata"
+               "\n'sample_well' exists in Qiita study 11661's sample metadata")
         with self.assertRaisesRegex(WorkflowError, msg):
             wf._project_metadata_check()
 

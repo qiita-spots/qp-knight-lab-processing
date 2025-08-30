@@ -1,7 +1,7 @@
 [Header],,,,,,,,,,,,
 IEMFileVersion,4,,,,,,,,,,,
 SheetType,standard_metag,,,,,,,,,,,
-SheetVersion,100,,,,,,,,,,,
+SheetVersion,90,,,,,,,,,,,
 Investigator Name,Knight,,,,,,,,,,,
 Experiment Name,RKL0042,,,,,,,,,,,
 Date,2020-02-26,,,,,,,,,,,
@@ -19,7 +19,7 @@ Chemistry,Default,,,,,,,,,,,
 ReverseComplement,0,,,,,,,,,,,
 ,,,,,,,,,,,,
 [Data],,,,,,,,,,,,
-lane,Sample_Name,source_well_384,destination_well_384,sample_plate,well_id_384,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,well_description,Sample_ID
+lane,Sample_Name,source_well_384,destination_well_384,sample_plate,Sample_Well,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,well_description,Sample_ID
 1,RMA.KHP.rpoS.Mage.Q97N,A9,A10,StudyB_11661_P43,A10,iTru7_114_12,GAAGTACC,iTru5_05_A,TGTTCGAG,StudyB_11661,green_quadrant,RMA_KHP_rpoS_Mage_Q97N_A10
 1,RMA.KHP.rpoS.Mage.Q97E,A11,A12,StudyB_11661_P43,A12,iTru7_201_01,AGTGGCAA,iTru5_06_A,TACTCCAG,StudyB_11661,green_quadrant,RMA_KHP_rpoS_Mage_Q97E_A12
 1,JBI.KHP.HGL.021,A13,A14,StudyB_11661_P43,A14,iTru7_201_02,CAGGAATC,iTru5_07_A,CTCGTCTT,StudyB_11661,green_quadrant,JBI_KHP_HGL_021_A14
