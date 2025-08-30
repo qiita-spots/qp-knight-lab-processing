@@ -28,9 +28,9 @@ Lane,Sample_ID,Sample_Name,Sample_Plate,well_id_384,I7_Index_ID,index,I5_Index_I
 1,8A,8A,Something,L23,iTru7_402_04,GTCCACAT,iTru5_110_H,TCCAGCAA,Wisconsin_U19_NA_15446,pool1,8A
 ,,,,,,,,,,,
 [Bioinformatics],,,,,,,,,,,
-Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,,,,
-Wisconsin_U19_15445,15445,False,AACC,GGTT,True,Nextera,Equipment,,,,
-Wisconsin_U19_NA_15446,15446,False,AACC,GGTT,True,Nextera,Equipment,,,,
+Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,contains_replicates,,,
+Wisconsin_U19_15445,15445,False,AACC,GGTT,True,Nextera,Equipment,False,,,
+Wisconsin_U19_NA_15446,15446,False,AACC,GGTT,True,Nextera,Equipment,False,,,
 ,,,,,,,,,,,
 [Contact],,,,,,,,,,,
 Email,Sample_Project,,,,,,,,,,

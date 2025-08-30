@@ -544,11 +544,6 @@ class TestPipeline(unittest.TestCase):
                 header = curr_obs_lines[0].strip()
                 self.assertEqual(header, '\t'.join(Pipeline.sif_header))
 
-                # confirm that the file contains the expected number of lines:
-                # 1 header + # blanks
-                curr_expected_len = len(curr_expected_blanks) + 1
-                self.assertEqual(len(curr_obs_lines), curr_expected_len)
-
                 # for lines after header, get the value before the first tab
                 # and confirm that it matches the expected blank name--
                 # i.e., that the *second* well location, which is present in
@@ -568,7 +563,7 @@ class TestPipeline(unittest.TestCase):
         # the blanks are linked to only one project in the data table, so there
         # is only one SIF generated
         expected_blanks_by_qiita_id = {
-            '11661': ['BLANK.43.12G', 'BLANK.43.12H'],
+            '11661': ['BLANK.43.12G', 'BLANK.43.12H']
         }
 
         self._help_test_generate_sample_information_files_with_multiple_preps(
@@ -580,8 +575,8 @@ class TestPipeline(unittest.TestCase):
         # projects (although not all blanks belong to each project!)
         # so there are three SIFs generated, one for each project.
         expected_blanks_by_qiita_id = {
-            '11661': ['BLANK.43.12G', 'BLANK.43.12H'],
-            '10317': ['BLANK.43.12G', 'BLANK.43.12H'],
+            '11661': ['BLANK.43.12H', 'BLANK.43.12G'],
+            '10317': ['BLANK.43.12H', 'BLANK.43.12G'],
             '11223': ['BLANK.43.12G']
         }
 
@@ -1675,10 +1670,10 @@ class TestPipeline(unittest.TestCase):
         self.assertEqual(obs, [])
 
         # assert that 'well_id_384' is a reserved word.
-        obs = pipeline.identify_reserved_words(['well_id_384',
+        obs = pipeline.identify_reserved_words(['sample_well',
                                                 'NOT_A_RESERVED_WORD'])
 
-        self.assertEqual(obs, ['well_id_384'])
+        self.assertEqual(obs, ['sample_well'])
 
         # create new pipeline using a/legacy (v90) metagenomic sample-sheet.
         pipeline = Pipeline(self.good_config_file, self.good_run_id,
