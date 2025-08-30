@@ -221,6 +221,7 @@ class PrepNuQCWorkflow(StandardMetagenomicWorkflow):
                 'Project Plate': '',
                 'Project Name': project_name,
                 'Well': '',
+                'Library Well': '',
                 '# Reads': f'{_d.reads.sum()}',
                 'Lane': '1'}
             data.append(sample)
