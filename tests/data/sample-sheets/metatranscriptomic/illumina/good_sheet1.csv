@@ -310,11 +310,12 @@ Lane,Sample_ID,Sample_Name,Sample_Plate,well_id_384,I7_Index_ID,index,I5_Index_I
 2,BLANK_42_12H,BLANK.42.12H,StudyB_11661_P42,P23,iTru7_402_06,GAATCCGA,iTru5_112_H,TACATCGG,StudyB_11661,pool2,BLANK.42.12H
 ,,,,,,,,,,,
 [Bioinformatics],,,,,,,,,,,
-Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,contains_replicates,,,
-StudyB_11661,11661,False,AACC,GGTT,False,Nextera,Equipment,False,,,
-StudyC_6123,6123,False,AACC,GGTT,True,Nextera,Equipment,False,,,
+Sample_Project,QiitaID,BarcodesAreRC,ForwardAdapter,ReverseAdapter,HumanFiltering,library_construction_protocol,experiment_design_description,,,,
+StudyB_11661,11661,False,AACC,GGTT,False,Nextera,Equipment,,,,
+StudyC_6123,6123,False,AACC,GGTT,True,Nextera,Equipment,,,,
 ,,,,,,,,,,,
 [Contact],,,,,,,,,,,
 Email,Sample_Project,,,,,,,,,,
 test@lol.com,StudyB_11661,,,,,,,,,,
 ,,,,,,,,,,,
+
