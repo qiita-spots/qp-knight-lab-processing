@@ -6,7 +6,7 @@ from .FailedSamplesRecord import FailedSamplesRecord
 from .Workflows import Workflow
 
 
-class RevioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
+class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -39,6 +39,16 @@ class RevioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
 
         self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
                                        self.pipeline.sample_sheet.samples)
+
+        import pandas as pd
+        samples = [
+            {'barcode': sample['Sample_ID'],
+             'sample_name': sample['Sample_Name'],
+             'project_name': sample['Sample_Project']}
+            for sample in self.pipeline.sample_sheet.samples]
+        df = pd.DataFrame(samples)
+        sample_list_fp = f"{self.kwargs['output_dir']}/sample_list.tsv"
+        df.to_csv(sample_list_fp, sep='t')
 
         self.master_qiita_job_id = self.kwargs['job_id']
 

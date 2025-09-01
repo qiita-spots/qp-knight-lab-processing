@@ -118,10 +118,12 @@ class NuQCJob(Job):
     def _validate_project_data(self):
         # Validate project settings in [Bioinformatics]
         for project in self.project_data:
-            if project['ForwardAdapter'] == 'NA':
+            if 'ForwardAdapter' not in project or \
+                    project['ForwardAdapter'] == 'NA':
                 project['ForwardAdapter'] = None
 
-            if project['ReverseAdapter'] == 'NA':
+            if 'ReverseAdapter' not in project or \
+                    project['ReverseAdapter'] == 'NA':
                 project['ReverseAdapter'] = None
 
             if project['ForwardAdapter'] is None:
@@ -364,7 +366,10 @@ class NuQCJob(Job):
             raise PipelineError(s)
 
         header = sheet.Header
-        chemistry = header['chemistry']
+        if 'chemistry' in header:
+            chemistry = header['chemistry']
+        else:
+            chemistry = ''
 
         if header['Assay'] not in Pipeline.assay_types:
             s = "Assay value '%s' is not recognized." % header['Assay']

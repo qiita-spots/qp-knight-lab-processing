@@ -382,13 +382,13 @@ class ConvertJob(Job):
                 copyfile(src_fp, dst_fp)
 
 
-class ConvertRevioBam2FastqJob(Job):
+class ConvertPacBioBam2FastqJob(Job):
     def __init__(self, run_dir, output_path, sample_sheet_path, queue_name,
                  node_count, nprocs, wall_time_limit, pmem, bam2fastq_path,
                  modules_to_load, qiita_job_id):
         """
-        ConvertRevioBam2FastqJob provides a convenient way to run bam2fastq
-        on a directory revio bam files to generate fastq files.
+        ConvertPacBioBam2FastqJob provides a convenient way to run bam2fastq
+        on a directory PacBio bam files to generate fastq files.
         :param run_dir: The 'run' directory that contains BCL files.
         :param output_path: Path where all pipeline-generated files live.
         :param sample_sheet_path: The path to a sample-sheet.
@@ -417,7 +417,7 @@ class ConvertRevioBam2FastqJob(Job):
         self.nprocs = nprocs
         self.wall_time_limit = wall_time_limit
         self.pmem = pmem
-        self.bcl_tool = bam2fastq_path
+        self.bam2fastq_path = bam2fastq_path
         self.qiita_job_id = qiita_job_id
         self.job_script_path = join(self.output_path, f"{self.job_name}.sh")
         self.suffix = 'fastq.gz'
@@ -461,10 +461,13 @@ class ConvertRevioBam2FastqJob(Job):
         if self.modules_to_load:
             lines.append("module load " + ' '.join(self.modules_to_load))
 
-        # for sample
-        # parallel -j 2 --joblog build.log echo 'Built {}' ::: app1 app2 app3
-        # bam2fastq -o ${OUT}/${BARCODE}
-        # ${BASE}/${Run_prefix}.hifi_reads.${BARCODE}.bam
+        lines.append(f"sample_list={self.root_dir}/sample_list.tsv")
+        lines.append(
+            'while read bc sn pn; do echo '
+            '"bam2fastq -j 1 -o ${sn}.fastq.gz -c 9 '
+            '${pn}/${Run_prefix}.hifi_reads.${bn}.bam"; '
+            'fqtools count ${sn}.fastq.gz > ${sn}.counts.txt;'
+            'done < ${sample_list}')
 
         with open(self.job_script_path, 'w') as f:
             for line in lines:
@@ -492,6 +495,6 @@ class ConvertRevioBam2FastqJob(Job):
             info.insert(0, str(e))
             raise JobFailedError('\n'.join(info))
 
-        self. mark_job_completed()
+        self.mark_job_completed()
 
         logging.info(f'Successful job: {job_info}')

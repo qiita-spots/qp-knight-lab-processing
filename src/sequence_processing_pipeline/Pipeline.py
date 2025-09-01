@@ -41,7 +41,7 @@ class InstrumentUtils():
 
     @staticmethod
     def get_instrument_type(run_directory):
-        instrument_id = InstrumentUtils._get_instrument_id(run_directory)
+        instrument_id = basename(run_directory)
         return get_model_by_instrument_id(
             instrument_id, model_key=PROFILE_NAME_KEY)
 
@@ -243,22 +243,6 @@ class Pipeline:
         else:
             raise PipelineError(f"A run-dir for '{self.run_id}' could not be "
                                 "found")
-
-        # required files for successful operation
-        # both RTAComplete.txt and RunInfo.xml should reside in the root of
-        # the run directory.
-        required_files = ['RTAComplete.txt', 'RunInfo.xml']
-        for some_file in required_files:
-            if not exists(join(self.run_dir, some_file)):
-                raise PipelineError(f"required file '{some_file}' is not "
-                                    f"present in {self.run_dir}.")
-
-        # verify that RunInfo.xml file is readable.
-        try:
-            fp = open(join(self.run_dir, 'RunInfo.xml'))
-            fp.close()
-        except PermissionError:
-            raise PipelineError('RunInfo.xml is present, but not readable')
 
         self.input_file_path = input_file_path
 

@@ -3,7 +3,7 @@ from .StandardMetagenomicWorkflow import StandardMetagenomicWorkflow
 from .StandardMetatranscriptomicWorkflow import \
     StandardMetatranscriptomicWorkflow
 from .TellseqMetagenomicWorkflow import TellSeqMetagenomicWorkflow
-from .RevioMetagenomicWorkflow import RevioMetagenomicWorkflow
+from .PacBioMetagenomicWorkflow import PacBioMetagenomicWorkflow
 from sequence_processing_pipeline.Pipeline import Pipeline
 from metapool import load_sample_sheet
 from metapool.sample_sheet import SAMPLE_SHEETS_BY_PROTOCOL as SSBP
@@ -16,7 +16,7 @@ class WorkflowFactory():
                  StandardMetatranscriptomicWorkflow,
                  StandardAmpliconWorkflow,
                  TellSeqMetagenomicWorkflow,
-                 RevioMetagenomicWorkflow]
+                 PacBioMetagenomicWorkflow]
 
     @classmethod
     def _get_instrument_type(cls, sheet):
