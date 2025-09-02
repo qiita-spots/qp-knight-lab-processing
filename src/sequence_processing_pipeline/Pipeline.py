@@ -3,6 +3,7 @@ from json import loads as json_loads
 from json.decoder import JSONDecodeError
 from os import makedirs, listdir, walk
 from os.path import join, exists, isdir, basename
+from glob import glob
 from metapool import (load_sample_sheet, AmpliconSampleSheet, is_blank,
                       parse_project_name, SAMPLE_NAME_KEY, QIITA_ID_KEY,
                       PROJECT_SHORT_NAME_KEY, PROJECT_FULL_NAME_KEY,
@@ -30,18 +31,31 @@ class InstrumentUtils():
     @staticmethod
     def _get_instrument_id(run_directory):
         run_info = join(run_directory, 'RunInfo.xml')
+        instrument_text = 'Run/Instrument'
 
+        # if RunInfo.xml doesn't exist, this might be a PacBio
+        # folder, let's check for it
         if not exists(run_info):
-            raise ValueError(f"'{run_info}' doesn't exist")
+            pacbio_metadata_fps = glob(
+                f'{run_directory}/*/metadata/*.metadata.xml')
+            if pacbio_metadata_fps:
+                run_info = pacbio_metadata_fps[0]
+                tree = ET.parse(run_info)
+                mtag = tree.getroot().tag.split('}')[0] + '}'
+                instrument_text = (
+                    f'{mtag}ExperimentContainer/{mtag}Runs/{mtag}Run')
+                run = ET.parse(run_info).find(instrument_text)
+                text = run.attrib['TimeStampedName']
+            else:
+                raise ValueError(f"'{run_info}' doesn't exist")
+        else:
+            text = ET.parse(run_info).find(instrument_text).text
 
-        with open(run_info) as f:
-            # Instrument element should appear in all valid RunInfo.xml
-            # files.
-            return ET.fromstring(f.read()).find('Run/Instrument').text
+        return text
 
     @staticmethod
     def get_instrument_type(run_directory):
-        instrument_id = basename(run_directory)
+        instrument_id = InstrumentUtils._get_instrument_id(run_directory)
         return get_model_by_instrument_id(
             instrument_id, model_key=PROFILE_NAME_KEY)
 
@@ -49,13 +63,23 @@ class InstrumentUtils():
     def _get_date(run_directory):
         run_info = join(run_directory, 'RunInfo.xml')
 
+        # if RunInfo.xml doesn't exist, this might be a PacBio
+        # folder, let's check for it
         if not exists(run_info):
-            raise ValueError(f"'{run_info}' doesn't exist")
-
-        with open(run_info) as f:
-            # Date element should appear in all valid RunInfo.xml
-            # files.
-            date_string = ET.fromstring(f.read()).find('Run/Date').text
+            pacbio_metadata_fps = glob(
+                f'{run_directory}/*/metadata/*.metadata.xml')
+            if pacbio_metadata_fps:
+                run_info = pacbio_metadata_fps[0]
+                tree = ET.parse(run_info)
+                mtag = tree.getroot().tag.split('}')[0] + '}'
+                instrument_text = (
+                    f'{mtag}ExperimentContainer/{mtag}Runs/{mtag}Run')
+                run = ET.parse(run_info).find(instrument_text)
+                date_string = run.attrib['CreatedAt'].split('T')[0]
+            else:
+                raise ValueError(f"'{run_info}' doesn't exist")
+        else:
+            date_string = ET.parse(run_info).find('Run/Date').text
 
         # date is recorded in RunInfo.xml in various formats. Iterate
         # through all known formats until the date is properly parsed.
@@ -64,7 +88,7 @@ class InstrumentUtils():
         # UTC time w/out confirming the machines were actually set for
         # and/or reporting UTC time.
         formats = ["%y%m%d", "%Y-%m-%dT%H:%M:%s", "%Y-%m-%dT%H:%M:%SZ",
-                   "%m/%d/%Y %I:%M:%S %p"]
+                   "%m/%d/%Y %I:%M:%S %p", "%Y-%m-%d",]
 
         for format in formats:
             try:

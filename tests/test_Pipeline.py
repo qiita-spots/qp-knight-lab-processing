@@ -2431,7 +2431,10 @@ class TestInstrumentUtils(unittest.TestCase):
                                                  'date': '2023-12-15'},
                '150629_K1001_0511_AH5L7GBCXX': {'id': 'K1001',
                                                 'type': 'HiSeq 4000',
-                                                'date': '2015-06-29'}}
+                                                'date': '2015-06-29'},
+               'r11111_20250101_111111': {'id': 'r11111',
+                                          'type': 'Revio',
+                                          'date': '2025-01-01'}}
 
         run_directories = []
         for root, dirs, files in walk(self.path('sample_run_directories')):

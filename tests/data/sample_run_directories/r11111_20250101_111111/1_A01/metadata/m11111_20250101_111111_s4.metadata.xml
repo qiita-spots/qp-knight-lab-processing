@@ -4,8 +4,8 @@
     <InvestigatorName>Default</InvestigatorName>
     <CreatedDate>2025-01-01</CreatedDate>
     <Runs>
-      <Run Name="XX01" CreatedAt="2025-01-01T00:00:00.000+00:00" ModifiedAt="0001-01-01T00:00:00" UniqueId="40c5e9d1-ed6d-4b34-b3d3-e3168de3bb13" MetaType="Run" TimeStampedName="r11111_20250101_111111" Status="Running" ChipType="25mChip" InstrumentType="Rev
-io" CreatedBy="admin" StartedBy="unknown" WhenStarted="2025-01-01T00:00:00.000">
+      <Run Name="XX01" CreatedAt="2025-01-01T00:00:00.000+00:00" ModifiedAt="0001-01-01T00:00:00" UniqueId="40c5e9d1-ed6d-4b34-b3d3-e3168de3bb13" MetaType="Run" TimeStampedName="r11111_20250101_111111" Status="Running" ChipType="25mChip" InstrumentType="Revio" CreatedBy="admin" StartedBy="unknown" WhenStarted="2025-01-01T00:00:00.000">
       </Run>
     </Runs>
   </ExperimentContainer>
+</PacBioDataModel>
