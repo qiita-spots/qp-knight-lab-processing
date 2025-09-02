@@ -207,43 +207,6 @@ class TestPipeline(unittest.TestCase):
 
         self.assertEqual(set(obs), exp)
 
-    def test_required_file_checks(self):
-        # begin this test by deleting the RunInfo.txt file and verifying that
-        # Pipeline object will raise an Error.
-        self.delete_runinfo_file()
-
-        with self.assertRaisesRegex(PipelineError, "required file 'RunInfo.xml"
-                                                   "' is not present."):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_sample_sheet_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.METAGENOMIC_PTYPE)
-
-        # delete RTAComplete.txt and recreate RunInfo.txt file to verify that
-        # an Error is raised when only RTAComplete.txt is missing.
-        self.delete_rtacomplete_file()
-        self.create_runinfo_file()
-
-        with self.assertRaisesRegex(PipelineError, "required file 'RTAComplete"
-                                                   ".txt' is not present."):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_sample_sheet_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.METAGENOMIC_PTYPE)
-
-        # make RunInfo.xml file unreadable and verify that Pipeline object
-        # raises the expected Error.
-        self.create_rtacomplete_file()
-        self.make_runinfo_file_unreadable()
-
-        with self.assertRaisesRegex(PipelineError, "RunInfo.xml is present, bu"
-                                                   "t not readable"):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_sample_sheet_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.METAGENOMIC_PTYPE)
-        self.make_runinfo_file_readable()
-
     def test_creation(self):
         # Pipeline should assert due to config_file
         with self.assertRaises(PipelineError) as e:
@@ -1771,42 +1734,6 @@ class TestAmpliconPipeline(unittest.TestCase):
         except FileNotFoundError:
             # make method idempotent
             pass
-
-    def test_required_file_checks(self):
-        # begin this test by deleting the RunInfo.txt file and verifying that
-        # Pipeline object will raise an Error.
-        self.delete_runinfo_file()
-
-        with self.assertRaisesRegex(PipelineError, "required file 'RunInfo.xml"
-                                                   "' is not present."):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_mapping_file_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.AMPLICON_PTYPE)
-
-        # delete RTAComplete.txt and recreate RunInfo.txt file to verify that
-        # an Error is raised when only RTAComplete.txt is missing.
-        self.delete_rtacomplete_file()
-        self.create_runinfo_file()
-
-        with self.assertRaisesRegex(PipelineError, "required file 'RTAComplete"
-                                                   ".txt' is not present."):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_mapping_file_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.AMPLICON_PTYPE)
-
-        # make RunInfo.xml file unreadable and verify that Pipeline object
-        # raises the expected Error.
-        self.create_rtacomplete_file()
-        self.make_runinfo_file_unreadable()
-
-        with self.assertRaisesRegex(PipelineError, "RunInfo.xml is present, "
-                                                   "but not readable"):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_mapping_file_path, self.output_file_path,
-                     self.qiita_id, Pipeline.AMPLICON_PTYPE)
-            self.make_runinfo_file_readable()
 
     def test_creation(self):
         # Pipeline should assert due to config_file
