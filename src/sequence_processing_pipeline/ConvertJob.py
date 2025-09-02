@@ -456,16 +456,15 @@ class ConvertPacBioBam2FastqJob(Job):
         lines.append("set -x")
         lines.append('date')
         lines.append('hostname')
-        lines.append(f'cd {self.root_dir}')
+        lines.append('conda activate klp-2025-05')
+        lines.append(f'cd {self.output_path}')
 
-        if self.modules_to_load:
-            lines.append("module load " + ' '.join(self.modules_to_load))
-
-        lines.append(f"sample_list={self.root_dir}/sample_list.tsv")
+        lines.append("sample_list=${PWD}/sample_list.tsv")
         lines.append(
             'while read bc sn pn; do echo '
             '"bam2fastq -j 1 -o ${sn}.fastq.gz -c 9 '
-            '${pn}/${Run_prefix}.hifi_reads.${bn}.bam"; '
+            f'{self.root_dir}'
+            '/*/hifi_reads/*{bc}*.bam"; '
             'fqtools count ${sn}.fastq.gz > ${sn}.counts.txt;'
             'done < ${sample_list}')
 

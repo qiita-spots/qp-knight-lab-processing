@@ -48,7 +48,7 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
             for sample in self.pipeline.sample_sheet.samples]
         df = pd.DataFrame(samples)
         sample_list_fp = f"{self.kwargs['output_dir']}/sample_list.tsv"
-        df.to_csv(sample_list_fp, sep='t')
+        df.to_csv(sample_list_fp, sep='\t', header=False, index=False)
 
         self.master_qiita_job_id = self.kwargs['job_id']
 
