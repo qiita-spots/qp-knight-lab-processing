@@ -19,14 +19,14 @@ from os import makedirs
 @click.argument('outdir', required=True)
 def generate_bam2fastq_commands(sample_list, run_folder, outdir):
     """Generates the bam2fastq commands"""
-    df = pd.read_csv(sample_list)
+    df = pd.read_csv(sample_list, sep='\t')
     files = {f.split('.')[-2]: f
              for f in glob(f'{run_folder}/*/hifi_reads/*.bam')}
 
     makedirs(outdir, exist_ok=True)
 
     commands, missing_files = [], []
-    for row in df.iterrows():
+    for _, row in df.iterrows():
         bc = row['barcode']
         sn = row['sample_name']
         pn = row['project_name']
@@ -35,9 +35,10 @@ def generate_bam2fastq_commands(sample_list, run_folder, outdir):
             continue
         od = f'{outdir}/{pn}'
         makedirs(od, exist_ok=True)
-        cmd = (f'bam2fastq -j 1 -o {od}/{sn} -c 9 '
+        fn = f'{od}/{sn}_R1'
+        cmd = (f'bam2fastq -j 1 -o {fn} -c 9 '
                f'{files[bc]}; '
-               f'fqtools count {od}/{sn}.fastq.gz > '
+               f'fqtools count {fn}.fastq.gz > '
                f'{od}/{sn}.counts.txt')
         commands.append(cmd)
 

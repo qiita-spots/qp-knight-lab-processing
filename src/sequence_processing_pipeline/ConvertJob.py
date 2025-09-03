@@ -454,15 +454,17 @@ class ConvertPacBioBam2FastqJob(Job):
         lines.append(f"#SBATCH --mem-per-cpu {self.pmem}")
 
         lines.append("set -x")
+        lines.append('set -e')
         lines.append('date')
         lines.append('hostname')
+        lines.append('source ~/.bash_profile')
         lines.append('conda activate klp-2025-05')
         lines.append(f'cd {self.output_path}')
 
         lines.append(
             f'pacbio_generate_bam2fastq_commands ../sample_list.tsv '
             f'{self.root_dir} {self.output_path} '
-            f'| parallel -j {self.node_count}')
+            f'| parallel -j {self.nprocs}')
 
         with open(self.job_script_path, 'w') as f:
             for line in lines:
