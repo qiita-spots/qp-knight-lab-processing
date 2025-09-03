@@ -432,38 +432,29 @@ class PacBio(Protocol):
         return failed_samples
 
     def generate_sequence_counts(self):
-        # config = self.pipeline.get_software_configuration('tell-seq')
+        # for other isntances of generate_sequence_counts in other objects
+        # the sequence counting needs to be done; however, for PacBio we
+        # already have done it and just need to merge the results.
+        gz_files = glob(f'{self.raw_fastq_files_path}/*/*.fastq.gz')
+        data, missing_files = [], []
 
-        # files_to_count_path = join(self.pipeline.output_path,
-        #                            'files_to_count.txt')
+        for gzf in gz_files:
+            cf = gzf.replace('.fastq.gz', '.counts.txt')
+            sn = basename(cf).replace('.counts.txt', '')
+            if not exists(cf):
+                missing_files.append(sn)
+                continue
+            with open(cf, 'r') as fh:
+                counts = fh.read().strip()
+            data.append({'SampleID': sn, '# Reads': counts})
 
-        # with open(files_to_count_path, 'w') as f:
-        #     for root, _, files in walk(self.raw_fastq_files_path):
-        #         for _file in files:
-        #             if determine_orientation(_file) in ['R1', 'R2']:
-        #                 print(join(root, _file), file=f)
+        if missing_files:
+            raise ValueError(f'Missing count files: {missing_files}')
 
-        # job = SeqCountsJob(self.pipeline.run_dir,
-        #                    self.pipeline.output_path,
-        #                    config['queue'],
-        #                    config['nodes'],
-        #                    config['wallclock_time_in_minutes'],
-        #                    config['normcount_mem_limit'],
-        #                    config['modules_to_load'],
-        #                    self.master_qiita_job_id,
-        #                    config['job_max_array_length'],
-        #                    files_to_count_path,
-        #                    self.pipeline.get_sample_sheet_path(),
-        #                    cores_per_task=config['tellread_cores'])
-
-        # if 'SeqCountsJob' not in self.skip_steps:
-        #     job.run(callback=self.job_callback)
-
-        # if successful, set self.reports_path
+        df = pd.DataFrame(data)
         self.reports_path = join(self.pipeline.output_path,
                                  'SeqCounts.csv')
-        open(self.reports_path, 'w').write(
-            'SampleID,# Reads\nA1,100')
+        df.to_csv(self.reports_path, index=False)
 
     def integrate_results(self):
         pass
