@@ -70,14 +70,11 @@ class WorkflowFactoryTests(PluginTestCase):
         # # then loop over samples and stage all fastq.gz files
         dstats = []
         for i, sample in enumerate(samples):
-            rp = sample["Sample_ID"]
+            sn = sample['Sample_Name'],
             sp = sample["Sample_Project"]
-            dstats.append(
-                {'SampleID': rp,
-                 'Sample_Project': sp,
-                 '# Reads': 2})
+            dstats.append({'SampleID': sn, '# Reads': 2})
             dname = f'{convert_dir}/{sp}'
-            Path(f'{dname}/{rp}_R1_001.fastq.gz').touch()
+            Path(f'{dname}/{sn}_R1.fastq.gz').touch()
 
         #     # NuQCJob
         #     dname = f'{nuqc_dir}/filtered_sequences/{sp}'
