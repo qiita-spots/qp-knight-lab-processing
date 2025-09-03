@@ -69,8 +69,8 @@ class WorkflowFactoryTests(PluginTestCase):
 
         # # then loop over samples and stage all fastq.gz files
         dstats = []
-        for i, sample in enumerate(samples):
-            sn = sample['Sample_Name'],
+        for sample in samples:
+            sn = sample['Sample_Name']
             sp = sample["Sample_Project"]
             dstats.append({'SampleID': sn, '# Reads': 2})
             dname = f'{convert_dir}/{sp}'
