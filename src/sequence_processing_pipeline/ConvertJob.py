@@ -459,14 +459,10 @@ class ConvertPacBioBam2FastqJob(Job):
         lines.append('conda activate klp-2025-05')
         lines.append(f'cd {self.output_path}')
 
-        lines.append("sample_list=${PWD}/sample_list.tsv")
         lines.append(
-            'while read bc sn pn; do echo '
-            '"bam2fastq -j 1 -o ${sn}.fastq.gz -c 9 '
-            f'{self.root_dir}'
-            '/*/hifi_reads/*{bc}*.bam"; '
-            'fqtools count ${sn}.fastq.gz > ${sn}.counts.txt;'
-            'done < ${sample_list}')
+            f'pacbio_generate_bam2fastq_commands ../sample_list.tsv '
+            f'{self.root_dir} {self.output_path} '
+            f'| parallel -j {self.node_count}')
 
         with open(self.job_script_path, 'w') as f:
             for line in lines:
