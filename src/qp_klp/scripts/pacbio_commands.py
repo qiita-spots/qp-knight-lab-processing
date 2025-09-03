@@ -17,7 +17,8 @@ from os import makedirs
 @click.argument('sample_list', required=True)
 @click.argument('run_folder', required=True)
 @click.argument('outdir', required=True)
-def generate_bam2fastq_commands(sample_list, run_folder, outdir):
+@click.argument('threads', required=True, default=1)
+def generate_bam2fastq_commands(sample_list, run_folder, outdir, threads):
     """Generates the bam2fastq commands"""
     df = pd.read_csv(sample_list, sep='\t')
     files = {f.split('.')[-2]: f
@@ -36,7 +37,7 @@ def generate_bam2fastq_commands(sample_list, run_folder, outdir):
         od = f'{outdir}/{pn}'
         makedirs(od, exist_ok=True)
         fn = f'{od}/{sn}_R1'
-        cmd = (f'bam2fastq -j 1 -o {fn} -c 9 '
+        cmd = (f'bam2fastq -j {threads} -o {fn} -c 9 '
                f'{files[bc]}; '
                f'fqtools count {fn}.fastq.gz > '
                f'{fn}.counts.txt')

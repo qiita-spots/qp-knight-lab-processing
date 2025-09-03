@@ -239,9 +239,9 @@ class NuQCJob(Job):
             batch_count = 0
             max_size = 0
         else:
-            batch_count, max_size = split_similar_size_bins(self.root_dir,
-                                                            self.bucket_size,
-                                                            batch_location)
+            batch_count, max_size = split_similar_size_bins(
+                self.root_dir, self.bucket_size, batch_location,
+                self.read_length == 'long')
 
         job_script_path = self._generate_job_script(max_size)
 

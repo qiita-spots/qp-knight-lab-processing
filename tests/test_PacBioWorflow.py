@@ -73,9 +73,9 @@ class WorkflowFactoryTests(PluginTestCase):
             rp = sample["Sample_ID"]
             sp = sample["Sample_Project"]
             dstats.append(
-                {'Lane': sample['Lane'], 'SampleID': rp,
-                    'Sample_Project': sp, 'Index': sample['index'],
-                    '# Reads': 2})
+                {'SampleID': rp,
+                 'Sample_Project': sp,
+                 '# Reads': 2})
             dname = f'{convert_dir}/{sp}'
             Path(f'{dname}/{rp}_R1_001.fastq.gz').touch()
 

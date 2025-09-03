@@ -443,7 +443,7 @@ class PacBio(Protocol):
 
         for gzf in gz_files:
             cf = gzf.replace('.fastq.gz', '.counts.txt')
-            sn = basename(cf).replace('.counts.txt', '')
+            sn = basename(cf).replace('_R1.counts.txt', '')
             if not exists(cf):
                 missing_files.append(sn)
                 continue
@@ -456,6 +456,7 @@ class PacBio(Protocol):
 
         df = pd.DataFrame(data)
         self.reports_path = join(self.pipeline.output_path,
+                                 'ConvertJob',
                                  'SeqCounts.csv')
         df.to_csv(self.reports_path, index=False)
 

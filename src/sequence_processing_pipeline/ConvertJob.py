@@ -433,8 +433,10 @@ class ConvertPacBioBam2FastqJob(Job):
         Generate a Torque job script for processing supplied root_directory.
         :return: The path to the newly-created job-script.
         """
-        lines = []
+        threads_per_job = 2
+        parallel_jobs = int(self.nprocs/threads_per_job)
 
+        lines = []
         lines.append("#!/bin/bash")
         lines.append(f"#SBATCH --job-name {self.qiita_job_id}_{self.job_name}")
         lines.append(f"#SBATCH -p {self.queue_name}")
@@ -463,8 +465,8 @@ class ConvertPacBioBam2FastqJob(Job):
 
         lines.append(
             f'pacbio_generate_bam2fastq_commands ../sample_list.tsv '
-            f'{self.root_dir} {self.output_path} '
-            f'| parallel -j {self.nprocs}')
+            f'{self.root_dir} {self.output_path} {threads_per_job}'
+            f'| parallel -j {parallel_jobs}')
 
         with open(self.job_script_path, 'w') as f:
             for line in lines:

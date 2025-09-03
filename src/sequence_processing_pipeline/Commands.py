@@ -6,12 +6,13 @@ from sequence_processing_pipeline.util import (iter_paired_files,
 
 
 def split_similar_size_bins(data_location_path, max_file_list_size_in_gb,
-                            batch_prefix):
+                            batch_prefix, allow_fwd_only=False):
     '''Partitions input fastqs to coarse bins
 
     :param data_location_path: Path to the ConvertJob directory.
     :param max_file_list_size_in_gb: Upper threshold for file-size.
     :param batch_prefix: Path + file-name prefix for output-files.
+    :param allow_fwd_only: ignore rev match, helpful for long reads.
     :return: The number of output-files created, size of largest bin.
     '''
     # to prevent issues w/filenames like the ones below from being mistaken
@@ -37,31 +38,56 @@ def split_similar_size_bins(data_location_path, max_file_list_size_in_gb,
     bucket_size = 0
     max_bucket_size = 0
 
-    for a, b in iter_paired_files(fastq_paths):
-        r1_size = os.stat(a).st_size
-        r2_size = os.stat(b).st_size
+    if allow_fwd_only:
+        for a in fastq_paths:
+            r1_size = os.stat(a).st_size
+            output_base = os.path.dirname(a).split('/')[-1]
+            if current_size + r1_size > max_size:
+                # bucket is full.
+                if bucket_size > max_bucket_size:
+                    max_bucket_size = bucket_size
 
-        output_base = os.path.dirname(a).split('/')[-1]
-        if current_size + r1_size > max_size:
-            # bucket is full.
-            if bucket_size > max_bucket_size:
-                max_bucket_size = bucket_size
+                # reset bucket_size.
+                bucket_size = r1_size
 
-            # reset bucket_size.
-            bucket_size = r1_size + r2_size
+                if fp is not None:
+                    fp.close()
 
-            if fp is not None:
-                fp.close()
+                split_offset += 1
+                current_size = r1_size
+                fp = open(batch_prefix + '-%d' % split_offset, 'w')
+            else:
+                # add to bucket_size
+                bucket_size += r1_size
+                current_size += r1_size
 
-            split_offset += 1
-            current_size = r1_size
-            fp = open(batch_prefix + '-%d' % split_offset, 'w')
-        else:
-            # add to bucket_size
-            bucket_size += r1_size + r2_size
-            current_size += r1_size
+            fp.write("%s\t%s\n" % (a, output_base))
+    else:
+        for a, b in iter_paired_files(fastq_paths):
+            r1_size = os.stat(a).st_size
+            r2_size = os.stat(b).st_size
 
-        fp.write("%s\t%s\t%s\n" % (a, b, output_base))
+            output_base = os.path.dirname(a).split('/')[-1]
+            if current_size + r1_size > max_size:
+                # bucket is full.
+                if bucket_size > max_bucket_size:
+                    max_bucket_size = bucket_size
+
+                # reset bucket_size.
+                bucket_size = r1_size + r2_size
+
+                if fp is not None:
+                    fp.close()
+
+                split_offset += 1
+                current_size = r1_size
+                fp = open(batch_prefix + '-%d' % split_offset, 'w')
+            else:
+                # add to bucket_size
+                bucket_size += r1_size + r2_size
+                current_size += r1_size
+
+            fp.write("%s\t%s\t%s\n" % (a, b, output_base))
 
     if fp is not None:
         fp.close()
