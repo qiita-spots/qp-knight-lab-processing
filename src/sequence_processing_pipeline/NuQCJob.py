@@ -468,7 +468,6 @@ class NuQCJob(Job):
             return None
 
         job_script_path = join(self.output_path, 'process_all_fastq_files.sh')
-        template = self.jinja_env.get_template("nuqc_job.sh")
 
         job_name = f'{self.qiita_job_id}_{self.job_name}'
 
@@ -495,8 +494,10 @@ class NuQCJob(Job):
 
         if self.read_length == 'short':
             pmls_extra_parameters = ''
+            template = self.jinja_env.get_template("nuqc_job.sh")
         elif self.read_length == 'long':
             pmls_extra_parameters = '"max" 21'
+            template = self.jinja_env.get_template("nuqc_job_single.sh")
         else:
             raise ValueError(
                 f'pmls_extra_parameters not set for {self.read_length}')

@@ -466,7 +466,7 @@ class ConvertPacBioBam2FastqJob(Job):
         lines.append(
             f'pacbio_generate_bam2fastq_commands ../sample_list.tsv '
             f'{self.root_dir} {self.output_path} {threads_per_job}'
-            f'| parallel -j {parallel_jobs}')
+            f' | parallel -j {parallel_jobs}')
 
         with open(self.job_script_path, 'w') as f:
             for line in lines:
