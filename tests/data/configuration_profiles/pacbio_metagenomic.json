@@ -5,7 +5,7 @@
     "configuration": {
       "pacbio_convert": {
         "nodes": 1,
-        "nprocs": 16,
+        "nprocs": 28,
         "queue": "qiita",
         "wallclock_time_in_minutes": 216,
         "modules_to_load": [],

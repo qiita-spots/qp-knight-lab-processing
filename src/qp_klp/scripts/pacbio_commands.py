@@ -39,7 +39,7 @@ def generate_bam2fastq_commands(sample_list, run_folder, outdir):
         cmd = (f'bam2fastq -j 1 -o {fn} -c 9 '
                f'{files[bc]}; '
                f'fqtools count {fn}.fastq.gz > '
-               f'{od}/{sn}.counts.txt')
+               f'{fn}.counts.txt')
         commands.append(cmd)
 
     if missing_files:

@@ -12,8 +12,10 @@ from os.path import dirname, abspath, join, exists
 from metapool.sample_sheet import (PROTOCOL_NAME_PACBIO_SMRT)
 from qp_klp.Assays import ASSAY_NAME_METAGENOMIC
 from shutil import rmtree
+from pathlib import Path
 from qiita_client.testing import PluginTestCase
 from sequence_processing_pipeline.PipelineError import PipelineError
+import pandas as pd
 
 
 class WorkflowFactoryTests(PluginTestCase):
@@ -40,30 +42,19 @@ class WorkflowFactoryTests(PluginTestCase):
         '''This is a helper method for testing that all the steps are run
            when testing wf.execute_pipeline()
         '''
-        pass
-        # samples = wf.pipeline.sample_sheet.samples
-        # tellseq = True
-        # if 'index' in dict(samples[0]).keys():
-        #     tellseq = False
+        samples = wf.pipeline.sample_sheet.samples
 
-        # # inject Convert/NuQC/FastQC/MultiQC/GenPrepFileJob files so we can
-        # # move down the pipeline; first let's create the base folders
-        # if tellseq:
-        #     reports_dir = f'{self.output_dir}/TellReadJob/'
-        #     convert_dir = f'{self.output_dir}/TRIntegrateJob/integrated'
-        #     makedirs(convert_dir, exist_ok=True)
-        # else:
-        #     convert_dir = f'{self.output_dir}/ConvertJob'
-        #     reports_dir = f'{self.output_dir}/ConvertJob/Reports'
-        #     makedirs(convert_dir, exist_ok=True)
-        #     Path(f'{convert_dir}/job_completed').touch()
+        convert_dir = f'{self.output_dir}/ConvertJob'
+        reports_dir = f'{self.output_dir}/ConvertJob/Reports'
+        makedirs(convert_dir, exist_ok=True)
+        makedirs(reports_dir, exist_ok=True)
+        Path(f'{convert_dir}/job_completed').touch()
         # tellread_dir = f'{self.output_dir}/TellReadJob'
         # nuqc_dir = f'{self.output_dir}/NuQCJob'
         # fastqc_dir = f'{self.output_dir}/FastQCJob/logs/'
         # multiqc_dir = f'{self.output_dir}/MultiQCJob/logs/'
         # genprep_dir = (f'{self.output_dir}/GenPrepFileJob/'
         #                '211021_A00000_0000_SAMPLE/')
-        # makedirs(reports_dir, exist_ok=True)
         # makedirs(nuqc_dir, exist_ok=True)
         # makedirs(fastqc_dir, exist_ok=True)
         # makedirs(multiqc_dir, exist_ok=True)
@@ -77,29 +68,17 @@ class WorkflowFactoryTests(PluginTestCase):
         #              exist_ok=True)
 
         # # then loop over samples and stage all fastq.gz files
-        # dstats = []
-        # for i, sample in enumerate(samples):
-        #     rp = sample["Sample_ID"]
-        #     sp = sample["Sample_Project"]
-
-        #     # ConvertJob
-        #     if tellseq:
-        #         bid = sample['barcode_id']
-        #         dstats.append(
-        #             {'Lane': sample['Lane'], 'SampleID': rp,
-        #              'Sample_Project': sp, 'Barcode': bid,
-        #              '# Reads': 2})
-        #         dname = f'{convert_dir}/{sp}'
-        #         copyfile(self.gz_source, f'{dname}/{bid}.R1.fastq.gz')
-        #         copyfile(self.gz_source, f'{dname}/{bid}.R2.fastq.gz')
-        #     else:
-        #         dstats.append(
-        #             {'Lane': sample['Lane'], 'SampleID': rp,
-        #              'Sample_Project': sp, 'Index': sample['index'],
-        #              '# Reads': 2})
-        #         dname = f'{convert_dir}/{sp}'
-        #         Path(f'{dname}/{rp}_L001_R1_001.fastq.gz').touch()
-        #         Path(f'{dname}/{rp}_L001_R2_001.fastq.gz').touch()
+        dstats = []
+        for i, sample in enumerate(samples):
+            rp = sample["Sample_ID"]
+            sp = sample["Sample_Project"]
+            dstats.append(
+                {'Lane': sample['Lane'], 'SampleID': rp,
+                    'Sample_Project': sp, 'Index': sample['index'],
+                    '# Reads': 2})
+            dname = f'{convert_dir}/{sp}'
+            Path(f'{dname}/{rp}_L001_R1_001.fastq.gz').touch()
+            Path(f'{dname}/{rp}_L001_R2_001.fastq.gz').touch()
 
         #     # NuQCJob
         #     dname = f'{nuqc_dir}/filtered_sequences/{sp}'
@@ -111,13 +90,8 @@ class WorkflowFactoryTests(PluginTestCase):
         #     Path(f'{gprep_base}_L001_R1_001.fastq.gz').touch()
         #     Path(f'{gprep_base}_L001_R2_001.fastq.gz').touch()
 
-        # # this is required by the Convert step
-        # if tellseq:
-        #     pd.DataFrame(dstats).set_index('SampleID').to_csv(
-        #         f'{tellread_dir}/sample_index_list_TellReadJob.txt')
-        # else:
-        #     pd.DataFrame(dstats).set_index('SampleID').to_csv(
-        #         f'{reports_dir}/Demultiplex_Stats.csv')
+        pd.DataFrame(dstats).set_index('SampleID').to_csv(
+            f'{reports_dir}/Demultiplex_Stats.csv')
 
         # # generating the "*.completed" files
         # for i in range(len(samples)*3):
