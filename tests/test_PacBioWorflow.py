@@ -77,8 +77,7 @@ class WorkflowFactoryTests(PluginTestCase):
                     'Sample_Project': sp, 'Index': sample['index'],
                     '# Reads': 2})
             dname = f'{convert_dir}/{sp}'
-            Path(f'{dname}/{rp}_L001_R1_001.fastq.gz').touch()
-            Path(f'{dname}/{rp}_L001_R2_001.fastq.gz').touch()
+            Path(f'{dname}/{rp}_R1_001.fastq.gz').touch()
 
         #     # NuQCJob
         #     dname = f'{nuqc_dir}/filtered_sequences/{sp}'
@@ -118,7 +117,7 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_PACBIO_SMRT)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
-        # self._inject_data(wf)
+        self._inject_data(wf)
         # ConvertJob/ConvertJob.sh
 
         # Metagenomic is a valid data type in the default qiita test

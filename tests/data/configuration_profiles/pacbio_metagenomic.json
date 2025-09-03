@@ -9,7 +9,7 @@
         "queue": "qiita",
         "wallclock_time_in_minutes": 216,
         "modules_to_load": [],
-        "executable_path": "",
+        "executable_path": "bam2fastq",
         "per_process_memory_limit": "1gb"
       },
       "nu-qc": {

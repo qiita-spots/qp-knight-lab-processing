@@ -78,6 +78,9 @@ class WorkflowFactory():
                              "sample-sheet or a mapping-file.")
 
         for workflow in WorkflowFactory.WORKFLOWS:
+            if workflow.read_length not in {'short', 'long'}:
+                raise ValueError('Invalid read_length: '
+                                 f'{workflow.read_length} for {workflow}')
             if workflow.assay_type == assay_type:
                 if workflow.protocol_type == instrument_type:
                     # return instantiated workflow object

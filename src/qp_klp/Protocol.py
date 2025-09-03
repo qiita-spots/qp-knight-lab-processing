@@ -86,6 +86,7 @@ class Illumina(Protocol):
     # here) both RTAComplete.txt and RunInfo.xml should reside in the root of
     # the run directory.
     required_files = ['RTAComplete.txt', 'RunInfo.xml']
+    read_length = 'short'
 
     def __init__(self) -> None:
         super().__init__()
@@ -178,6 +179,7 @@ class Illumina(Protocol):
 
 class TellSeq(Protocol):
     protocol_type = PROTOCOL_NAME_TELLSEQ
+    read_length = 'short'
 
     def convert_raw_to_fastq(self):
         config = self.pipeline.get_software_configuration('tell-seq')
@@ -395,6 +397,7 @@ class TellSeq(Protocol):
 
 class PacBio(Protocol):
     protocol_type = PROTOCOL_NAME_PACBIO_SMRT
+    read_length = 'long'
 
     def convert_raw_to_fastq(self):
         config = self.pipeline.get_software_configuration('pacbio_convert')

@@ -24,7 +24,8 @@ class NuQCJob(Job):
                  samtools_path, modules_to_load, qiita_job_id,
                  max_array_length, known_adapters_path, movi_path, gres_value,
                  pmls_path, additional_fastq_tags, bucket_size=8,
-                 length_limit=100, cores_per_task=4, files_regex='SPP'):
+                 length_limit=100, cores_per_task=4, files_regex='SPP',
+                 read_length='short'):
         """
         Submit a slurm job where the contents of fastq_root_dir are processed
         using fastp, minimap2, and samtools. Human-genome sequences will be
@@ -52,6 +53,7 @@ class NuQCJob(Job):
         :param additional_fastq_tags: A list of fastq tags to preserve during
         filtering.
         :param files_regex: the FILES_REGEX to use for parsing files
+        :param read_length: the FILES_REGEX to use for parsing files
         """
         super().__init__(fastq_root_dir,
                          output_path,
@@ -417,6 +419,17 @@ class NuQCJob(Job):
             tags = " -T %s" % ','.join(self.additional_fastq_tags)
             t_switch = " -y"
 
+        if self.read_length == 'short':
+            minimap2_prefix = f'minimap2 -2 -ax sr{t_switch}'
+            minimap2_subfix = '-a'
+            samtools_params = '-f 12 -F 256'
+        elif self.read_length == 'long':
+            minimap2_prefix = 'minimap2 -2 -ax map-hifi'
+            minimap2_subfix = '--no-pairing'
+            samtools_params = '-f 4 -F 256'
+        else:
+            raise ValueError(f'minimap2 prefix not set for {self.read_length}')
+
         for count, mmi_db_path in enumerate(self.mmi_file_paths):
             if count == 0:
                 # prime initial state with unfiltered file and create first of
@@ -432,9 +445,10 @@ class NuQCJob(Job):
                 input = tmp_file1
                 output = tmp_file2
 
-            cmds.append(f"minimap2 -2 -ax sr{t_switch} -t {cores_to_allocate} "
-                        f"{mmi_db_path} {input} -a | samtools fastq -@ "
-                        f"{cores_to_allocate} -f 12 -F 256{tags} > "
+            cmds.append(f"{minimap2_prefix} -t {cores_to_allocate} "
+                        f"{mmi_db_path} {input} {minimap2_subfix} | "
+                        "samtools fastq -@ "
+                        f"{cores_to_allocate} {samtools_params}{tags} > "
                         f"{output}")
 
         # rename the latest tmp file to the final output filename.
