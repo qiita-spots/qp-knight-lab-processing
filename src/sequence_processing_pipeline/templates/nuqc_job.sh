@@ -125,10 +125,10 @@ function mux-runner () {
         --index /scratch/movi_hg38_chm13_hprc94 \
         --read ${seq_reads_filter_alignment} \
         --stdout | gzip > ${jobd}/seqs.movi.txt.gz
-        
-    python {{pmls_path}} <(zcat ${jobd}/seqs.movi.txt.gz) | \
+
+    python {{pmls_path}} <(zcat ${jobd}/seqs.movi.txt.gz) {{pmls_extra_parameters}} | \
         seqtk subseq ${seq_reads_filter_alignment} - > ${jobd}/seqs.final.fastq
-         
+
     {{splitter_binary}} ${jobd}/seqs.final.fastq \
         ${jobd}/reads.r1.fastq ${delimiter} ${r1_tag} &
     {{splitter_binary}} ${jobd}/seqs.final.fastq \

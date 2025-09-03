@@ -83,6 +83,7 @@ class NuQCJob(Job):
         self.pmls_path = pmls_path
         self.additional_fastq_tags = additional_fastq_tags
         self.audit_folders = ['filtered_sequences']
+        self.read_length = read_length
 
         # for projects that use sequence_processing_pipeline as a dependency,
         # jinja_env must be set to sequence_processing_pipeline's root path,
@@ -492,6 +493,14 @@ class NuQCJob(Job):
         # files can be created. (${jobd})
         mmi_filter_cmds = self._generate_mmi_filter_cmds("${jobd}")
 
+        if self.read_length == 'short':
+            pmls_extra_parameters = ''
+        elif self.read_length == 'long':
+            pmls_extra_parameters = '"max" 21'
+        else:
+            raise ValueError(
+                f'pmls_extra_parameters not set for {self.read_length}')
+
         with open(job_script_path, mode="w", encoding="utf-8") as f:
             # the job resources should come from a configuration file
 
@@ -499,31 +508,33 @@ class NuQCJob(Job):
             # processing begins.
             mtl = ' '.join(self.modules_to_load)
 
-            f.write(template.render(job_name=job_name,
-                                    queue_name=self.queue_name,
-                                    # should be 4 * 24 * 60 = 4 days
-                                    wall_time_limit=self.wall_time_limit,
-                                    mem_in_gb=self.jmem,
-                                    # Note NuQCJob now maps node_count to
-                                    # SLURM -N parameter to act like other
-                                    # Job classes.
-                                    # self.node_count should be 1
-                                    node_count=self.node_count,
-                                    # cores-per-task (-c) should be 4
-                                    cores_per_task=self.cores_per_task,
-                                    knwn_adpt_path=self.known_adapters_path,
-                                    output_path=self.output_path,
-                                    html_path=html_path,
-                                    json_path=json_path,
-                                    demux_path=demux_path,
-                                    temp_dir=self.temp_dir,
-                                    splitter_binary=splitter_binary,
-                                    modules_to_load=mtl,
-                                    length_limit=self.length_limit,
-                                    gres_value=self.gres_value,
-                                    movi_path=self.movi_path,
-                                    mmi_filter_cmds=mmi_filter_cmds,
-                                    pmls_path=self.pmls_path))
+            f.write(template.render(
+                job_name=job_name,
+                queue_name=self.queue_name,
+                # should be 4 * 24 * 60 = 4 days
+                wall_time_limit=self.wall_time_limit,
+                mem_in_gb=self.jmem,
+                # Note NuQCJob now maps node_count to
+                # SLURM -N parameter to act like other
+                # Job classes.
+                # self.node_count should be 1
+                node_count=self.node_count,
+                # cores-per-task (-c) should be 4
+                cores_per_task=self.cores_per_task,
+                knwn_adpt_path=self.known_adapters_path,
+                output_path=self.output_path,
+                html_path=html_path,
+                json_path=json_path,
+                demux_path=demux_path,
+                temp_dir=self.temp_dir,
+                splitter_binary=splitter_binary,
+                modules_to_load=mtl,
+                length_limit=self.length_limit,
+                gres_value=self.gres_value,
+                movi_path=self.movi_path,
+                mmi_filter_cmds=mmi_filter_cmds,
+                pmls_extra_parameters=pmls_extra_parameters,
+                pmls_path=self.pmls_path))
 
         return job_script_path
 
