@@ -194,7 +194,18 @@ def demux(id_map, fp, out_d, task, maxtask):
             f.close()
 
 
-def demux_just_fwd(id_map, fp, out_d, task, maxtask):
+def demux_just_fwd(id_map_fp, fp_fp, out_d, task, maxtask):
+    with open(id_map_fp, 'r') as f:
+        id_map = f.readlines()
+        id_map = [line.strip().split('\t') for line in id_map]
+
+    # fp needs to be an open file handle.
+    # ensure task and maxtask are proper ints when coming from cmd-line.
+    with open(fp_fp, 'r') as fp:
+        demux_just_fwd_processing(id_map, fp, out_d, int(task), int(maxtask))
+
+
+def demux_just_fwd_processing(id_map, fp, out_d, task, maxtask):
     """Split infile data based in provided map"""
     delimiter = '::MUX::'
     mode = 'wt'

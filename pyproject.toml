@@ -59,5 +59,5 @@ dependencies = [
 configure_klp = "qp_klp.scripts.configure_klp:config"
 start_klp = "qp_klp.scripts.start_klp:execute"
 demux = "sequence_processing_pipeline.scripts.cli:demux"
-demux_single = "sequence_processing_pipeline.scripts.cli:demux_single"
+demux_just_fwd = "sequence_processing_pipeline.scripts.cli:demux_just_fwd"
 pacbio_generate_bam2fastq_commands = "qp_klp.scripts.pacbio_commands:generate_bam2fastq_commands"

@@ -33,7 +33,7 @@ if [[ -z ${OUTPUT} ]]; then
     exit 1
 fi
 
-conda activate qp-knight-lab-processing-2022.03
+conda activate klp-2025-05
 module load {{modules_to_load}}
 
 set -x
