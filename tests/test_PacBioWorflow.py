@@ -76,6 +76,8 @@ class WorkflowFactoryTests(PluginTestCase):
             dname = f'{convert_dir}/{sp}'
             makedirs(dname, exist_ok=True)
             Path(f'{dname}/{sn}_R1.fastq.gz').touch()
+            with open(f'{dname}/{sn}_R1.counts.txt', 'w') as f:
+                f.write("2")
 
         #     # NuQCJob
         #     dname = f'{nuqc_dir}/filtered_sequences/{sp}'
