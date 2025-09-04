@@ -1,6 +1,7 @@
 import glob
 import gzip
 import os
+import click
 from sequence_processing_pipeline.util import (iter_paired_files,
                                                determine_orientation)
 
@@ -194,6 +195,17 @@ def demux(id_map, fp, out_d, task, maxtask):
             f.close()
 
 
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+@click.option('--id-map', type=click.Path(exists=True), required=True)
+@click.option('--infile', type=click.Path(exists=True), required=True)
+@click.option('--output', type=click.Path(exists=True), required=True)
+@click.option('--task', type=int, required=True)
+@click.option('--maxtask', type=int, required=True)
 def demux_just_fwd(id_map_fp, fp_fp, out_d, task, maxtask):
     with open(id_map_fp, 'r') as f:
         id_map = f.readlines()
