@@ -192,3 +192,82 @@ def demux(id_map, fp, out_d, task, maxtask):
     for d in openfps.values():
         for f in d.values():
             f.close()
+
+
+def demux_just_fwd(id_map, fp, out_d, task, maxtask):
+    """Split infile data based in provided map"""
+    delimiter = '::MUX::'
+    mode = 'wt'
+    ext = '.fastq.gz'
+    sep = '/'
+    rec = '@'
+
+    openfps = {}
+
+    for offset, (idx, r1, outbase) in enumerate(id_map):
+        if offset % maxtask == task:
+            idx = rec + idx
+
+            # setup output locations
+            outdir = out_d + sep + outbase
+            fullname_r1 = outdir + sep + r1 + ext
+
+            # we have seen in lustre that sometime this line
+            # can have a raise condition; making sure it doesn't break
+            # things
+            try:
+                os.makedirs(outdir, exist_ok=True)
+            except FileExistsError:
+                pass
+            current_fp_r1 = gzip.open(fullname_r1, mode)
+            current_fp = {'1': current_fp_r1}
+            openfps[idx] = current_fp
+
+    # setup a parser
+    seq_id = iter(fp)
+    seq = iter(fp)
+    dumb = iter(fp)
+    qual = iter(fp)
+
+    for i, s, d, q in zip(seq_id, seq, dumb, qual):
+        # '@1', 'LH00444:84:227CNHLT4:7:1101:41955:2443/1'
+        # '@1', 'LH00444:84:227CNHLT4:7:1101:41955:2443/1 BX:Z:TATGACACATGCGGCCCT' # noqa
+        # '@baz/1
+
+        # NB: from 6d794a37-12cd-4f8e-95d6-72a4b8a1ec1c's only-adapter-filtered results: # noqa
+        # @A00953:244:HYHYWDSXY:3:1101:14082:3740 1:N:0:CCGTAAGA+TCTAACGC
+
+        fname_encoded, sid = i.split(delimiter, 1)
+
+        if fname_encoded not in openfps:
+            continue
+
+        current_fp = openfps[fname_encoded]
+
+        # remove '\n' from sid and split on all whitespace.
+        tmp = sid.strip().split()
+
+        if len(tmp) == 1:
+            # sequence id line contains no optional metadata.
+            # don't change sid.
+            # -1 is \n
+            orientation = sid[-2]
+            sid = rec + sid
+        elif len(tmp) == 2:
+            sid = tmp[0]
+            metadata = tmp[1]
+            # no '\n'
+            orientation = sid[-1]
+            # hexdump confirms separator is ' ', not '\t'
+            sid = rec + sid + ' ' + metadata + '\n'
+        else:
+            raise ValueError(f"'{sid}' is not a recognized form")
+
+        current_fp[orientation].write(sid)
+        current_fp[orientation].write(s)
+        current_fp[orientation].write(d)
+        current_fp[orientation].write(q)
+
+    for d in openfps.values():
+        for f in d.values():
+            f.close()

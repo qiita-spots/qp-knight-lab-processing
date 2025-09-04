@@ -4,6 +4,7 @@ from .Assays import Metagenomic
 from .Assays import ASSAY_NAME_METAGENOMIC
 from .FailedSamplesRecord import FailedSamplesRecord
 from .Workflows import Workflow
+import pandas as pd
 
 
 class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
@@ -40,7 +41,6 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
         self.fsr = FailedSamplesRecord(self.kwargs['output_dir'],
                                        self.pipeline.sample_sheet.samples)
 
-        import pandas as pd
         samples = [
             {'barcode': sample['Sample_ID'],
              'sample_name': sample['Sample_Name'],

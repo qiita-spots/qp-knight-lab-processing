@@ -149,7 +149,7 @@ function demux-runner () {
 
     for idx in $(seq 0 ${n_demux_jobs})
     do
-        python {{demux_path}} \
+        demux_just_fwd \
             --id-map ${id_map} \
             --infile <(cat ${seqs_r1}) \
             --output ${OUTPUT} \

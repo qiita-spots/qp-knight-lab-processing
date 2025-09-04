@@ -51,7 +51,7 @@
         "queue": "qiita",
         "nthreads": 16,
         "wallclock_time_in_minutes": 60,
-        "modules_to_load": ["fastqc_0.11.5"],
+        "modules_to_load": ["fastqc_0.12.1"],
         "fastqc_executable_path": "fastqc",
         "multiqc_executable_path": "multiqc",
         "multiqc_config_file_path": "sequence_processing_pipeline/multiqc-bclconvert-config.yaml",
