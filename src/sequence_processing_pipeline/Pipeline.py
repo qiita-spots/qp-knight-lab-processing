@@ -445,6 +445,8 @@ class Pipeline:
                              f"{self.assay_type}) was not found. Please notify"
                              " an administrator")
 
+        print(f'Profile selected: {selected_profile}')
+
         self.config_profile = selected_profile
 
     def _directory_check(self, directory_path, create=False):

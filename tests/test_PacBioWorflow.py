@@ -74,6 +74,7 @@ class WorkflowFactoryTests(PluginTestCase):
             sp = sample["Sample_Project"]
             dstats.append({'SampleID': sn, '# Reads': 2})
             dname = f'{convert_dir}/{sp}'
+            makedirs(dname, exist_ok=True)
             Path(f'{dname}/{sn}_R1.fastq.gz').touch()
 
         #     # NuQCJob
