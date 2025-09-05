@@ -54,7 +54,7 @@ class WorkflowFactoryTests(PluginTestCase):
         fastqc_dir = f'{self.output_dir}/FastQCJob/logs/'
         multiqc_dir = f'{self.output_dir}/MultiQCJob/logs/'
         genprep_dir = (f'{self.output_dir}/GenPrepFileJob/'
-                       '211021_A00000_0000_SAMPLE/')
+                       'r11111_20250101_111111/')
         makedirs(nuqc_dir, exist_ok=True)
         makedirs(fastqc_dir, exist_ok=True)
         makedirs(multiqc_dir, exist_ok=True)

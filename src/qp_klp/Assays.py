@@ -494,6 +494,7 @@ class MetaOmic(Assay):
         # is not defined, just fallback to the SPP expected default regex
         if not hasattr(self, 'files_regex'):
             self.files_regex = 'SPP'
+
         # base quality control used by multiple Assay types.
         job = NuQCJob(self.raw_fastq_files_path,
                       self.pipeline.output_path,
