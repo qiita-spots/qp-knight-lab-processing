@@ -125,10 +125,6 @@ function mux-runner () {
     python {{pmls_path}} <(zcat ${jobd}/seqs.movi.txt.gz) {{pmls_extra_parameters}} | \
         seqtk subseq ${seq_reads_filter_alignment} - > ${jobd}/seqs.final.fastq
 
-    {{splitter_binary}} ${jobd}/seqs.final.fastq \
-        ${jobd}/reads.r1.fastq ${delimiter} ${r1_tag} &
-    wait
-
     # keep seqs.movi.txt and migrate it to NuQCJob directory.
     mv ${jobd}/seqs.movi.txt.gz {{output_path}}/logs/seqs.movi.${SLURM_ARRAY_TASK_ID}.txt.gz
 }
@@ -139,7 +135,7 @@ function demux-runner () {
     n_demux_jobs=${SLURM_CPUS_PER_TASK}
     jobd=${TMPDIR}
     id_map=${jobd}/id_map
-    seqs_r1=${jobd}/reads.r1.fastq.paired.fq
+    seqs_r1=${jobd}/seqs.final.fastq
 
     id_map=${jobd}/id_map
     if [[ ! -f ${id_map} ]]; then

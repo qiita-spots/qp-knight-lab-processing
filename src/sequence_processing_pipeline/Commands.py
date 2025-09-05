@@ -252,6 +252,9 @@ def demux_just_fwd_processing(id_map, fp, out_d, task, maxtask):
     dumb = iter(fp)
     qual = iter(fp)
 
+    # there is only fwd so the orientation is always '1'
+    orientation = '1'
+
     for i, s, d, q in zip(seq_id, seq, dumb, qual):
         # '@1', 'LH00444:84:227CNHLT4:7:1101:41955:2443/1'
         # '@1', 'LH00444:84:227CNHLT4:7:1101:41955:2443/1 BX:Z:TATGACACATGCGGCCCT' # noqa
@@ -266,25 +269,6 @@ def demux_just_fwd_processing(id_map, fp, out_d, task, maxtask):
             continue
 
         current_fp = openfps[fname_encoded]
-
-        # remove '\n' from sid and split on all whitespace.
-        tmp = sid.strip().split()
-
-        if len(tmp) == 1:
-            # sequence id line contains no optional metadata.
-            # don't change sid.
-            # -1 is \n
-            orientation = sid[-2]
-            sid = rec + sid
-        elif len(tmp) == 2:
-            sid = tmp[0]
-            metadata = tmp[1]
-            # no '\n'
-            orientation = sid[-1]
-            # hexdump confirms separator is ' ', not '\t'
-            sid = rec + sid + ' ' + metadata + '\n'
-        else:
-            raise ValueError(f"'{sid}' is not a recognized form")
 
         current_fp[orientation].write(sid)
         current_fp[orientation].write(s)
