@@ -9,13 +9,14 @@ from qp_klp.WorkflowFactory import WorkflowFactory
 from unittest import main
 from os import makedirs
 from os.path import dirname, abspath, join, exists
-from metapool.sample_sheet import (PROTOCOL_NAME_PACBIO_SMRT)
-from qp_klp.Assays import ASSAY_NAME_METAGENOMIC
+from shutil import copyfile
 from shutil import rmtree
 from pathlib import Path
-from qiita_client.testing import PluginTestCase
-from sequence_processing_pipeline.PipelineError import PipelineError
 import pandas as pd
+from metapool.sample_sheet import (PROTOCOL_NAME_PACBIO_SMRT)
+from sequence_processing_pipeline.PipelineError import PipelineError
+from qp_klp.Assays import ASSAY_NAME_METAGENOMIC
+from qiita_client.testing import PluginTestCase
 
 
 class WorkflowFactoryTests(PluginTestCase):
@@ -49,23 +50,22 @@ class WorkflowFactoryTests(PluginTestCase):
         makedirs(convert_dir, exist_ok=True)
         makedirs(reports_dir, exist_ok=True)
         Path(f'{convert_dir}/job_completed').touch()
-        # tellread_dir = f'{self.output_dir}/TellReadJob'
-        # nuqc_dir = f'{self.output_dir}/NuQCJob'
-        # fastqc_dir = f'{self.output_dir}/FastQCJob/logs/'
-        # multiqc_dir = f'{self.output_dir}/MultiQCJob/logs/'
-        # genprep_dir = (f'{self.output_dir}/GenPrepFileJob/'
-        #                '211021_A00000_0000_SAMPLE/')
-        # makedirs(nuqc_dir, exist_ok=True)
-        # makedirs(fastqc_dir, exist_ok=True)
-        # makedirs(multiqc_dir, exist_ok=True)
-        # makedirs(genprep_dir, exist_ok=True)
-        # # now let's create the required project folders
-        # for project in wf.pipeline.get_project_info():
-        #     sp = project['project_name']
-        #     makedirs(f'{convert_dir}/{sp}', exist_ok=True)
-        #     makedirs(f'{nuqc_dir}/filtered_sequences/{sp}', exist_ok=True)
-        #     makedirs(f'{genprep_dir}/{sp}/filtered_sequences/',
-        #              exist_ok=True)
+        nuqc_dir = f'{self.output_dir}/NuQCJob'
+        fastqc_dir = f'{self.output_dir}/FastQCJob/logs/'
+        multiqc_dir = f'{self.output_dir}/MultiQCJob/logs/'
+        genprep_dir = (f'{self.output_dir}/GenPrepFileJob/'
+                       '211021_A00000_0000_SAMPLE/')
+        makedirs(nuqc_dir, exist_ok=True)
+        makedirs(fastqc_dir, exist_ok=True)
+        makedirs(multiqc_dir, exist_ok=True)
+        makedirs(genprep_dir, exist_ok=True)
+        # now let's create the required project folders
+        for project in wf.pipeline.get_project_info():
+            sp = project['project_name']
+            makedirs(f'{convert_dir}/{sp}', exist_ok=True)
+            makedirs(f'{nuqc_dir}/filtered_sequences/{sp}', exist_ok=True)
+            makedirs(f'{genprep_dir}/{sp}/filtered_sequences/',
+                     exist_ok=True)
 
         # # then loop over samples and stage all fastq.gz files
         dstats = []
@@ -74,28 +74,25 @@ class WorkflowFactoryTests(PluginTestCase):
             sp = sample["Sample_Project"]
             dstats.append({'SampleID': sn, '# Reads': 2})
             dname = f'{convert_dir}/{sp}'
-            makedirs(dname, exist_ok=True)
             Path(f'{dname}/{sn}_R1.fastq.gz').touch()
             with open(f'{dname}/{sn}_R1.counts.txt', 'w') as f:
                 f.write("2")
 
-        #     # NuQCJob
-        #     dname = f'{nuqc_dir}/filtered_sequences/{sp}'
-        #     copyfile(self.gz_source, f'{dname}/{rp}_L001_R1_001.fastq.gz')
-        #     copyfile(self.gz_source, f'{dname}/{rp}_L001_R2_001.fastq.gz')
+            # NuQCJob
+            dname = f'{nuqc_dir}/filtered_sequences/{sp}'
+            copyfile(self.gz_source, f'{dname}/{sn}_R1.fastq.gz')
 
-        #     # GenPrepFileJob
-        #     gprep_base = f'{genprep_dir}/{sp}/filtered_sequences/{rp}'
-        #     Path(f'{gprep_base}_L001_R1_001.fastq.gz').touch()
-        #     Path(f'{gprep_base}_L001_R2_001.fastq.gz').touch()
+            # GenPrepFileJob
+            gprep_base = f'{genprep_dir}/{sp}/filtered_sequences/{sn}'
+            Path(f'{gprep_base}_R1.fastq.gz').touch()
 
         pd.DataFrame(dstats).set_index('SampleID').to_csv(
             f'{reports_dir}/Demultiplex_Stats.csv')
 
-        # # generating the "*.completed" files
-        # for i in range(len(samples)*3):
-        #     Path(f'{fastqc_dir}/FastQCJob_{i}.completed').touch()
-        #     Path(f'{multiqc_dir}/MultiQCJob_{i}.completed').touch()
+        # generating the "*.completed" files
+        for i in range(len(samples)*3):
+            Path(f'{fastqc_dir}/FastQCJob_{i}.completed').touch()
+            Path(f'{multiqc_dir}/MultiQCJob_{i}.completed').touch()
 
     def test_pacbio_metagenomic_workflow_creation(self):
         kwargs = {"uif_path": "tests/data/sample-sheets/metagenomic/"
@@ -118,7 +115,9 @@ class WorkflowFactoryTests(PluginTestCase):
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
 
         self._inject_data(wf)
-        # ConvertJob/ConvertJob.sh
+
+        # we can add some checks/tests of the initial scripts (mainly Convert)
+        # but not doing now as is not required
 
         # Metagenomic is a valid data type in the default qiita test
         # database but job-id: 78901 doesn't exist; however, if we get

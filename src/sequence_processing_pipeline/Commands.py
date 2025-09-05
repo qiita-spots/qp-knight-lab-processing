@@ -206,15 +206,15 @@ def cli():
 @click.option('--output', type=click.Path(exists=True), required=True)
 @click.option('--task', type=int, required=True)
 @click.option('--maxtask', type=int, required=True)
-def demux_just_fwd(id_map_fp, fp_fp, out_d, task, maxtask):
-    with open(id_map_fp, 'r') as f:
+def demux_just_fwd(id_map, infile, output, task, maxtask):
+    with open(id_map, 'r') as f:
         id_map = f.readlines()
         id_map = [line.strip().split('\t') for line in id_map]
 
     # fp needs to be an open file handle.
     # ensure task and maxtask are proper ints when coming from cmd-line.
-    with open(fp_fp, 'r') as fp:
-        demux_just_fwd_processing(id_map, fp, out_d, int(task), int(maxtask))
+    with open(infile, 'r') as fp:
+        demux_just_fwd_processing(id_map, fp, output, int(task), int(maxtask))
 
 
 def demux_just_fwd_processing(id_map, fp, out_d, task, maxtask):
