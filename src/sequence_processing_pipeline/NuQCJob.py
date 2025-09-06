@@ -156,15 +156,22 @@ class NuQCJob(Job):
 
         files = glob(join(filtered_directory, f'*.{self.suffix}'))
 
-        for r1, r2 in iter_paired_files(files):
-            full_path = join(filtered_directory, r1)
-            full_path_reverse = join(filtered_directory, r2)
-            if stat(full_path).st_size <= minimum_bytes or stat(
-                    full_path_reverse).st_size <= minimum_bytes:
-                logging.debug(f'moving {full_path} and {full_path_reverse}'
-                              f' to empty list.')
-                empty_list.append(full_path)
-                empty_list.append(full_path_reverse)
+        if self.read_length == 'long':
+            for r1 in files:
+                full_path = join(filtered_directory, r1)
+                if stat(full_path).st_size <= minimum_bytes:
+                    logging.debug(f'moving {full_path} to empty list.')
+                    empty_list.append(full_path)
+        else:
+            for r1, r2 in iter_paired_files(files):
+                full_path = join(filtered_directory, r1)
+                full_path_reverse = join(filtered_directory, r2)
+                if stat(full_path).st_size <= minimum_bytes or stat(
+                        full_path_reverse).st_size <= minimum_bytes:
+                    logging.debug(f'moving {full_path} and {full_path_reverse}'
+                                  f' to empty list.')
+                    empty_list.append(full_path)
+                    empty_list.append(full_path_reverse)
 
         if empty_list:
             logging.debug(f'making directory {empty_files_directory}')
