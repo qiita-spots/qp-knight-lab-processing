@@ -61,6 +61,7 @@ class NuQCJob(Job):
                          [fastp_path, minimap2_path, samtools_path],
                          max_array_length,
                          modules_to_load=modules_to_load)
+        self.read_length = read_length
         self.sample_sheet_path = sample_sheet_path
         self._file_check(self.sample_sheet_path)
         metadata = self._process_sample_sheet()
@@ -83,7 +84,6 @@ class NuQCJob(Job):
         self.pmls_path = pmls_path
         self.additional_fastq_tags = additional_fastq_tags
         self.audit_folders = ['filtered_sequences']
-        self.read_length = read_length
 
         # for projects that use sequence_processing_pipeline as a dependency,
         # jinja_env must be set to sequence_processing_pipeline's root path,
