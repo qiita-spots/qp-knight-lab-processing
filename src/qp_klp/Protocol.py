@@ -449,7 +449,9 @@ class PacBio(Protocol):
                 continue
             with open(cf, 'r') as fh:
                 counts = fh.read().strip()
-            data.append({'SampleID': sn, '# Reads': counts})
+            data.append({'Sample_ID': sn,
+                         'raw_reads_r1r2': counts,
+                         'Lane': self.lane_number})
 
         if missing_files:
             raise ValueError(f'Missing count files: {missing_files}')
