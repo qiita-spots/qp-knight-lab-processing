@@ -386,15 +386,9 @@ class NuQCJob(Job):
             raise PipelineError(s)
 
         sample_ids = []
-        # long_reads use the Sample_Name as the main sample identifier,
-        # everything else uses Sample_ID; we might want to change this
-        # in the future for everything to use Sample_Name
-        sample_id_column = 'Sample_ID'
-        if self.read_length == 'long':
-            sample_id_column = 'Sample_Name'
         for sample in sheet.samples:
             sample_ids.append(
-                (sample[sample_id_column], sample['Sample_Project']))
+                (sample['Sample_ID'], sample['Sample_Project']))
 
         bioinformatics = sheet.Bioinformatics
 

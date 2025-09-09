@@ -41,7 +41,8 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
         samples = [
             {'barcode': sample['Sample_ID'],
              'sample_name': sample['Sample_Name'],
-             'project_name': sample['Sample_Project']}
+             'project_name': sample['Sample_Project'],
+             'lane': sample['Lane']}
             for sample in self.pipeline.sample_sheet.samples]
         df = pd.DataFrame(samples)
         sample_list_fp = f"{self.kwargs['output_dir']}/sample_list.tsv"
