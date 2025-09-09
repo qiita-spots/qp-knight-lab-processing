@@ -39,7 +39,7 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
                                        self.pipeline.sample_sheet.samples)
 
         samples = [
-            {'barcode': sample['Sample_ID'],
+            {'barcode': sample['barcode_id'],
              'sample_name': sample['Sample_Name'],
              'project_name': sample['Sample_Project'],
              'lane': sample['Lane']}
