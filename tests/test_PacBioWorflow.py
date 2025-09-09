@@ -80,11 +80,11 @@ class WorkflowFactoryTests(PluginTestCase):
 
             # NuQCJob
             dname = f'{nuqc_dir}/filtered_sequences/{sp}'
-            copyfile(self.gz_source, f'{dname}/{sn}_R1.fastq.gz')
+            copyfile(self.gz_source, f'{dname}/{sn}_R1.trimmed.fastq.gz')
 
             # GenPrepFileJob
             gprep_base = f'{genprep_dir}/{sp}/filtered_sequences/{sn}'
-            Path(f'{gprep_base}_R1.fastq.gz').touch()
+            Path(f'{gprep_base}_R1.trimmed.fastq.gz').touch()
 
         pd.DataFrame(dstats).set_index('SampleID').to_csv(
             f'{reports_dir}/Demultiplex_Stats.csv')
