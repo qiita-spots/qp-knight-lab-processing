@@ -70,21 +70,22 @@ class WorkflowFactoryTests(PluginTestCase):
         # # then loop over samples and stage all fastq.gz files
         dstats = []
         for sample in samples:
-            sn = sample['Sample_Name']
+            sn = sample['Sample_ID']
             sp = sample["Sample_Project"]
             dstats.append({'SampleID': sn, '# Reads': 2})
             dname = f'{convert_dir}/{sp}'
-            Path(f'{dname}/{sn}_R1.fastq.gz').touch()
+            Path(f'{dname}/{sn}_S000_L001_R1_001.fastq.gz').touch()
             with open(f'{dname}/{sn}_R1.counts.txt', 'w') as f:
                 f.write("2")
 
             # NuQCJob
             dname = f'{nuqc_dir}/filtered_sequences/{sp}'
-            copyfile(self.gz_source, f'{dname}/{sn}_R1.trimmed.fastq.gz')
+            copyfile(self.gz_source,
+                     f'{dname}/{sn}_S000_L001_R1_001.trimmed.fastq.gz')
 
             # GenPrepFileJob
             gprep_base = f'{genprep_dir}/{sp}/filtered_sequences/{sn}'
-            Path(f'{gprep_base}_R1.trimmed.fastq.gz').touch()
+            Path(f'{gprep_base}_S000_L001_R1_001.trimmed.fastq.gz').touch()
 
         pd.DataFrame(dstats).set_index('SampleID').to_csv(
             f'{reports_dir}/Demultiplex_Stats.csv')
