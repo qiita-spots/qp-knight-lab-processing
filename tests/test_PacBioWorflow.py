@@ -75,7 +75,7 @@ class WorkflowFactoryTests(PluginTestCase):
             dstats.append({'SampleID': sn, '# Reads': 2})
             dname = f'{convert_dir}/{sp}'
             Path(f'{dname}/{sn}_S000_L001_R1_001.fastq.gz').touch()
-            with open(f'{dname}/{sn}_R1.counts.txt', 'w') as f:
+            with open(f'{dname}/{sn}_S000_L001_R1_001.counts.txt', 'w') as f:
                 f.write("2")
 
             # NuQCJob
