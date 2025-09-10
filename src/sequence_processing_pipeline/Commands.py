@@ -270,7 +270,7 @@ def demux_just_fwd_processing(id_map, fp, out_d, task, maxtask):
 
         current_fp = openfps[fname_encoded]
 
-        current_fp[orientation].write(sid)
+        current_fp[orientation].write(f'{rec}{sid}')
         current_fp[orientation].write(s)
         current_fp[orientation].write(d)
         current_fp[orientation].write(q)
