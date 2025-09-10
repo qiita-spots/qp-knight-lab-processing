@@ -36,18 +36,8 @@ class InstrumentUtils():
         # if RunInfo.xml doesn't exist, this might be a PacBio
         # folder, let's check for it
         if not exists(run_info):
-            pacbio_metadata_fps = glob(
-                f'{run_directory}/*/metadata/*.metadata.xml')
-            if pacbio_metadata_fps:
-                run_info = pacbio_metadata_fps[0]
-                tree = ET.parse(run_info)
-                mtag = tree.getroot().tag.split('}')[0] + '}'
-                instrument_text = (
-                    f'{mtag}ExperimentContainer/{mtag}Runs/{mtag}Run')
-                run = ET.parse(run_info).find(instrument_text)
-                text = run.attrib['TimeStampedName']
-            else:
-                raise ValueError(f"'{run_info}' doesn't exist")
+            run = InstrumentUtils._get_pacbio_run_str(run_info, run_directory)
+            text = run.attrib['TimeStampedName']
         else:
             text = ET.parse(run_info).find(instrument_text).text
 
@@ -60,24 +50,29 @@ class InstrumentUtils():
             instrument_id, model_key=PROFILE_NAME_KEY)
 
     @staticmethod
+    def _get_pacbio_run_str(run_info, run_directory):
+        pacbio_metadata_fps = glob(
+            f'{run_directory}/*/metadata/*.metadata.xml')
+        if not pacbio_metadata_fps:
+            raise ValueError(f"'{run_info}' doesn't exist")
+
+        run_info = pacbio_metadata_fps[0]
+        tree = ET.parse(run_info)
+        mtag = tree.getroot().tag.split('}')[0] + '}'
+        instrument_text = (
+            f'{mtag}ExperimentContainer/{mtag}Runs/{mtag}Run')
+        run = ET.parse(run_info).find(instrument_text)
+        return run
+
+    @staticmethod
     def _get_date(run_directory):
         run_info = join(run_directory, 'RunInfo.xml')
 
         # if RunInfo.xml doesn't exist, this might be a PacBio
         # folder, let's check for it
         if not exists(run_info):
-            pacbio_metadata_fps = glob(
-                f'{run_directory}/*/metadata/*.metadata.xml')
-            if pacbio_metadata_fps:
-                run_info = pacbio_metadata_fps[0]
-                tree = ET.parse(run_info)
-                mtag = tree.getroot().tag.split('}')[0] + '}'
-                instrument_text = (
-                    f'{mtag}ExperimentContainer/{mtag}Runs/{mtag}Run')
-                run = ET.parse(run_info).find(instrument_text)
-                date_string = run.attrib['CreatedAt'].split('T')[0]
-            else:
-                raise ValueError(f"'{run_info}' doesn't exist")
+            run = InstrumentUtils._get_pacbio_run_str(run_info, run_directory)
+            date_string = run.attrib['CreatedAt'].split('T')[0]
         else:
             date_string = ET.parse(run_info).find('Run/Date').text
 
@@ -688,22 +683,12 @@ class Pipeline:
             controls_in_proj_df['description'] = controls_in_proj_df[TEMP_KEY]
             controls_in_proj_df.drop(columns=[TEMP_KEY], inplace=True)
             controls_in_proj_df['collection_timestamp'] = \
-                self.get_date_from_run_id()
+                InstrumentUtils._get_date(self.run_dir)
 
             controls_in_proj_df = controls_in_proj_df[Pipeline.sif_header]
             controls_in_proj_df.to_csv(curr_fp, sep='\t', index=False)
 
         return paths
-
-    def get_date_from_run_id(self):
-        # assume all run_ids begin with coded datestamp:
-        # 210518_...
-        # allow exception if substrings cannot convert to int
-        # or if array indexes are out of bounds.
-        year = int(self.run_id[0:2]) + 2000
-        month = int(self.run_id[2:4])
-        day = int(self.run_id[4:6])
-        return f'{year}-{month}-{day}'
 
     def get_sample_ids(self):
         '''

@@ -435,7 +435,7 @@ class PacBio(Protocol):
         return failed_samples
 
     def generate_sequence_counts(self):
-        # for other isntances of generate_sequence_counts in other objects
+        # for other instances of generate_sequence_counts in other objects
         # the sequence counting needs to be done; however, for PacBio we
         # already have done it and just need to merge the results.
         gz_files = glob(f'{self.raw_fastq_files_path}/*/*.fastq.gz')

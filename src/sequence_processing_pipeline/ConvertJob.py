@@ -476,7 +476,7 @@ class ConvertPacBioBam2FastqJob(Job):
 
     def run(self, callback=None):
         """
-        Run BCL2Fastq/BCLConvert conversion
+        Run pacbio_generate_bam2fastq_commands, which runs bam2fastq
         :param callback: optional function taking two parameters (id, status)
                          that is called when a running process's status is
                          changed.

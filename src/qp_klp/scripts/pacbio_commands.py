@@ -21,6 +21,11 @@ from os import makedirs
 def generate_bam2fastq_commands(sample_list, run_folder, outdir, threads):
     """Generates the bam2fastq commands"""
     df = pd.read_csv(sample_list, sep='\t')
+
+    # pacbio raw files are in a hifi_reads folder, wihtin multiple folders
+    # (1_A01, 2_A02, ect), within the run-id folder; and are named
+    # m[run-id]XXX.hifi_reads.[barcode].bam; thus to find the [barcode] we
+    # can split on '.' and then the second to last element [-2].
     files = {f.split('.')[-2]: f
              for f in glob(f'{run_folder}/*/hifi_reads/*.bam')}
 

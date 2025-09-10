@@ -14,7 +14,7 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
         self.mandatory_attributes = ['qclient', 'uif_path',
                                      'lane_number', 'config_fp',
                                      'run_identifier', 'output_dir', 'job_id',
-                                     'lane_number', 'is_restart']
+                                     'is_restart']
 
         self.confirm_mandatory_attributes()
 

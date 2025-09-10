@@ -8,10 +8,10 @@ Assay,Metagenomic,,,,,,
 Description,,,,,,,
 ,,,,,,,
 [Data],,,,,,,
-Sample_ID,Sample_Name,Sample_Plate,Sample_Well,Sample_Project,Well_description,Lane,barcode_id
-3A,3A,sample_plate_1,A1,MyProject_6123,sample_plate_1.3A.A1,1,bc3011
-4A,4A,sample_plate_1,A2,MyProject_6123,sample_plate_1.4A.A2,1,bc0112
-5B,5B,sample_plate_1,A3,MyProject_6123,sample_plate_1.5B.A3,1,bc9992
+Sample_ID,Sample_Name,Sample_Plate,Sample_Well,barcode_id,Sample_Project,Well_description,Lane
+3A,3A,sample_plate_1,A1,bc3011,MyProject_6123,sample_plate_1.3A.A1,1
+4A,4A,sample_plate_1,A2,bc0112,MyProject_6123,sample_plate_1.4A.A2,1
+5B,5B,sample_plate_1,A3,bc9992,MyProject_6123,sample_plate_1.5B.A3,1
 ,,,,,,,
 [Bioinformatics],,,,,,,
 Sample_Project,QiitaID,HumanFiltering,library_construction_protocol,experiment_design_description,contains_replicates,,

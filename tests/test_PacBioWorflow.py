@@ -14,7 +14,6 @@ from shutil import rmtree
 from pathlib import Path
 import pandas as pd
 from metapool.sample_sheet import PROTOCOL_NAME_PACBIO_SMRT
-from sequence_processing_pipeline.PipelineError import PipelineError
 from qp_klp.Assays import ASSAY_NAME_METAGENOMIC
 from qiita_client.testing import PluginTestCase
 
@@ -67,7 +66,7 @@ class WorkflowFactoryTests(PluginTestCase):
             makedirs(f'{genprep_dir}/{sp}/filtered_sequences/',
                      exist_ok=True)
 
-        # # then loop over samples and stage all fastq.gz files
+        # then loop over samples and stage all fastq.gz files
         dstats = []
         for sample in samples:
             sn = sample['Sample_ID']
@@ -128,10 +127,8 @@ class WorkflowFactoryTests(PluginTestCase):
         # and the system is trying to create the preps.
         # Note: Qiita job_id's are UUID in the database and this tests
         # uses 78901 as the job_id so the db complains about the format
-        # with self.assertRaisesRegex(RuntimeError, 'invalid input '
-        #                             'syntax for type uuid: "78901"'):
-        with self.assertRaisesRegex(PipelineError, 'There are no fastq '
-                                    'files for FastQCJob'):
+        with self.assertRaisesRegex(RuntimeError, 'invalid input '
+                                    'syntax for type uuid: "78901"'):
             wf.execute_pipeline()
 
 

@@ -53,7 +53,7 @@ class NuQCJob(Job):
         :param additional_fastq_tags: A list of fastq tags to preserve during
         filtering.
         :param files_regex: the FILES_REGEX to use for parsing files
-        :param read_length: the FILES_REGEX to use for parsing files
+        :param read_length: string defining the read length: long/short.
         """
         super().__init__(fastq_root_dir,
                          output_path,
@@ -376,10 +376,7 @@ class NuQCJob(Job):
             raise PipelineError(s)
 
         header = sheet.Header
-        if 'chemistry' in header:
-            chemistry = header['chemistry']
-        else:
-            chemistry = ''
+        chemistry = header.get('chemistry', '')
 
         if header['Assay'] not in Pipeline.assay_types:
             s = "Assay value '%s' is not recognized." % header['Assay']

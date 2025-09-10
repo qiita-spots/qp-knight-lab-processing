@@ -626,7 +626,11 @@ class Workflow():
                  'prep_id': prep_id,
                  'artifact_type': atype,
                  'command_artifact_name': artifact_name,
-                 'add_default_workflow': True,
+                 # this will block adding the default workflow to the
+                 # long read / pacbio processing; which is desirable
+                 # until we have a processing pipeline.
+                 'add_default_workflow': self.read_length != 'long',
+                 # 'add_default_workflow': True,
                  'files': dumps(fastq_files)}
 
         job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
