@@ -74,7 +74,8 @@ class WorkflowFactoryTests(PluginTestCase):
             sp = sample["Sample_Project"]
             dstats.append({'SampleID': sn, '# Reads': 2})
             dname = f'{convert_dir}/{sp}'
-            Path(f'{dname}/{sn}_S000_L001_R1_001.fastq.gz').touch()
+            copyfile(self.gz_source,
+                     f'{dname}/{sn}_S000_L001_R1_001.fastq.gz')
             with open(f'{dname}/{sn}_S000_L001_R1_001.counts.txt', 'w') as f:
                 f.write("2")
 
@@ -85,7 +86,8 @@ class WorkflowFactoryTests(PluginTestCase):
 
             # GenPrepFileJob
             gprep_base = f'{genprep_dir}/{sp}/filtered_sequences/{sn}'
-            Path(f'{gprep_base}_S000_L001_R1_001.trimmed.fastq.gz').touch()
+            copyfile(self.gz_source,
+                     f'{gprep_base}_S000_L001_R1_001.trimmed.fastq.gz')
 
         pd.DataFrame(dstats).set_index('SampleID').to_csv(
             f'{reports_dir}/Demultiplex_Stats.csv')
