@@ -443,7 +443,8 @@ class PacBio(Protocol):
 
         for gzf in gz_files:
             cf = gzf.replace('.fastq.gz', '.counts.txt')
-            sn = basename(cf).replace('_R1.counts.txt', '')
+            sn = basename(cf).replace(
+                f'_S000_L00{self.lane_number}_R1_001.counts.txt', '')
             if not exists(cf):
                 missing_files.append(sn)
                 continue
