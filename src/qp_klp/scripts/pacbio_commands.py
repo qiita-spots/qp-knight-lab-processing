@@ -36,8 +36,9 @@ def generate_bam2fastq_commands(sample_list, run_folder, outdir, threads):
             missing_files.append(bc)
             continue
         od = f'{outdir}/{pn}'
+
         makedirs(od, exist_ok=True)
-        fn = f'{od}/{sn}_L00{lane}_R1_001'
+        fn = f'{od}/{sn}_S000_L00{lane}_R1_001'
         cmd = (f'bam2fastq -j {threads} -o {fn} -c 9 '
                f'{files[bc]}; '
                f'fqtools count {fn}.fastq.gz > '
