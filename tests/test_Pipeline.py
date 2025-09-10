@@ -400,7 +400,7 @@ class TestPipeline(unittest.TestCase):
 
         exp_first_lines = {
             f'{self.good_run_id}_StudyA_13059_blanks.tsv':
-            'BLANK1.1A\t2021-10-21\t193\t'
+            'BLANK1.1A\t2017-05-23\t193\t'
             'Control\tNegative\tSterile w'
             'ater blank\tSterile water blank\turban biome\tres'
             'earch facility\tsterile wate'
@@ -411,7 +411,7 @@ class TestPipeline(unittest.TestCase):
             'StudyA\tTRUE\t'
             'UCSD\tFALSE',
             f'{self.good_run_id}_StudyB_11661_blanks.tsv':
-            'BLANK.40.12G\t2021-10-21\t193\tControl'
+            'BLANK.40.12G\t2017-05-23\t193\tControl'
             '\tNegative\tSterile water blank\tSterile water blank\turban '
             'biome\tresearch facility\tsterile water'
             '\tmisc environment\tUSA:CA:San Diego\tB'
@@ -419,7 +419,7 @@ class TestPipeline(unittest.TestCase):
             'nk\tmetagenome\t256318\tBLANK.40.12G\t'
             'StudyB\tTRUE\tUCSD\tFALSE',
             f'{self.good_run_id}_StudyC_6123_blanks.tsv':
-            'BLANK.41.12G\t2021-10-21\t193\tControl'
+            'BLANK.41.12G\t2017-05-23\t193\tControl'
             '\tNegative\tSterile water blank\tSterile water blank\turban'
             ' biome\tresearch facility\tsterile wat'
             'er\tmisc environment\tUSA:CA:San Diego'
@@ -430,7 +430,7 @@ class TestPipeline(unittest.TestCase):
 
         exp_last_lines = {
             f'{self.good_run_id}_StudyA_13059_blanks.tsv':
-            'BLANK4.4H\t2021-10-21\t193\t'
+            'BLANK4.4H\t2017-05-23\t193\t'
             'Control\tNegative\tSterile w'
             'ater blank\tSterile water blank\turban biome\tres'
             'earch facility\tsterile wate'
@@ -441,7 +441,7 @@ class TestPipeline(unittest.TestCase):
             'StudyA\tTRUE\t'
             'UCSD\tFALSE',
             f'{self.good_run_id}_StudyB_11661_blanks.tsv':
-            'BLANK.43.12H\t2021-10-21\t193\tControl'
+            'BLANK.43.12H\t2017-05-23\t193\tControl'
             '\tNegative\tSterile water blank\tSterile water blank\turban'
             ' biome\tresearch facility\tsterile wat'
             'er\tmisc environment\tUSA:CA:San Diego'
@@ -449,7 +449,7 @@ class TestPipeline(unittest.TestCase):
             ' blank\tmetagenome\t256318\tBLANK.43.1'
             '2H\tStudyB\tTRUE\tUCSD\tFALSE',
             f'{self.good_run_id}_StudyC_6123_blanks.tsv':
-            'BLANK.41.12G\t2021-10-21\t193\tContro'
+            'BLANK.41.12G\t2017-05-23\t193\tContro'
             'l\tNegative\tSterile water blank\tSterile water blank\turb'
             'an biome\tresearch facility\tsterile '
             'water\tmisc environment\tUSA:CA:San D'
