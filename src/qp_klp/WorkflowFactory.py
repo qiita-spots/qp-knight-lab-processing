@@ -3,6 +3,7 @@ from .StandardMetagenomicWorkflow import StandardMetagenomicWorkflow
 from .StandardMetatranscriptomicWorkflow import \
     StandardMetatranscriptomicWorkflow
 from .TellseqMetagenomicWorkflow import TellSeqMetagenomicWorkflow
+from .PacBioMetagenomicWorkflow import PacBioMetagenomicWorkflow
 from sequence_processing_pipeline.Pipeline import Pipeline
 from metapool import load_sample_sheet
 from metapool.sample_sheet import SAMPLE_SHEETS_BY_PROTOCOL as SSBP
@@ -14,7 +15,8 @@ class WorkflowFactory():
     WORKFLOWS = [StandardMetagenomicWorkflow,
                  StandardMetatranscriptomicWorkflow,
                  StandardAmpliconWorkflow,
-                 TellSeqMetagenomicWorkflow]
+                 TellSeqMetagenomicWorkflow,
+                 PacBioMetagenomicWorkflow]
 
     @classmethod
     def _get_instrument_type(cls, sheet):
@@ -76,6 +78,9 @@ class WorkflowFactory():
                              "sample-sheet or a mapping-file.")
 
         for workflow in WorkflowFactory.WORKFLOWS:
+            if workflow.read_length not in {'short', 'long'}:
+                raise ValueError('Invalid read_length: '
+                                 f'{workflow.read_length} for {workflow}')
             if workflow.assay_type == assay_type:
                 if workflow.protocol_type == instrument_type:
                     # return instantiated workflow object

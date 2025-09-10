@@ -1,17 +1,19 @@
 import glob
 import gzip
 import os
+import click
 from sequence_processing_pipeline.util import (iter_paired_files,
                                                determine_orientation)
 
 
 def split_similar_size_bins(data_location_path, max_file_list_size_in_gb,
-                            batch_prefix):
+                            batch_prefix, allow_fwd_only=False):
     '''Partitions input fastqs to coarse bins
 
     :param data_location_path: Path to the ConvertJob directory.
     :param max_file_list_size_in_gb: Upper threshold for file-size.
     :param batch_prefix: Path + file-name prefix for output-files.
+    :param allow_fwd_only: ignore rev match, helpful for long reads.
     :return: The number of output-files created, size of largest bin.
     '''
     # to prevent issues w/filenames like the ones below from being mistaken
@@ -37,31 +39,56 @@ def split_similar_size_bins(data_location_path, max_file_list_size_in_gb,
     bucket_size = 0
     max_bucket_size = 0
 
-    for a, b in iter_paired_files(fastq_paths):
-        r1_size = os.stat(a).st_size
-        r2_size = os.stat(b).st_size
+    if allow_fwd_only:
+        for a in fastq_paths:
+            r1_size = os.stat(a).st_size
+            output_base = os.path.dirname(a).split('/')[-1]
+            if current_size + r1_size > max_size:
+                # bucket is full.
+                if bucket_size > max_bucket_size:
+                    max_bucket_size = bucket_size
 
-        output_base = os.path.dirname(a).split('/')[-1]
-        if current_size + r1_size > max_size:
-            # bucket is full.
-            if bucket_size > max_bucket_size:
-                max_bucket_size = bucket_size
+                # reset bucket_size.
+                bucket_size = r1_size
 
-            # reset bucket_size.
-            bucket_size = r1_size + r2_size
+                if fp is not None:
+                    fp.close()
 
-            if fp is not None:
-                fp.close()
+                split_offset += 1
+                current_size = r1_size
+                fp = open(batch_prefix + '-%d' % split_offset, 'w')
+            else:
+                # add to bucket_size
+                bucket_size += r1_size
+                current_size += r1_size
 
-            split_offset += 1
-            current_size = r1_size
-            fp = open(batch_prefix + '-%d' % split_offset, 'w')
-        else:
-            # add to bucket_size
-            bucket_size += r1_size + r2_size
-            current_size += r1_size
+            fp.write("%s\t%s\n" % (a, output_base))
+    else:
+        for a, b in iter_paired_files(fastq_paths):
+            r1_size = os.stat(a).st_size
+            r2_size = os.stat(b).st_size
 
-        fp.write("%s\t%s\t%s\n" % (a, b, output_base))
+            output_base = os.path.dirname(a).split('/')[-1]
+            if current_size + r1_size > max_size:
+                # bucket is full.
+                if bucket_size > max_bucket_size:
+                    max_bucket_size = bucket_size
+
+                # reset bucket_size.
+                bucket_size = r1_size + r2_size
+
+                if fp is not None:
+                    fp.close()
+
+                split_offset += 1
+                current_size = r1_size
+                fp = open(batch_prefix + '-%d' % split_offset, 'w')
+            else:
+                # add to bucket_size
+                bucket_size += r1_size + r2_size
+                current_size += r1_size
+
+            fp.write("%s\t%s\t%s\n" % (a, b, output_base))
 
     if fp is not None:
         fp.close()
@@ -159,6 +186,91 @@ def demux(id_map, fp, out_d, task, maxtask):
             raise ValueError(f"'{sid}' is not a recognized form")
 
         current_fp[orientation].write(sid)
+        current_fp[orientation].write(s)
+        current_fp[orientation].write(d)
+        current_fp[orientation].write(q)
+
+    for d in openfps.values():
+        for f in d.values():
+            f.close()
+
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+@click.option('--id-map', type=click.Path(exists=True), required=True)
+@click.option('--infile', type=click.Path(exists=True), required=True)
+@click.option('--output', type=click.Path(exists=True), required=True)
+@click.option('--task', type=int, required=True)
+@click.option('--maxtask', type=int, required=True)
+def demux_just_fwd(id_map, infile, output, task, maxtask):
+    with open(id_map, 'r') as f:
+        id_map = f.readlines()
+        id_map = [line.strip().split('\t') for line in id_map]
+
+    # fp needs to be an open file handle.
+    # ensure task and maxtask are proper ints when coming from cmd-line.
+    with open(infile, 'r') as fp:
+        demux_just_fwd_processing(id_map, fp, output, int(task), int(maxtask))
+
+
+def demux_just_fwd_processing(id_map, fp, out_d, task, maxtask):
+    """Split infile data based in provided map"""
+    delimiter = '::MUX::'
+    mode = 'wt'
+    ext = '.fastq.gz'
+    sep = '/'
+    rec = '@'
+
+    openfps = {}
+
+    for offset, (idx, r1, outbase) in enumerate(id_map):
+        if offset % maxtask == task:
+            idx = rec + idx
+
+            # setup output locations
+            outdir = out_d + sep + outbase
+            fullname_r1 = outdir + sep + r1 + ext
+
+            # we have seen in lustre that sometime this line
+            # can have a raise condition; making sure it doesn't break
+            # things
+            try:
+                os.makedirs(outdir, exist_ok=True)
+            except FileExistsError:
+                pass
+            current_fp_r1 = gzip.open(fullname_r1, mode)
+            current_fp = {'1': current_fp_r1}
+            openfps[idx] = current_fp
+
+    # setup a parser
+    seq_id = iter(fp)
+    seq = iter(fp)
+    dumb = iter(fp)
+    qual = iter(fp)
+
+    # there is only fwd so the orientation is always '1'
+    orientation = '1'
+
+    for i, s, d, q in zip(seq_id, seq, dumb, qual):
+        # '@1', 'LH00444:84:227CNHLT4:7:1101:41955:2443/1'
+        # '@1', 'LH00444:84:227CNHLT4:7:1101:41955:2443/1 BX:Z:TATGACACATGCGGCCCT' # noqa
+        # '@baz/1
+
+        # NB: from 6d794a37-12cd-4f8e-95d6-72a4b8a1ec1c's only-adapter-filtered results: # noqa
+        # @A00953:244:HYHYWDSXY:3:1101:14082:3740 1:N:0:CCGTAAGA+TCTAACGC
+
+        fname_encoded, sid = i.split(delimiter, 1)
+
+        if fname_encoded not in openfps:
+            continue
+
+        current_fp = openfps[fname_encoded]
+
+        current_fp[orientation].write(f'{rec}{sid}')
         current_fp[orientation].write(s)
         current_fp[orientation].write(d)
         current_fp[orientation].write(q)

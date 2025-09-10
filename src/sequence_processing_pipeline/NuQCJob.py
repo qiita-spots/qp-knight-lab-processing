@@ -24,7 +24,8 @@ class NuQCJob(Job):
                  samtools_path, modules_to_load, qiita_job_id,
                  max_array_length, known_adapters_path, movi_path, gres_value,
                  pmls_path, additional_fastq_tags, bucket_size=8,
-                 length_limit=100, cores_per_task=4, files_regex='SPP'):
+                 length_limit=100, cores_per_task=4, files_regex='SPP',
+                 read_length='short'):
         """
         Submit a slurm job where the contents of fastq_root_dir are processed
         using fastp, minimap2, and samtools. Human-genome sequences will be
@@ -52,6 +53,7 @@ class NuQCJob(Job):
         :param additional_fastq_tags: A list of fastq tags to preserve during
         filtering.
         :param files_regex: the FILES_REGEX to use for parsing files
+        :param read_length: string defining the read length: long/short.
         """
         super().__init__(fastq_root_dir,
                          output_path,
@@ -59,6 +61,7 @@ class NuQCJob(Job):
                          [fastp_path, minimap2_path, samtools_path],
                          max_array_length,
                          modules_to_load=modules_to_load)
+        self.read_length = read_length
         self.sample_sheet_path = sample_sheet_path
         self._file_check(self.sample_sheet_path)
         metadata = self._process_sample_sheet()
@@ -118,10 +121,12 @@ class NuQCJob(Job):
     def _validate_project_data(self):
         # Validate project settings in [Bioinformatics]
         for project in self.project_data:
-            if project['ForwardAdapter'] == 'NA':
+            if 'ForwardAdapter' not in project or \
+                    project['ForwardAdapter'] == 'NA':
                 project['ForwardAdapter'] = None
 
-            if project['ReverseAdapter'] == 'NA':
+            if 'ReverseAdapter' not in project or \
+                    project['ReverseAdapter'] == 'NA':
                 project['ReverseAdapter'] = None
 
             if project['ForwardAdapter'] is None:
@@ -151,15 +156,22 @@ class NuQCJob(Job):
 
         files = glob(join(filtered_directory, f'*.{self.suffix}'))
 
-        for r1, r2 in iter_paired_files(files):
-            full_path = join(filtered_directory, r1)
-            full_path_reverse = join(filtered_directory, r2)
-            if stat(full_path).st_size <= minimum_bytes or stat(
-                    full_path_reverse).st_size <= minimum_bytes:
-                logging.debug(f'moving {full_path} and {full_path_reverse}'
-                              f' to empty list.')
-                empty_list.append(full_path)
-                empty_list.append(full_path_reverse)
+        if self.read_length == 'long':
+            for r1 in files:
+                full_path = join(filtered_directory, r1)
+                if stat(full_path).st_size <= minimum_bytes:
+                    logging.debug(f'moving {full_path} to empty list.')
+                    empty_list.append(full_path)
+        else:
+            for r1, r2 in iter_paired_files(files):
+                full_path = join(filtered_directory, r1)
+                full_path_reverse = join(filtered_directory, r2)
+                if stat(full_path).st_size <= minimum_bytes or stat(
+                        full_path_reverse).st_size <= minimum_bytes:
+                    logging.debug(f'moving {full_path} and {full_path_reverse}'
+                                  f' to empty list.')
+                    empty_list.append(full_path)
+                    empty_list.append(full_path_reverse)
 
         if empty_list:
             logging.debug(f'making directory {empty_files_directory}')
@@ -234,9 +246,9 @@ class NuQCJob(Job):
             batch_count = 0
             max_size = 0
         else:
-            batch_count, max_size = split_similar_size_bins(self.root_dir,
-                                                            self.bucket_size,
-                                                            batch_location)
+            batch_count, max_size = split_similar_size_bins(
+                self.root_dir, self.bucket_size, batch_location,
+                self.read_length == 'long')
 
         job_script_path = self._generate_job_script(max_size)
 
@@ -364,7 +376,7 @@ class NuQCJob(Job):
             raise PipelineError(s)
 
         header = sheet.Header
-        chemistry = header['chemistry']
+        chemistry = header.get('chemistry', '')
 
         if header['Assay'] not in Pipeline.assay_types:
             s = "Assay value '%s' is not recognized." % header['Assay']
@@ -372,7 +384,8 @@ class NuQCJob(Job):
 
         sample_ids = []
         for sample in sheet.samples:
-            sample_ids.append((sample['Sample_ID'], sample['Sample_Project']))
+            sample_ids.append(
+                (sample['Sample_ID'], sample['Sample_Project']))
 
         bioinformatics = sheet.Bioinformatics
 
@@ -412,6 +425,17 @@ class NuQCJob(Job):
             tags = " -T %s" % ','.join(self.additional_fastq_tags)
             t_switch = " -y"
 
+        if self.read_length == 'short':
+            minimap2_prefix = f'minimap2 -2 -ax sr{t_switch}'
+            minimap2_subfix = '-a'
+            samtools_params = '-f 12 -F 256'
+        elif self.read_length == 'long':
+            minimap2_prefix = 'minimap2 -2 -ax map-hifi'
+            minimap2_subfix = '--no-pairing'
+            samtools_params = '-f 4 -F 256'
+        else:
+            raise ValueError(f'minimap2 prefix not set for {self.read_length}')
+
         for count, mmi_db_path in enumerate(self.mmi_file_paths):
             if count == 0:
                 # prime initial state with unfiltered file and create first of
@@ -427,9 +451,10 @@ class NuQCJob(Job):
                 input = tmp_file1
                 output = tmp_file2
 
-            cmds.append(f"minimap2 -2 -ax sr{t_switch} -t {cores_to_allocate} "
-                        f"{mmi_db_path} {input} -a | samtools fastq -@ "
-                        f"{cores_to_allocate} -f 12 -F 256{tags} > "
+            cmds.append(f"{minimap2_prefix} -t {cores_to_allocate} "
+                        f"{mmi_db_path} {input} {minimap2_subfix} | "
+                        "samtools fastq -@ "
+                        f"{cores_to_allocate} {samtools_params}{tags} > "
                         f"{output}")
 
         # rename the latest tmp file to the final output filename.
@@ -448,7 +473,6 @@ class NuQCJob(Job):
             return None
 
         job_script_path = join(self.output_path, 'process_all_fastq_files.sh')
-        template = self.jinja_env.get_template("nuqc_job.sh")
 
         job_name = f'{self.qiita_job_id}_{self.job_name}'
 
@@ -473,6 +497,16 @@ class NuQCJob(Job):
         # files can be created. (${jobd})
         mmi_filter_cmds = self._generate_mmi_filter_cmds("${jobd}")
 
+        if self.read_length == 'short':
+            pmls_extra_parameters = ''
+            template = self.jinja_env.get_template("nuqc_job.sh")
+        elif self.read_length == 'long':
+            pmls_extra_parameters = '"max" 21'
+            template = self.jinja_env.get_template("nuqc_job_single.sh")
+        else:
+            raise ValueError(
+                f'pmls_extra_parameters not set for {self.read_length}')
+
         with open(job_script_path, mode="w", encoding="utf-8") as f:
             # the job resources should come from a configuration file
 
@@ -480,31 +514,33 @@ class NuQCJob(Job):
             # processing begins.
             mtl = ' '.join(self.modules_to_load)
 
-            f.write(template.render(job_name=job_name,
-                                    queue_name=self.queue_name,
-                                    # should be 4 * 24 * 60 = 4 days
-                                    wall_time_limit=self.wall_time_limit,
-                                    mem_in_gb=self.jmem,
-                                    # Note NuQCJob now maps node_count to
-                                    # SLURM -N parameter to act like other
-                                    # Job classes.
-                                    # self.node_count should be 1
-                                    node_count=self.node_count,
-                                    # cores-per-task (-c) should be 4
-                                    cores_per_task=self.cores_per_task,
-                                    knwn_adpt_path=self.known_adapters_path,
-                                    output_path=self.output_path,
-                                    html_path=html_path,
-                                    json_path=json_path,
-                                    demux_path=demux_path,
-                                    temp_dir=self.temp_dir,
-                                    splitter_binary=splitter_binary,
-                                    modules_to_load=mtl,
-                                    length_limit=self.length_limit,
-                                    gres_value=self.gres_value,
-                                    movi_path=self.movi_path,
-                                    mmi_filter_cmds=mmi_filter_cmds,
-                                    pmls_path=self.pmls_path))
+            f.write(template.render(
+                job_name=job_name,
+                queue_name=self.queue_name,
+                # should be 4 * 24 * 60 = 4 days
+                wall_time_limit=self.wall_time_limit,
+                mem_in_gb=self.jmem,
+                # Note NuQCJob now maps node_count to
+                # SLURM -N parameter to act like other
+                # Job classes.
+                # self.node_count should be 1
+                node_count=self.node_count,
+                # cores-per-task (-c) should be 4
+                cores_per_task=self.cores_per_task,
+                knwn_adpt_path=self.known_adapters_path,
+                output_path=self.output_path,
+                html_path=html_path,
+                json_path=json_path,
+                demux_path=demux_path,
+                temp_dir=self.temp_dir,
+                splitter_binary=splitter_binary,
+                modules_to_load=mtl,
+                length_limit=self.length_limit,
+                gres_value=self.gres_value,
+                movi_path=self.movi_path,
+                mmi_filter_cmds=mmi_filter_cmds,
+                pmls_extra_parameters=pmls_extra_parameters,
+                pmls_path=self.pmls_path))
 
         return job_script_path
 

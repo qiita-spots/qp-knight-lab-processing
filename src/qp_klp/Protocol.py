@@ -1,14 +1,17 @@
-from sequence_processing_pipeline.ConvertJob import ConvertJob
+from sequence_processing_pipeline.ConvertJob import (
+    ConvertJob, ConvertPacBioBam2FastqJob)
 from sequence_processing_pipeline.TellReadJob import TellReadJob
 from sequence_processing_pipeline.SeqCountsJob import SeqCountsJob
 from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
 from sequence_processing_pipeline.PipelineError import PipelineError
 from sequence_processing_pipeline.util import determine_orientation
-from os.path import join, split, basename, dirname
 from re import match
 from os import makedirs, rename, walk
+from os.path import join, split, basename, dirname, exists
 from metapool import load_sample_sheet
-from metapool.sample_sheet import PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ
+from metapool.sample_sheet import (
+    PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ,
+    PROTOCOL_NAME_PACBIO_SMRT)
 import pandas as pd
 from glob import glob
 from qiita_client.util import system_call
@@ -79,6 +82,26 @@ class Protocol():
 
 class Illumina(Protocol):
     protocol_type = PROTOCOL_NAME_ILLUMINA
+    # required files for successful operation for Illumina (making the default
+    # here) both RTAComplete.txt and RunInfo.xml should reside in the root of
+    # the run directory.
+    required_files = ['RTAComplete.txt', 'RunInfo.xml']
+    read_length = 'short'
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        for some_file in self.required_files:
+            if not exists(join(self.run_dir, some_file)):
+                raise PipelineError(f"required file '{some_file}' is not "
+                                    f"present in {self.run_dir}.")
+
+        # verify that RunInfo.xml file is readable.
+        try:
+            fp = open(join(self.run_dir, 'RunInfo.xml'))
+            fp.close()
+        except PermissionError:
+            raise PipelineError('RunInfo.xml is present, but not readable')
 
     def convert_raw_to_fastq(self):
         def get_config(command):
@@ -156,6 +179,7 @@ class Illumina(Protocol):
 
 class TellSeq(Protocol):
     protocol_type = PROTOCOL_NAME_TELLSEQ
+    read_length = 'short'
 
     def convert_raw_to_fastq(self):
         config = self.pipeline.get_software_configuration('tell-seq')
@@ -369,3 +393,75 @@ class TellSeq(Protocol):
         rename(fastq_file, final_path)
 
         return final_path
+
+
+class PacBio(Protocol):
+    protocol_type = PROTOCOL_NAME_PACBIO_SMRT
+    read_length = 'long'
+
+    def convert_raw_to_fastq(self):
+        config = self.pipeline.get_software_configuration('pacbio_convert')
+
+        job = ConvertPacBioBam2FastqJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            self.pipeline.input_file_path,
+            config['queue'],
+            config['nodes'],
+            config['nprocs'],
+            config['wallclock_time_in_minutes'],
+            config['per_process_memory_limit'],
+            config['executable_path'],
+            config['modules_to_load'],
+            self.master_qiita_job_id)
+
+        self.raw_fastq_files_path = join(self.pipeline.output_path,
+                                         'ConvertJob')
+
+        # if ConvertJob already completed, then skip the over the time-
+        # consuming portion but populate the needed member variables.
+        if 'ConvertJob' not in self.skip_steps:
+            job.run(callback=self.job_callback)
+
+        # audit the results to determine which samples failed to convert
+        # properly. Append these to the failed-samples report and also
+        # return the list directly to the caller.
+        failed_samples = job.audit(self.pipeline.get_sample_ids())
+        if hasattr(self, 'fsr'):
+            # NB 16S does not require a failed samples report and
+            # it is not performed by SPP.
+            self.fsr.write(failed_samples, job.__class__.__name__)
+
+        return failed_samples
+
+    def generate_sequence_counts(self):
+        # for other instances of generate_sequence_counts in other objects
+        # the sequence counting needs to be done; however, for PacBio we
+        # already have done it and just need to merge the results.
+        gz_files = glob(f'{self.raw_fastq_files_path}/*/*.fastq.gz')
+        data, missing_files = [], []
+
+        for gzf in gz_files:
+            cf = gzf.replace('.fastq.gz', '.counts.txt')
+            sn = basename(cf).replace(
+                f'_S000_L00{self.lane_number}_R1_001.counts.txt', '')
+            if not exists(cf):
+                missing_files.append(sn)
+                continue
+            with open(cf, 'r') as fh:
+                counts = fh.read().strip()
+            data.append({'Sample_ID': sn,
+                         'raw_reads_r1r2': counts,
+                         'Lane': self.lane_number})
+
+        if missing_files:
+            raise ValueError(f'Missing count files: {missing_files}')
+
+        df = pd.DataFrame(data)
+        self.reports_path = join(self.pipeline.output_path,
+                                 'ConvertJob',
+                                 'SeqCounts.csv')
+        df.to_csv(self.reports_path, index=False)
+
+    def integrate_results(self):
+        pass

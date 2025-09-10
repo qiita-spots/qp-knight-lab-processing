@@ -1,0 +1,27 @@
+[Header],,,,,,,
+SheetType,pacbio_metag,,,,,,
+SheetVersion,10,,,,,,
+Investigator Name,Knight,,,,,,
+Experiment Name,RKL_experiment,,,,,,
+Date,2025-08-29,,,,,,
+Assay,Metagenomic,,,,,,
+Description,,,,,,,
+,,,,,,,
+[Data],,,,,,,
+Sample_ID,Sample_Name,Sample_Plate,Sample_Well,barcode_id,Sample_Project,Well_description,Lane
+3A,3A,sample_plate_1,A1,bc3011,MyProject_6123,sample_plate_1.3A.A1,1
+4A,4A,sample_plate_1,A2,bc0112,MyProject_6123,sample_plate_1.4A.A2,1
+5B,5B,sample_plate_1,A3,bc9992,MyProject_6123,sample_plate_1.5B.A3,1
+,,,,,,,
+[Bioinformatics],,,,,,,
+Sample_Project,QiitaID,HumanFiltering,library_construction_protocol,experiment_design_description,contains_replicates,,
+MyProject_6123,6123,False,some protocol,some description,False,,
+,,,,,,,
+[Contact],,,,,,,
+Sample_Project,Email,,,,,,
+MyProject_6123,foo@bar.org,,,,,,
+,,,,,,,
+[SampleContext],,,,,,,
+sample_name,sample_type,primary_qiita_study,secondary_qiita_studies,,,,
+5B,control blank,6123,,,,,
+,,,,,,,

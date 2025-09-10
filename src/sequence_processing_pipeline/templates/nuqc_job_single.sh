@@ -33,7 +33,7 @@ if [[ -z ${OUTPUT} ]]; then
     exit 1
 fi
 
-conda activate qp-knight-lab-processing-2022.03
+conda activate klp-2025-05
 module load {{modules_to_load}}
 
 set -x
@@ -71,7 +71,6 @@ trap cleanup EXIT
 
 export delimiter=::MUX::
 export r1_tag=/1
-export r2_tag=/2
 function mux-runner () {
     n=$(wc -l ${FILES} | cut -f 1 -d" ")
 
@@ -84,17 +83,15 @@ function mux-runner () {
     do
         line=$(head -n ${i} ${FILES} | tail -n 1)
         r1=$(echo ${line} | cut -f 1 -d" ")
-        r2=$(echo ${line} | cut -f 2 -d" ")
-        base=$(echo ${line} | cut -f 3 -d" ")
+        base=$(echo ${line} | cut -f 2 -d" ")
         r1_name=$(basename ${r1} .fastq.gz)
-        r2_name=$(basename ${r2} .fastq.gz)
         r_adapter_only=${ADAPTER_ONLY_OUTPUT}/${r1_name}.interleave.fastq.gz
 
         s_name=$(basename "${r1}" | sed -r 's/\.fastq\.gz//')
         html_name=$(echo "$s_name.html")
         json_name=$(echo "$s_name.json")
 
-        echo -e "${i}\t${r1_name}\t${r2_name}\t${base}" >> ${id_map}
+        echo -e "${i}\t${r1_name}\t${base}" >> ${id_map}
 
         # movi, in the current version, works on the interleaved version of the
         # fwd/rev reads so we are gonna take advantage fastp default output
@@ -104,7 +101,6 @@ function mux-runner () {
         fastp \
             -l {{length_limit}} \
             -i ${r1} \
-            -I ${r2} \
             -w {{cores_per_task}} \
             --adapter_fasta {{knwn_adpt_path}} \
             --html {{html_path}}/${html_name} \
@@ -129,13 +125,6 @@ function mux-runner () {
     python {{pmls_path}} <(zcat ${jobd}/seqs.movi.txt.gz) {{pmls_extra_parameters}} | \
         seqtk subseq ${seq_reads_filter_alignment} - > ${jobd}/seqs.final.fastq
 
-    {{splitter_binary}} ${jobd}/seqs.final.fastq \
-        ${jobd}/reads.r1.fastq ${delimiter} ${r1_tag} &
-    {{splitter_binary}} ${jobd}/seqs.final.fastq \
-        ${jobd}/reads.r2.fastq ${delimiter} ${r2_tag} &
-    wait
-    fastq_pair -t 50000000 ${jobd}/reads.r1.fastq ${jobd}/reads.r2.fastq
-
     # keep seqs.movi.txt and migrate it to NuQCJob directory.
     mv ${jobd}/seqs.movi.txt.gz {{output_path}}/logs/seqs.movi.${SLURM_ARRAY_TASK_ID}.txt.gz
 }
@@ -146,8 +135,7 @@ function demux-runner () {
     n_demux_jobs=${SLURM_CPUS_PER_TASK}
     jobd=${TMPDIR}
     id_map=${jobd}/id_map
-    seqs_r1=${jobd}/reads.r1.fastq.paired.fq
-    seqs_r2=${jobd}/reads.r2.fastq.paired.fq
+    seqs_r1=${jobd}/seqs.final.fastq
 
     id_map=${jobd}/id_map
     if [[ ! -f ${id_map} ]]; then
@@ -157,9 +145,9 @@ function demux-runner () {
 
     for idx in $(seq 0 ${n_demux_jobs})
     do
-        python {{demux_path}} \
+        demux_just_fwd \
             --id-map ${id_map} \
-            --infile <(cat ${seqs_r1} ${seqs_r2}) \
+            --infile <(cat ${seqs_r1}) \
             --output ${OUTPUT} \
             --task ${idx} \
             --maxtask ${n_demux_jobs} &

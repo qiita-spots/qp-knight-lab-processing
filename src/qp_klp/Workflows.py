@@ -8,6 +8,7 @@ from shutil import copyfile
 import logging
 from shutil import rmtree
 from .Assays import ASSAY_NAME_AMPLICON
+from metapool.sample_sheet import PROTOCOL_NAME_PACBIO_SMRT
 from sequence_processing_pipeline.util import determine_orientation
 
 
@@ -600,6 +601,10 @@ class Workflow():
         if self.pipeline.pipeline_type != ASSAY_NAME_AMPLICON:
             del (files['raw_barcodes'])
 
+        # PacBio doesn't have reverse reads
+        if self.protocol_type == PROTOCOL_NAME_PACBIO_SMRT:
+            del (files['raw_reverse_seqs'])
+
         # confirm expected lists of reads are not empty.
         for f_type in files:
             if not files[f_type]:
@@ -621,8 +626,13 @@ class Workflow():
                  'prep_id': prep_id,
                  'artifact_type': atype,
                  'command_artifact_name': artifact_name,
-                 'add_default_workflow': True,
                  'files': dumps(fastq_files)}
+        # this will block adding the default workflow to the
+        # long read / pacbio processing; which is desirable
+        # until we have a processing pipeline - note that
+        # this will only be added if _not_ 'long'
+        if self.read_length != 'long':
+            pdata['add_default_workflow'] = True
 
         job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
 

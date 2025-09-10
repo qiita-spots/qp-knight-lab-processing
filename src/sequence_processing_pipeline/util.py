@@ -4,8 +4,8 @@ from os.path import basename
 
 PAIR_UNDERSCORE = (REC(r'_R1_'), '_R1_', '_R2_')
 PAIR_DOT = (REC(r'\.R1\.'), '.R1.', '.R2.')
-SIMPLE_PAIR_UNDERSCAOTE = (REC(r'_R1'), '_R1', '_R2')
-PAIR_TESTS = (PAIR_UNDERSCORE, PAIR_DOT, SIMPLE_PAIR_UNDERSCAOTE)
+SIMPLE_PAIR_UNDERSCORE = (REC(r'_R1'), '_R1', '_R2')
+PAIR_TESTS = (PAIR_UNDERSCORE, PAIR_DOT, SIMPLE_PAIR_UNDERSCORE)
 FILES_REGEX = {
     'SPP': {
         'fastq': REC(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.fastq\.gz$'),

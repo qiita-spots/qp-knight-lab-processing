@@ -2,6 +2,7 @@ from functools import partial
 from jinja2 import Environment
 from json import dumps
 import logging
+from itertools import zip_longest
 from os import listdir, makedirs
 from os.path import join, basename
 from re import sub
@@ -156,15 +157,16 @@ class FastQCJob(Job):
         # gather a list of names from the outputs of previous jobs.
         project_names = []
 
-        for proj_name, fltr_type, fastq_fp, fwd_files, rev_files in projects:
+        for proj_name, fltr_type, _, fwd_files, rev_files in projects:
             project_names.append(proj_name)
             p_path = partial(join, self.output_path, 'fastqc', proj_name)
             output_dir = p_path('bclconvert' if is_raw_input else fltr_type)
             makedirs(output_dir, exist_ok=True)
 
-            for some_fwd_file, some_rev_file in zip(fwd_files, rev_files):
-                fastqc_results.append((some_fwd_file, some_rev_file,
-                                       output_dir))
+            for sff, srf in zip_longest(fwd_files, rev_files):
+                if srf is None:
+                    srf = ''
+                fastqc_results.append((sff, srf, output_dir))
         # remove duplicates
         project_names = list(set(project_names))
 

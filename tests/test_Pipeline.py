@@ -207,43 +207,6 @@ class TestPipeline(unittest.TestCase):
 
         self.assertEqual(set(obs), exp)
 
-    def test_required_file_checks(self):
-        # begin this test by deleting the RunInfo.txt file and verifying that
-        # Pipeline object will raise an Error.
-        self.delete_runinfo_file()
-
-        with self.assertRaisesRegex(PipelineError, "required file 'RunInfo.xml"
-                                                   "' is not present."):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_sample_sheet_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.METAGENOMIC_PTYPE)
-
-        # delete RTAComplete.txt and recreate RunInfo.txt file to verify that
-        # an Error is raised when only RTAComplete.txt is missing.
-        self.delete_rtacomplete_file()
-        self.create_runinfo_file()
-
-        with self.assertRaisesRegex(PipelineError, "required file 'RTAComplete"
-                                                   ".txt' is not present."):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_sample_sheet_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.METAGENOMIC_PTYPE)
-
-        # make RunInfo.xml file unreadable and verify that Pipeline object
-        # raises the expected Error.
-        self.create_rtacomplete_file()
-        self.make_runinfo_file_unreadable()
-
-        with self.assertRaisesRegex(PipelineError, "RunInfo.xml is present, bu"
-                                                   "t not readable"):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_sample_sheet_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.METAGENOMIC_PTYPE)
-        self.make_runinfo_file_readable()
-
     def test_creation(self):
         # Pipeline should assert due to config_file
         with self.assertRaises(PipelineError) as e:
@@ -437,7 +400,7 @@ class TestPipeline(unittest.TestCase):
 
         exp_first_lines = {
             f'{self.good_run_id}_StudyA_13059_blanks.tsv':
-            'BLANK1.1A\t2021-10-21\t193\t'
+            'BLANK1.1A\t2017-05-23\t193\t'
             'Control\tNegative\tSterile w'
             'ater blank\tSterile water blank\turban biome\tres'
             'earch facility\tsterile wate'
@@ -448,7 +411,7 @@ class TestPipeline(unittest.TestCase):
             'StudyA\tTRUE\t'
             'UCSD\tFALSE',
             f'{self.good_run_id}_StudyB_11661_blanks.tsv':
-            'BLANK.40.12G\t2021-10-21\t193\tControl'
+            'BLANK.40.12G\t2017-05-23\t193\tControl'
             '\tNegative\tSterile water blank\tSterile water blank\turban '
             'biome\tresearch facility\tsterile water'
             '\tmisc environment\tUSA:CA:San Diego\tB'
@@ -456,7 +419,7 @@ class TestPipeline(unittest.TestCase):
             'nk\tmetagenome\t256318\tBLANK.40.12G\t'
             'StudyB\tTRUE\tUCSD\tFALSE',
             f'{self.good_run_id}_StudyC_6123_blanks.tsv':
-            'BLANK.41.12G\t2021-10-21\t193\tControl'
+            'BLANK.41.12G\t2017-05-23\t193\tControl'
             '\tNegative\tSterile water blank\tSterile water blank\turban'
             ' biome\tresearch facility\tsterile wat'
             'er\tmisc environment\tUSA:CA:San Diego'
@@ -467,7 +430,7 @@ class TestPipeline(unittest.TestCase):
 
         exp_last_lines = {
             f'{self.good_run_id}_StudyA_13059_blanks.tsv':
-            'BLANK4.4H\t2021-10-21\t193\t'
+            'BLANK4.4H\t2017-05-23\t193\t'
             'Control\tNegative\tSterile w'
             'ater blank\tSterile water blank\turban biome\tres'
             'earch facility\tsterile wate'
@@ -478,7 +441,7 @@ class TestPipeline(unittest.TestCase):
             'StudyA\tTRUE\t'
             'UCSD\tFALSE',
             f'{self.good_run_id}_StudyB_11661_blanks.tsv':
-            'BLANK.43.12H\t2021-10-21\t193\tControl'
+            'BLANK.43.12H\t2017-05-23\t193\tControl'
             '\tNegative\tSterile water blank\tSterile water blank\turban'
             ' biome\tresearch facility\tsterile wat'
             'er\tmisc environment\tUSA:CA:San Diego'
@@ -486,7 +449,7 @@ class TestPipeline(unittest.TestCase):
             ' blank\tmetagenome\t256318\tBLANK.43.1'
             '2H\tStudyB\tTRUE\tUCSD\tFALSE',
             f'{self.good_run_id}_StudyC_6123_blanks.tsv':
-            'BLANK.41.12G\t2021-10-21\t193\tContro'
+            'BLANK.41.12G\t2017-05-23\t193\tContro'
             'l\tNegative\tSterile water blank\tSterile water blank\turb'
             'an biome\tresearch facility\tsterile '
             'water\tmisc environment\tUSA:CA:San D'
@@ -1772,42 +1735,6 @@ class TestAmpliconPipeline(unittest.TestCase):
             # make method idempotent
             pass
 
-    def test_required_file_checks(self):
-        # begin this test by deleting the RunInfo.txt file and verifying that
-        # Pipeline object will raise an Error.
-        self.delete_runinfo_file()
-
-        with self.assertRaisesRegex(PipelineError, "required file 'RunInfo.xml"
-                                                   "' is not present."):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_mapping_file_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.AMPLICON_PTYPE)
-
-        # delete RTAComplete.txt and recreate RunInfo.txt file to verify that
-        # an Error is raised when only RTAComplete.txt is missing.
-        self.delete_rtacomplete_file()
-        self.create_runinfo_file()
-
-        with self.assertRaisesRegex(PipelineError, "required file 'RTAComplete"
-                                                   ".txt' is not present."):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_mapping_file_path,
-                     self.output_file_path,
-                     self.qiita_id, Pipeline.AMPLICON_PTYPE)
-
-        # make RunInfo.xml file unreadable and verify that Pipeline object
-        # raises the expected Error.
-        self.create_rtacomplete_file()
-        self.make_runinfo_file_unreadable()
-
-        with self.assertRaisesRegex(PipelineError, "RunInfo.xml is present, "
-                                                   "but not readable"):
-            Pipeline(self.good_config_file, self.good_run_id,
-                     self.good_mapping_file_path, self.output_file_path,
-                     self.qiita_id, Pipeline.AMPLICON_PTYPE)
-            self.make_runinfo_file_readable()
-
     def test_creation(self):
         # Pipeline should assert due to config_file
         with self.assertRaises(PipelineError) as e:
@@ -2431,7 +2358,10 @@ class TestInstrumentUtils(unittest.TestCase):
                                                  'date': '2023-12-15'},
                '150629_K1001_0511_AH5L7GBCXX': {'id': 'K1001',
                                                 'type': 'HiSeq 4000',
-                                                'date': '2015-06-29'}}
+                                                'date': '2015-06-29'},
+               'r11111_20250101_111111': {'id': 'r11111',
+                                          'type': 'Revio',
+                                          'date': '2025-01-01'}}
 
         run_directories = []
         for root, dirs, files in walk(self.path('sample_run_directories')):

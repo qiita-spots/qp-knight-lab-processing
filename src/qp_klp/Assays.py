@@ -494,6 +494,7 @@ class MetaOmic(Assay):
         # is not defined, just fallback to the SPP expected default regex
         if not hasattr(self, 'files_regex'):
             self.files_regex = 'SPP'
+
         # base quality control used by multiple Assay types.
         job = NuQCJob(self.raw_fastq_files_path,
                       self.pipeline.output_path,
@@ -517,7 +518,8 @@ class MetaOmic(Assay):
                       bucket_size=config['bucket_size'],
                       length_limit=config['length_limit'],
                       cores_per_task=config['cores_per_task'],
-                      files_regex=self.files_regex)
+                      files_regex=self.files_regex,
+                      read_length=self.read_length)
 
         if 'NuQCJob' not in self.skip_steps:
             job.run(callback=self.job_callback)
