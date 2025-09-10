@@ -26,7 +26,6 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
         if 'overwrite_prep_with_original' in self.kwargs:
             self.overwrite_prep_with_original = \
                 self.kwargs['overwrite_prep_with_original']
-        self.files_regex = 'long_read'
         self.pipeline = Pipeline(self.kwargs['config_fp'],
                                  self.kwargs['run_identifier'],
                                  self.kwargs['uif_path'],

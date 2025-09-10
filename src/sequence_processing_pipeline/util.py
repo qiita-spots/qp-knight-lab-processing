@@ -32,12 +32,6 @@ FILES_REGEX = {
         'html': REC(r'^(.*).html$'),
         'json':  REC(r'^(.*).json$')
     },
-    'long_read': {
-        'fastq': REC(r'^(.*)_R1.fastq\.gz$'),
-        'interleave_fastq': REC(r'^(.*)_R1.interleave\.fastq\.gz$'),
-        'html': REC(r'^(.*)_R1.html$'),
-        'json':  REC(r'^(.*)_R1.json$')
-    },
 }
 
 

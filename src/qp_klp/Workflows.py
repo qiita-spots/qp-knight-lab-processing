@@ -8,6 +8,7 @@ from shutil import copyfile
 import logging
 from shutil import rmtree
 from .Assays import ASSAY_NAME_AMPLICON
+from metapool.sample_sheet import PROTOCOL_NAME_PACBIO_SMRT
 from sequence_processing_pipeline.util import determine_orientation
 
 
@@ -599,6 +600,10 @@ class Workflow():
         # Meta*omics files doesn't use them.
         if self.pipeline.pipeline_type != ASSAY_NAME_AMPLICON:
             del (files['raw_barcodes'])
+
+        # PacBio doesn't have reverse reads
+        if self.protocol_type == PROTOCOL_NAME_PACBIO_SMRT:
+            del (files['raw_reverse_seqs'])
 
         # confirm expected lists of reads are not empty.
         for f_type in files:

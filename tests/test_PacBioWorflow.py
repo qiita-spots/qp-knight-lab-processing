@@ -13,7 +13,7 @@ from shutil import copyfile
 from shutil import rmtree
 from pathlib import Path
 import pandas as pd
-from metapool.sample_sheet import (PROTOCOL_NAME_PACBIO_SMRT)
+from metapool.sample_sheet import PROTOCOL_NAME_PACBIO_SMRT
 from sequence_processing_pipeline.PipelineError import PipelineError
 from qp_klp.Assays import ASSAY_NAME_METAGENOMIC
 from qiita_client.testing import PluginTestCase
