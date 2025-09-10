@@ -5,6 +5,7 @@ from .Assays import ASSAY_NAME_METAGENOMIC
 from .FailedSamplesRecord import FailedSamplesRecord
 from .Workflows import Workflow
 import pandas as pd
+from os.path import join
 
 
 class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
@@ -53,6 +54,10 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
         self.is_restart = bool(self.kwargs['is_restart'])
 
         if self.is_restart is True:
+            self.raw_fastq_files_path = join(self.pipeline.output_path,
+                                             'ConvertJob')
+            self.reports_path = join(self.raw_fastq_files_path,
+                                     'SeqCounts.csv')
             self.determine_steps_to_skip()
 
         # this is a convenience member to allow testing w/out updating Qiita.
