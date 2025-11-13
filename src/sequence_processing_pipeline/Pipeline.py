@@ -4,11 +4,19 @@ from json.decoder import JSONDecodeError
 from os import makedirs, listdir, walk
 from os.path import join, exists, isdir, basename
 from glob import glob
-from metapool import (load_sample_sheet, AmpliconSampleSheet, is_blank,
-                      parse_project_name, SAMPLE_NAME_KEY, QIITA_ID_KEY,
-                      PROJECT_SHORT_NAME_KEY, PROJECT_FULL_NAME_KEY,
-                      CONTAINS_REPLICATES_KEY, get_model_by_instrument_id,
-                      PROFILE_NAME_KEY)
+from metapool import (
+    load_sample_sheet,
+    AmpliconSampleSheet,
+    is_blank,
+    parse_project_name,
+    SAMPLE_NAME_KEY,
+    QIITA_ID_KEY,
+    PROJECT_SHORT_NAME_KEY,
+    PROJECT_FULL_NAME_KEY,
+    CONTAINS_REPLICATES_KEY,
+    get_model_by_instrument_id,
+    PROFILE_NAME_KEY,
+)
 from metapool.plate import ErrorMessage, WarningMessage
 from metapool.prep import PREP_MF_COLUMNS
 from sequence_processing_pipeline.Job import Job
@@ -22,22 +30,22 @@ from datetime import datetime
 from xml.etree import ElementTree as ET
 
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
-_PROJECT_NAME_KEY = 'project_name'
+_PROJECT_NAME_KEY = "project_name"
 
 
-class InstrumentUtils():
+class InstrumentUtils:
     @staticmethod
     def _get_instrument_id(run_directory):
-        run_info = join(run_directory, 'RunInfo.xml')
-        instrument_text = 'Run/Instrument'
+        run_info = join(run_directory, "RunInfo.xml")
+        instrument_text = "Run/Instrument"
 
         # if RunInfo.xml doesn't exist, this might be a PacBio
         # folder, let's check for it
         if not exists(run_info):
             run = InstrumentUtils._get_pacbio_run_str(run_info, run_directory)
-            text = run.attrib['TimeStampedName']
+            text = run.attrib["TimeStampedName"]
         else:
             text = ET.parse(run_info).find(instrument_text).text
 
@@ -45,36 +53,35 @@ class InstrumentUtils():
 
     @staticmethod
     def get_instrument_type(run_directory):
-        instrument_id = InstrumentUtils._get_instrument_id(run_directory)
-        return get_model_by_instrument_id(
-            instrument_id, model_key=PROFILE_NAME_KEY)
+        ii = InstrumentUtils._get_instrument_id(run_directory)
+        mbii = get_model_by_instrument_id(ii, model_key=PROFILE_NAME_KEY)
+        return mbii
 
     @staticmethod
     def _get_pacbio_run_str(run_info, run_directory):
-        pacbio_metadata_fps = glob(
-            f'{run_directory}/*/metadata/*.metadata.xml')
+        pb_path = f"{run_directory}/*/metadata/*.metadata.xml"
+        pacbio_metadata_fps = glob(pb_path)
         if not pacbio_metadata_fps:
             raise ValueError(f"'{run_info}' doesn't exist")
 
         run_info = pacbio_metadata_fps[0]
         tree = ET.parse(run_info)
-        mtag = tree.getroot().tag.split('}')[0] + '}'
-        instrument_text = (
-            f'{mtag}ExperimentContainer/{mtag}Runs/{mtag}Run')
+        mtag = tree.getroot().tag.split("}")[0] + "}"
+        instrument_text = f"{mtag}ExperimentContainer/{mtag}Runs/{mtag}Run"
         run = ET.parse(run_info).find(instrument_text)
         return run
 
     @staticmethod
     def _get_date(run_directory):
-        run_info = join(run_directory, 'RunInfo.xml')
+        run_info = join(run_directory, "RunInfo.xml")
 
         # if RunInfo.xml doesn't exist, this might be a PacBio
         # folder, let's check for it
         if not exists(run_info):
             run = InstrumentUtils._get_pacbio_run_str(run_info, run_directory)
-            date_string = run.attrib['CreatedAt'].split('T')[0]
+            date_string = run.attrib["CreatedAt"].split("T")[0]
         else:
-            date_string = ET.parse(run_info).find('Run/Date').text
+            date_string = ET.parse(run_info).find("Run/Date").text
 
         # date is recorded in RunInfo.xml in various formats. Iterate
         # through all known formats until the date is properly parsed.
@@ -82,8 +89,13 @@ class InstrumentUtils():
         # For now, assume timestamps w/Z are not actually in 'Zulu' or
         # UTC time w/out confirming the machines were actually set for
         # and/or reporting UTC time.
-        formats = ["%y%m%d", "%Y-%m-%dT%H:%M:%s", "%Y-%m-%dT%H:%M:%SZ",
-                   "%m/%d/%Y %I:%M:%S %p", "%Y-%m-%d",]
+        formats = [
+            "%y%m%d",
+            "%Y-%m-%dT%H:%M:%s",
+            "%Y-%m-%dT%H:%M:%SZ",
+            "%m/%d/%Y %I:%M:%S %p",
+            "%Y-%m-%d",
+        ]
 
         for format in formats:
             try:
@@ -98,52 +110,113 @@ class InstrumentUtils():
 
 
 class Pipeline:
-    _CONTROLS_SIF_SUFFIX = '_blanks.tsv'
+    _CONTROLS_SIF_SUFFIX = "_blanks.tsv"
 
     # TODO: replace these with spp_metadata package call based on qiimp2
-    sif_header = [SAMPLE_NAME_KEY, 'collection_timestamp', 'elevation',
-                  'empo_1', 'empo_2', 'empo_3',
-                  'empo_4', 'env_biome', 'env_feature',
-                  'env_material', 'env_package', 'geo_loc_name',
-                  'host_subject_id', 'latitude', 'longitude',
-                  'sample_type', 'scientific_name', 'taxon_id',
-                  'description', 'title', 'dna_extracted',
-                  'physical_specimen_location', 'physical_specimen_remaining']
+    sif_header = [
+        SAMPLE_NAME_KEY,
+        "collection_timestamp",
+        "elevation",
+        "empo_1",
+        "empo_2",
+        "empo_3",
+        "empo_4",
+        "env_biome",
+        "env_feature",
+        "env_material",
+        "env_package",
+        "geo_loc_name",
+        "host_subject_id",
+        "latitude",
+        "longitude",
+        "sample_type",
+        "scientific_name",
+        "taxon_id",
+        "description",
+        "title",
+        "dna_extracted",
+        "physical_specimen_location",
+        "physical_specimen_remaining",
+    ]
 
-    sif_defaults = [None, None, 193,
-                    'Control', 'Negative', 'Sterile water blank',
-                    'Sterile water blank', 'urban biome', 'research facility',
-                    'sterile water', 'misc environment', 'USA:CA:San Diego',
-                    None, 32.5, -117.25,
-                    'control blank', 'metagenome', 256318,
-                    None, None, 'TRUE',
-                    'UCSD', 'FALSE']
+    sif_defaults = [
+        None,
+        None,
+        193,
+        "Control",
+        "Negative",
+        "Sterile water blank",
+        "Sterile water blank",
+        "urban biome",
+        "research facility",
+        "sterile water",
+        "misc environment",
+        "USA:CA:San Diego",
+        None,
+        32.5,
+        -117.25,
+        "control blank",
+        "metagenome",
+        256318,
+        None,
+        None,
+        "TRUE",
+        "UCSD",
+        "FALSE",
+    ]
 
-    mapping_file_columns = {SAMPLE_NAME_KEY, 'barcode', 'center_name',
-                            'center_project_name',
-                            'experiment_design_description',
-                            'instrument_model',
-                            'library_construction_protocol',
-                            'platform', 'run_center', 'run_date', 'run_prefix',
-                            'runid', 'sample_plate', 'sequencing_meth',
-                            'linker', 'primer', 'primer_plate', 'well_id_384',
-                            'plating', 'extractionkit_lot', 'extraction_robot',
-                            'tm1000_8_tool', 'primer_date', 'mastermix_lot',
-                            'water_lot', 'processing_robot', 'tm300_8_tool',
-                            'tm50_8_tool', _PROJECT_NAME_KEY, 'orig_name',
-                            'well_description', 'pcr_primers', 'target_gene',
-                            'tm10_8_tool', 'target_subfragment', 'well_id_96'}
+    mapping_file_columns = {
+        SAMPLE_NAME_KEY,
+        "barcode",
+        "center_name",
+        "center_project_name",
+        "experiment_design_description",
+        "instrument_model",
+        "library_construction_protocol",
+        "platform",
+        "run_center",
+        "run_date",
+        "run_prefix",
+        "runid",
+        "sample_plate",
+        "sequencing_meth",
+        "linker",
+        "primer",
+        "primer_plate",
+        "well_id_384",
+        "plating",
+        "extractionkit_lot",
+        "extraction_robot",
+        "tm1000_8_tool",
+        "primer_date",
+        "mastermix_lot",
+        "water_lot",
+        "processing_robot",
+        "tm300_8_tool",
+        "tm50_8_tool",
+        _PROJECT_NAME_KEY,
+        "orig_name",
+        "well_description",
+        "pcr_primers",
+        "target_gene",
+        "tm10_8_tool",
+        "target_subfragment",
+        "well_id_96",
+    }
 
-    METAGENOMIC_PTYPE = 'Metagenomic'
-    METATRANSCRIPTOMIC_PTYPE = 'Metatranscriptomic'
-    AMPLICON_PTYPE = 'Amplicon'
+    METAGENOMIC_PTYPE = "Metagenomic"
+    METATRANSCRIPTOMIC_PTYPE = "Metatranscriptomic"
+    AMPLICON_PTYPE = "Amplicon"
 
-    pipeline_types = {METAGENOMIC_PTYPE, AMPLICON_PTYPE,
-                      METATRANSCRIPTOMIC_PTYPE}
+    pipeline_types = {
+        METAGENOMIC_PTYPE,
+        AMPLICON_PTYPE,
+        METATRANSCRIPTOMIC_PTYPE,
+    }
 
-    METAGENOMIC_ATYPE = 'Metagenomic'
-    METATRANSCRIPTOMIC_ATYPE = 'Metatranscriptomic'
-    AMPLICON_ATYPE = 'TruSeq HT'
+    METAGENOMIC_ATYPE = "Metagenomic"
+    METATRANSCRIPTOMIC_ATYPE = "Metatranscriptomic"
+    AMPLICON_ATYPE = "TruSeq HT"
 
     assay_types = [AMPLICON_ATYPE, METAGENOMIC_ATYPE, METATRANSCRIPTOMIC_ATYPE]
 
@@ -153,7 +226,7 @@ class Pipeline:
         #  to figure out, for an arbitrary sif fname, where the run id ends and
         #  where the project name begins because single underscores are used as
         #  internal elements in both run ids and project names :(
-        return f'{run_id}_{full_project_name}{Pipeline._CONTROLS_SIF_SUFFIX}'
+        return f"{run_id}_{full_project_name}{Pipeline._CONTROLS_SIF_SUFFIX}"
 
     @staticmethod
     def is_sif_fp(fp):
@@ -163,7 +236,7 @@ class Pipeline:
     @staticmethod
     def get_qiita_id_from_sif_fp(fp):
         fname = basename(fp)
-        temp_name = fname.replace(Pipeline._CONTROLS_SIF_SUFFIX, '')
+        temp_name = fname.replace(Pipeline._CONTROLS_SIF_SUFFIX, "")
 
         # This is a kind of hacky use of parse_project_name since
         # it is passing in something that *ends in* a project name but is not
@@ -175,8 +248,16 @@ class Pipeline:
         hacky_name_pieces_dict = parse_project_name(temp_name)
         return hacky_name_pieces_dict[QIITA_ID_KEY]
 
-    def __init__(self, configuration_file_path, run_id, input_file_path,
-                 output_path, qiita_job_id, pipeline_type, lane_number=None):
+    def __init__(
+        self,
+        configuration_file_path,
+        run_id,
+        input_file_path,
+        output_path,
+        qiita_job_id,
+        pipeline_type,
+        lane_number=None,
+    ):
         """
         Initialize Pipeline object w/configuration information.
         :param configuration_file_path: Path to configuration.json file.
@@ -206,22 +287,26 @@ class Pipeline:
             self.configuration = json_load(f)
             f.close()
         except TypeError:
-            raise PipelineError('configuration_file_path cannot be None')
+            raise PipelineError("configuration_file_path cannot be None")
         except FileNotFoundError:
-            raise PipelineError(f'{configuration_file_path} does not '
-                                'exist.')
+            raise PipelineError(f"{configuration_file_path} does not exist.")
         except JSONDecodeError:
-            raise PipelineError(f'{configuration_file_path} is not a '
-                                'valid json file')
+            msg = f"{configuration_file_path} is not a valid json file"
+            raise PipelineError(msg)
 
         if run_id is None:
-            raise PipelineError('run_id cannot be None')
+            raise PipelineError("run_id cannot be None")
 
-        for key in ['search_paths', 'archive_path', 'amplicon_search_paths',
-                    'profiles_path']:
+        for key in [
+            "search_paths",
+            "archive_path",
+            "amplicon_search_paths",
+            "profiles_path",
+        ]:
             if key not in self.configuration:
-                raise PipelineError(f"'{key}' is not a key in "
-                                    f"{self.configuration_file_path}")
+                raise PipelineError(
+                    f"'{key}' is not a key in {self.configuration_file_path}"
+                )
 
         # If our extended validate() method discovers any warnings or
         # Errors, it will raise a PipelineError and return them w/in the
@@ -241,27 +326,27 @@ class Pipeline:
         results = []
 
         if pipeline_type == Pipeline.AMPLICON_PTYPE:
-            self.search_paths = self.configuration['amplicon_search_paths']
+            self.search_paths = self.configuration["amplicon_search_paths"]
             self.assay_type = Pipeline.AMPLICON_ATYPE
         else:
-            self.search_paths = self.configuration['search_paths']
+            self.search_paths = self.configuration["search_paths"]
 
         for search_path in self.search_paths:
-            logging.debug(f'Searching {search_path} for {self.run_id}')
+            logging.debug(f"Searching {search_path} for {self.run_id}")
             for entry in listdir(search_path):
                 some_path = join(search_path, entry)
                 # ensure some_path never ends in '/'
-                some_path = some_path.rstrip('/')
+                some_path = some_path.rstrip("/")
                 if isdir(some_path) and some_path.endswith(self.run_id):
-                    logging.debug(f'Found {some_path}')
+                    logging.debug(f"Found {some_path}")
                     results.append(some_path)
 
         if results:
             results.sort(key=lambda s: len(s))
             self.run_dir = results[0]
         else:
-            raise PipelineError(f"A run-dir for '{self.run_id}' could not be "
-                                "found")
+            msg = f"A run-dir for '{self.run_id}' could not be found"
+            raise PipelineError(msg)
 
         self.input_file_path = input_file_path
 
@@ -275,7 +360,7 @@ class Pipeline:
             # path to the original mapping file itself as well.
 
             # create dummy sample-sheet
-            output_fp = join(output_path, 'dummy_sample_sheet.csv')
+            output_fp = join(output_path, "dummy_sample_sheet.csv")
             self.generate_dummy_sample_sheet(self.run_dir, output_fp)
             self.dummy_sheet_path = output_fp
 
@@ -286,13 +371,13 @@ class Pipeline:
                 # confirm that the lane_number is a reasonable value.
                 lane_number = int(lane_number)
                 if lane_number < 1 or lane_number > 8:
-                    raise ValueError(f"'{lane_number}' is not a valid name"
-                                     " number")
+                    msg = f"'{lane_number}' is not a valid name number"
+                    raise ValueError(msg)
 
                 # overwrite sample-sheet w/DFSheets processed version
                 # with overwritten Lane number.
                 sheet = load_sample_sheet(input_file_path)
-                with open(input_file_path, 'w') as f:
+                with open(input_file_path, "w") as f:
                     sheet.write(f, lane=lane_number)
 
             # assume user_input_file_path references a sample-sheet.
@@ -301,7 +386,7 @@ class Pipeline:
 
         if self.assay_type is None:
             # set self.assay_type for non-amplicon types.
-            assay_type = self.sample_sheet.Header['Assay']
+            assay_type = self.sample_sheet.Header["Assay"]
             if assay_type not in Pipeline.assay_types:
                 raise ValueError(f"'{assay_type} is not a valid Assay type")
             self.assay_type = assay_type
@@ -323,7 +408,7 @@ class Pipeline:
         if software is None or software == "":
             raise ValueError(f"'{software}' is not a valid value")
 
-        key_order = ['profile', 'configuration', software]
+        key_order = ["profile", "configuration", software]
 
         config = self.config_profile
 
@@ -336,13 +421,13 @@ class Pipeline:
         return config
 
     def identify_reserved_words(self, words):
-        '''
+        """
         Returns a list of words that should not appear as column names in any
         project referenced in the Pipeline's sample-sheet/pre-prep file.
         :param words: A list of words that may include reserved words.
         :return: A list of words that are already reserved in upper, lower,
                  and mixed cases.
-        '''
+        """
 
         # Only strings used as column names in pre-prep files are currently
         # considered 'reserved' as loading a pre-prep file containing these
@@ -361,9 +446,9 @@ class Pipeline:
             # lower()ed before writing out to file, the word must be
             # reserved in all case forms. e.g.: 'Sample_Well' and 'Sample_well'
             # are both forms of 'sample_well'.
-            reserved = [x.lower() for x in
-                        self.sample_sheet.CARRIED_PREP_COLUMNS] + \
-                        self.sample_sheet.GENERATED_PREP_COLUMNS
+            reserved = [
+                x.lower() for x in self.sample_sheet.CARRIED_PREP_COLUMNS
+            ] + self.sample_sheet.GENERATED_PREP_COLUMNS
 
         return list(set([x.lower() for x in words]) & set(reserved))
 
@@ -376,7 +461,7 @@ class Pipeline:
         # profiles_path in the configuration.json file. parse each json into
         # a nested dictionary keyed by (instrument-type, assay-type) as
         # specified by the values inside each json.
-        profile_dir = self.configuration['profiles_path']
+        profile_dir = self.configuration["profiles_path"]
 
         if not exists(profile_dir):
             raise ValueError(f"'{profile_dir}' doesn't exist")
@@ -390,7 +475,7 @@ class Pipeline:
         for root, dirs, files in walk(profile_dir):
             for some_file in files:
                 some_path = join(root, some_file)
-                if some_path.endswith('.json'):
+                if some_path.endswith(".json"):
                     profile_paths.append(some_path)
 
         # There must be at least one valid profile for the Pipeline to
@@ -401,7 +486,7 @@ class Pipeline:
         profiles = []
 
         for profile_path in profile_paths:
-            with open(profile_path, 'r') as f:
+            with open(profile_path, "r") as f:
                 # open each profile and perform minimum validation on its
                 # contents.
                 contents = json_load(f)
@@ -409,36 +494,43 @@ class Pipeline:
                 # all files must contain a root element 'profile'. This helps
                 # to identify it as a profile, rather than another type of
                 # JSON file.
-                if 'profile' not in contents:
-                    raise ValueError("'profile' is not an attribute in "
-                                     f"'{profile_path}'")
+                if "profile" not in contents:
+                    raise ValueError(
+                        f"'profile' is not an attribute in '{profile_path}'"
+                    )
 
                 # the 'profile' attribute must have a dictionary as its value.
                 # all profiles must contain 'instrument_type' and 'assay_type',
-                if 'instrument_type' not in contents['profile']:
-                    raise ValueError("'instrument_type' is not an attribute "
-                                     f"in '{profile_path}'.profile")
+                if "instrument_type" not in contents["profile"]:
+                    raise ValueError(
+                        "'instrument_type' is not an attribute "
+                        f"in '{profile_path}'.profile"
+                    )
 
-                if 'assay_type' not in contents['profile']:
-                    raise ValueError("'assay_type' is not an attribute "
-                                     f"in '{profile_path}'.profile")
+                if "assay_type" not in contents["profile"]:
+                    raise ValueError(
+                        "'assay_type' is not an attribute      "
+                        f"in '{profile_path}'.profile"
+                    )
 
                 profiles.append(contents)
 
         selected_profile = None
 
         for profile in profiles:
-            i_type = profile['profile']['instrument_type']
-            a_type = profile['profile']['assay_type']
+            i_type = profile["profile"]["instrument_type"]
+            a_type = profile["profile"]["assay_type"]
 
             if i_type == instr_type and a_type == self.assay_type:
                 selected_profile = profile
                 break
 
         if selected_profile is None:
-            raise ValueError(f"a matching profile ({instr_type}, "
-                             f"{self.assay_type}) was not found. Please notify"
-                             " an administrator")
+            raise ValueError(
+                f"a matching profile ({instr_type}, "
+                f"{self.assay_type}) was not found. Please notify"
+                " an administrator"
+            )
 
         self.config_profile = selected_profile
 
@@ -455,8 +547,9 @@ class Pipeline:
                     # as the others.
                     raise PipelineError(str(e))
             else:
-                raise PipelineError("directory_path '%s' does not exist." %
-                                    directory_path)
+                raise PipelineError(
+                    "directory_path '%s' does not exist." % directory_path
+                )
 
     def run(self, callback=None):
         """
@@ -501,27 +594,35 @@ class Pipeline:
             errors = [x for x in msgs if isinstance(x, ErrorMessage)]
 
             if errors:
-                msgs = [str(x).replace('ErrorMessage: ', '') for x in msgs]
-                msgs = 'Sample-sheet contains errors:\n' + '\n'.join(msgs)
+                msgs = [str(x).replace("ErrorMessage: ", "") for x in msgs]
+                msgs = "Sample-sheet contains errors:\n" + "\n".join(msgs)
                 raise PipelineError(msgs)
             else:
-                raise PipelineError('Cannot parse sample-sheet.')
+                raise PipelineError("Cannot parse sample-sheet.")
         else:
             # perform extended validation based on required fields for
             # seqpro, and other issues encountered.
             bioinformatics = sheet.Bioinformatics
-            if 'library_construction_protocol' not in bioinformatics:
-                msgs.append(ErrorMessage("column 'library_construction_protoco"
-                                         "l' not found in Bioinformatics secti"
-                                         "on"))
-            if 'experiment_design_description' not in bioinformatics:
-                msgs.append(ErrorMessage("column 'experiment_design_descriptio"
-                                         "n' not found in Bioinformatics secti"
-                                         "on"))
+            if "library_construction_protocol" not in bioinformatics:
+                msgs.append(
+                    ErrorMessage(
+                        "column 'library_construction_protoco"
+                        "l' not found in Bioinformatics secti"
+                        "on"
+                    )
+                )
+            if "experiment_design_description" not in bioinformatics:
+                msgs.append(
+                    ErrorMessage(
+                        "column 'experiment_design_descriptio"
+                        "n' not found in Bioinformatics secti"
+                        "on"
+                    )
+                )
 
-            if sheet.Header['Assay'] not in Pipeline.assay_types:
-                msgs.append(ErrorMessage("Valid Assay values are "
-                                         f"{Pipeline.assay_types}"))
+            if sheet.Header["Assay"] not in Pipeline.assay_types:
+                msg = f"Valid Assay values are {Pipeline.assay_types}"
+                msgs.append(ErrorMessage(msg))
 
             # look for duplicate samples. metapool will allow two rows w/the
             # same lane and sample_id if one or more other columns are
@@ -529,25 +630,30 @@ class Pipeline:
             # be unique for indexing.
             unique_indexes = []
             for item in sheet.samples:
-                unique_index = f'{item.lane}_{item.sample_id}'
+                unique_index = f"{item.lane}_{item.sample_id}"
                 if unique_index in unique_indexes:
-                    msgs.append(ErrorMessage("A sample already exists with la"
-                                             f"ne {item.lane} and sample-id "
-                                             f"{item.sample_id}"))
+                    msgs.append(
+                        ErrorMessage(
+                            "A sample already exists with la"
+                            f"ne {item.lane} and sample-id "
+                            f"{item.sample_id}"
+                        )
+                    )
                 else:
                     unique_indexes.append(unique_index)
 
             errors = [x for x in msgs if isinstance(x, ErrorMessage)]
 
             if errors:
-                msgs = [str(x).replace('ErrorMessage: ', '') for x in msgs]
-                msgs = 'Sample-sheet contains errors:\n' + '\n'.join(msgs)
+                msgs = [str(x).replace("ErrorMessage: ", "") for x in msgs]
+                msgs = "Sample-sheet contains errors:\n" + "\n".join(msgs)
                 raise PipelineError(msgs)
 
             # return a valid sample-sheet, and preserve any warning
             # messages
-            self.warnings += [str(x) for x in msgs if
-                              isinstance(x, WarningMessage)]
+            for x in msgs:
+                if isinstance(x, WarningMessage):
+                    self.warnings += [str(x)]
             return sheet
 
     def _validate_mapping_file(self, mapping_file_path):
@@ -558,9 +664,9 @@ class Pipeline:
                  appended to self.warnings.
         """
         try:
-            df = pd.read_csv(mapping_file_path, delimiter='\t', dtype=str)
+            df = pd.read_csv(mapping_file_path, delimiter="\t", dtype=str)
         except pd.errors.ParserError:
-            raise PipelineError('Cannot parse mapping-file.')
+            raise PipelineError("Cannot parse mapping-file.")
 
         # first, detect any duplicate column names, regardless of any mixed-
         # capitalization, and notify the user.
@@ -572,15 +678,17 @@ class Pipeline:
         # once, regardless of capitalization. Then generate a list containing
         # lists of duplicate column names in their original case to report to
         # the user.
-        dupes = [d[column] for column in
-                 [col for col in d.keys() if len(d[col]) > 1]]
+        tdupes = [col for col in d.keys() if len(d[col]) > 1]
+        dupes = [d[column] for column in tdupes]
 
         if dupes:
             # column-names are case-insensitive, and must be unique.
             # return groups of duplicate column names (differentiated only by
             # a different mixed-case) to the user.
-            raise PipelineError("Mapping-file contains duplicate columns: "
-                                "%s" % ', '.join([str(tpl) for tpl in dupes]))
+            raise PipelineError(
+                "Mapping-file contains duplicate columns: "
+                "%s" % ", ".join([str(tpl) for tpl in dupes])
+            )
 
         # if columns are unique, determine if any columns are missing and/or
         # unexpected and notify the user.
@@ -597,14 +705,20 @@ class Pipeline:
         # file is a mapping-file already.
         missing_columns = Pipeline.mapping_file_columns - obs
         if missing_columns:
-            raise PipelineError("Mapping-file is missing columns: "
-                                "%s" % ', '.join(sorted(missing_columns)))
+            raise PipelineError(
+                "Mapping-file is missing columns: "
+                "%s" % ", ".join(sorted(missing_columns))
+            )
 
         # if an observed column is unexpected, that is a warning.
         unexpected_columns = obs - Pipeline.mapping_file_columns
         if unexpected_columns:
-            self.warnings += [("Mapping-file contains additional columns: "
-                               "%s" % ', '.join(unexpected_columns))]
+            self.warnings += [
+                (
+                    "Mapping-file contains additional columns: "
+                    "%s" % ", ".join(unexpected_columns)
+                )
+            ]
 
         # rename all columns to their lower-case versions.
         # we will want to return this version to the user.
@@ -623,7 +737,7 @@ class Pipeline:
         if self.pipeline_type == Pipeline.AMPLICON_PTYPE:
             # Generate a list of BLANKs for each project.
             temp_df = self.mapping_file[[SAMPLE_NAME_KEY, _PROJECT_NAME_KEY]]
-            temp_df_as_dicts_list = temp_df.to_dict(orient='records')
+            temp_df_as_dicts_list = temp_df.to_dict(orient="records")
             blanks_dicts_list = []
             for record in temp_df_as_dicts_list:
                 if is_blank(record[SAMPLE_NAME_KEY]):
@@ -638,9 +752,9 @@ class Pipeline:
         else:
             all_controls = []
             for curr_input_path in dereplicated_input_file_paths:
-                curr_sample_sheet = load_sample_sheet(curr_input_path)
-                curr_controls = \
-                    curr_sample_sheet.get_denormalized_controls_list()
+                # css => curr_sample_sheet
+                css = load_sample_sheet(curr_input_path)
+                curr_controls = css.get_denormalized_controls_list()
                 all_controls.extend(curr_controls)
             # next path
             df = pd.DataFrame(all_controls)
@@ -661,40 +775,40 @@ class Pipeline:
             curr_fp = join(self.output_path, curr_fname)
             paths.append(curr_fp)
 
-            controls_in_proj_df = \
-                df.loc[df[PROJECT_FULL_NAME_KEY] == project].copy()
+            _df = df[PROJECT_FULL_NAME_KEY] == project
+            # cpdf = controls_in_proj_df
+            cpdf = df.loc[_df].copy()
 
             # TODO: remove this loop and replace with spp_metadata call at end
-            for column, default_value in zip(Pipeline.sif_header,
-                                             Pipeline.sif_defaults):
+            for column, default_value in zip(
+                Pipeline.sif_header, Pipeline.sif_defaults
+            ):
                 # ensure all defaults are converted to strings.
                 if default_value is not None:
-                    controls_in_proj_df[column] = str(default_value)
+                    cpdf[column] = str(default_value)
             # next metadata col/value
 
             # generate values for the four columns that must be
             # determined from sample-sheet information.
-            TEMP_KEY = 'temp_name'
-            controls_in_proj_df['title'] = project_info[PROJECT_SHORT_NAME_KEY]
-            controls_in_proj_df[TEMP_KEY] = \
-                controls_in_proj_df[SAMPLE_NAME_KEY].str.replace("_", ".")
-            controls_in_proj_df['host_subject_id'] = \
-                controls_in_proj_df[TEMP_KEY]
-            controls_in_proj_df['description'] = controls_in_proj_df[TEMP_KEY]
-            controls_in_proj_df.drop(columns=[TEMP_KEY], inplace=True)
-            controls_in_proj_df['collection_timestamp'] = \
-                InstrumentUtils._get_date(self.run_dir)
+            TEMP_KEY = "temp_name"
+            cpdf["title"] = project_info[PROJECT_SHORT_NAME_KEY]
+            cpdf[TEMP_KEY] = cpdf[SAMPLE_NAME_KEY].str.replace("_", ".")
+            cpdf["host_subject_id"] = cpdf[TEMP_KEY]
+            cpdf["description"] = cpdf[TEMP_KEY]
+            cpdf.drop(columns=[TEMP_KEY], inplace=True)
+            _date = InstrumentUtils._get_date(self.run_dir)
+            cpdf["collection_timestamp"] = _date
 
-            controls_in_proj_df = controls_in_proj_df[Pipeline.sif_header]
-            controls_in_proj_df.to_csv(curr_fp, sep='\t', index=False)
+            cpdf = cpdf[Pipeline.sif_header]
+            cpdf.to_csv(curr_fp, sep="\t", index=False)
 
         return paths
 
     def get_sample_ids(self):
-        '''
+        """
         Returns list of sample-ids sourced from sample-sheet or pre-prep file
         :return: list of sample-ids
-        '''
+        """
 
         # test for self.mapping_file, since self.sample_sheet will be
         # defined in both cases.
@@ -706,11 +820,11 @@ class Pipeline:
         return results
 
     def get_sample_names(self, project_name=None):
-        '''
+        """
         Returns list of sample-names sourced from sample-sheet or pre-prep file
         :param project_name: If None, return all sample-names.
         :return: list of sample-names
-        '''
+        """
         # test for self.mapping_file, since self.sample_sheet will be
         # defined in both cases.
         if self.pipeline_type == Pipeline.AMPLICON_PTYPE:
@@ -729,19 +843,19 @@ class Pipeline:
 
             results = []
 
-            for sample in jsn['Data']:
+            for sample in jsn["Data"]:
                 # handle case where project_name includes an appended qiita-id.
-                if sample['Sample_Project'] == project_name:
-                    results.append(sample['Sample_Name'])
+                if sample["Sample_Project"] == project_name:
+                    results.append(sample["Sample_Name"])
                     continue
 
                 # handle case where project_name does not include a qiita-id.
                 # exact matching is required for cases where one project name
                 # in a sheet is a superset of another project in the same
                 # sheet.
-                m = search(r'^(.+)_(\d+)$', sample['Sample_Project'])
+                m = search(r"^(.+)_(\d+)$", sample["Sample_Project"])
                 if m[1] == project_name:
-                    results.append(sample['Sample_Name'])
+                    results.append(sample["Sample_Name"])
 
             return results
 
@@ -758,19 +872,19 @@ class Pipeline:
 
             results = []
 
-            for sample in jsn['Data']:
+            for sample in jsn["Data"]:
                 # handle case where project_name includes an appended qiita-id.
-                if sample['Sample_Project'] == project_name:
-                    results.append(sample['orig_name'])
+                if sample["Sample_Project"] == project_name:
+                    results.append(sample["orig_name"])
                     continue
 
                 # handle case where project_name does not include a qiita-id.
                 # exact matching is required for cases where one project name
                 # in a sheet is a superset of another project in the same
                 # sheet.
-                m = search(r'^(.+)_(\d+)$', sample['Sample_Project'])
+                m = search(r"^(.+)_(\d+)$", sample["Sample_Project"])
                 if m[1] == project_name:
-                    results.append(sample['orig_name'])
+                    results.append(sample["orig_name"])
 
             return sorted(set(results))
 
@@ -778,8 +892,8 @@ class Pipeline:
         if project_name is None:
             return list(self.mapping_file.sample_name)
         else:
-            df = self.mapping_file[self.mapping_file[_PROJECT_NAME_KEY] ==
-                                   project_name]
+            _df = self.mapping_file[_PROJECT_NAME_KEY] == project_name
+            df = self.mapping_file[_df]
             return list(df[SAMPLE_NAME_KEY])
 
     def _parse_project_name(self, project_name, short_names):
@@ -811,10 +925,13 @@ class Pipeline:
             else:
                 contains_replicates = False
 
-            sample_project_map = {pn: _df.sample_name.values for pn, _df in
-                                  self.mapping_file.groupby(_PROJECT_NAME_KEY)}
-            projects_info = \
-                {p: parse_project_name(p) for p in sample_project_map}
+            sample_project_map = {
+                pn: _df.sample_name.values
+                for pn, _df in self.mapping_file.groupby(_PROJECT_NAME_KEY)
+            }
+            projects_info = dict()
+            for p in sample_project_map:
+                projects_info[p] = parse_project_name(p)
         else:
             projects_info = self.sample_sheet.get_projects_details()
 
@@ -826,7 +943,7 @@ class Pipeline:
         for curr_project_info in projects_info.values():
             curr_dict = {
                 _PROJECT_NAME_KEY: curr_project_info[proj_name_key],
-                QIITA_ID_KEY: curr_project_info[QIITA_ID_KEY]
+                QIITA_ID_KEY: curr_project_info[QIITA_ID_KEY],
             }
 
             if self.pipeline_type == Pipeline.AMPLICON_PTYPE:
@@ -843,11 +960,11 @@ class Pipeline:
                     # full project name, which is what's expected to be in
                     # the Sample_Project column.
                     sample_project = curr_project_info[PROJECT_FULL_NAME_KEY]
-                    df = bi_df.loc[bi_df['Sample_Project'] == sample_project]
+                    df = bi_df.loc[bi_df["Sample_Project"] == sample_project]
                     # since only one project can match by definition, convert
                     # to dict and extract the needed value.
-                    curr_contains_reps = df.iloc[0].to_dict()[
-                                         CONTAINS_REPLICATES_KEY]
+                    ccr_df = df.iloc[0].to_dict()
+                    curr_contains_reps = ccr_df[CONTAINS_REPLICATES_KEY]
                 else:
                     curr_contains_reps = False
 
@@ -863,41 +980,43 @@ class Pipeline:
         Returns True if file follows basic mapping-file format.
         """
         try:
-            df = pd.read_csv(mapping_file_path, delimiter='\t', dtype=str)
+            df = pd.read_csv(mapping_file_path, delimiter="\t", dtype=str)
         except pd.errors.ParserError:
             return False
 
         # if the expected subset of columns required for a mapping-file
         # are present, then consider this a mapping file, even if it's
         # an invalid one.
-        exp_columns = frozenset({'barcode', 'tm1000_8_tool',
-                                 'extraction_robot', 'pcr_primers'})
+        exp_columns = frozenset(
+            {"barcode", "tm1000_8_tool", "extraction_robot", "pcr_primers"}
+        )
 
         return set(df.columns.str.lower()).issuperset(exp_columns)
 
     @staticmethod
     def is_sample_sheet(sample_sheet_path):
-        '''
+        """
         Returns True if file follows basic sample-sheet format.
-        '''
+        """
 
         # Check to see if the file begins w/[Header].
         # Ignoring any legacy comments.
-        with open(sample_sheet_path, 'r') as f:
+        with open(sample_sheet_path, "r") as f:
             line = f.readline()
             while line:
-                if line.startswith('#'):
+                if line.startswith("#"):
                     line = f.readline()
                 else:
                     break
 
-            if line.startswith('[Header]'):
+            if line.startswith("[Header]"):
                 return True
 
         return False
 
-    def _generate_dummy_sample_sheet(self, index_cycles, non_index_cycles,
-                                     len_index, dummy_sample_id):
+    def _generate_dummy_sample_sheet(
+        self, index_cycles, non_index_cycles, len_index, dummy_sample_id
+    ):
         """
         Helper function to generate a dummy (no demux) amplicon sample sheet
         if possible. Else return project_name and None.
@@ -910,53 +1029,61 @@ class Pipeline:
         """
         # create object and initialize header
         sheet = AmpliconSampleSheet()
-        sheet.Header['IEMFileVersion'] = '4'
-        sheet.Header['Date'] = '10/27/22'
-        sheet.Header['Workflow'] = 'GenerateFASTQ'
-        sheet.Header['Application'] = 'FASTQ Only'
-        sheet.Header['Assay'] = 'TruSeq HT'
-        sheet.Header['Description'] = 'test_run'
-        sheet.Header['Chemistry'] = 'Amplicon'
+        sheet.Header["IEMFileVersion"] = "4"
+        sheet.Header["Date"] = "10/27/22"
+        sheet.Header["Workflow"] = "GenerateFASTQ"
+        sheet.Header["Application"] = "FASTQ Only"
+        sheet.Header["Assay"] = "TruSeq HT"
+        sheet.Header["Description"] = "test_run"
+        sheet.Header["Chemistry"] = "Amplicon"
 
         # generate override_cycles string
         tmp = [f"N{index_cycles}" for i in range(len_index)]
-        tmp = ';'.join(tmp)
+        tmp = ";".join(tmp)
         override_cycles = f"Y{non_index_cycles};{tmp};Y{non_index_cycles}"
 
         # set Reads and Settings according to input values
         # we'll get this from the code on the server
         sheet.Reads = [non_index_cycles, non_index_cycles]
-        sheet.Settings['OverrideCycles'] = override_cycles
-        sheet.Settings['MaskShortReads'] = '1'
-        sheet.Settings['CreateFastqForIndexReads'] = '1'
+        sheet.Settings["OverrideCycles"] = override_cycles
+        sheet.Settings["MaskShortReads"] = "1"
+        sheet.Settings["CreateFastqForIndexReads"] = "1"
 
-        dummy_samples = {'Sample_ID': dummy_sample_id,
-                         'Sample_Plate': '',
-                         'Sample_Well': '',
-                         'I7_Index_ID': '',
-                         'index': '',
-                         'I5_Index_ID': '',
-                         'index2': ''
-                         }
+        dummy_samples = {
+            "Sample_ID": dummy_sample_id,
+            "Sample_Plate": "",
+            "Sample_Well": "",
+            "I7_Index_ID": "",
+            "index": "",
+            "I5_Index_ID": "",
+            "index2": "",
+        }
         sheet.add_sample(sample_sheet.Sample(dummy_samples))
 
         # contacts won't matter for the dummy sample-sheet.
-        contacts = [['c2cowart@ucsd.edu', 'SomeProject'],
-                    ['antgonza@gmail.com', 'AnotherProject']]
+        contacts = [
+            ["c2cowart@ucsd.edu", "SomeProject"],
+            ["antgonza@gmail.com", "AnotherProject"],
+        ]
 
         # we'll get these from input parameters as well.
-        contacts = pd.DataFrame(columns=['Email', 'Sample_Project'],
-                                data=contacts)
+        _cols = ["Email", "Sample_Project"]
+        contacts = pd.DataFrame(columns=_cols, data=contacts)
         sheet.Contact = contacts
 
         # add a dummy sample.
-        samples = [[dummy_sample_id, 'NA', 'NA',
-                    'FALSE', '14782']]
+        samples = [[dummy_sample_id, "NA", "NA", "FALSE", "14782"]]
 
-        samples = pd.DataFrame(columns=['Project', 'ForwardAdapter',
-                                        'ReverseAdapter', 'HumanFiltering',
-                                        'QiitaID'],
-                               data=samples)
+        samples = pd.DataFrame(
+            columns=[
+                "Project",
+                "ForwardAdapter",
+                "ReverseAdapter",
+                "HumanFiltering",
+                "QiitaID",
+            ],
+            data=samples,
+        )
 
         sheet.Bioinformatics = samples
 
@@ -964,27 +1091,28 @@ class Pipeline:
 
     def generate_dummy_sample_sheet(self, run_dir, output_fp):
         if exists(run_dir):
-            reads = self.process_run_info_file(join(run_dir, 'RunInfo.xml'))
+            reads = self.process_run_info_file(join(run_dir, "RunInfo.xml"))
         else:
             raise ValueError("run_dir %s not found." % run_dir)
 
         # the assumptions are: if we have 3 reads we should only have 1
         # index; and if we have 4 reads, 2 should be index
-        index_reads = [r for r in reads if r['IsIndexedRead']]
-        non_index_reads = [r for r in reads if not r['IsIndexedRead']]
+        index_reads = [r for r in reads if r["IsIndexedRead"]]
+        non_index_reads = [r for r in reads if not r["IsIndexedRead"]]
         len_index_reads = len(index_reads)
         len_non_index_reads = len(non_index_reads)
-        if len_non_index_reads != 2 or (len_index_reads != 1 and
-                                        len_index_reads != 2):
+        if len_non_index_reads != 2 or len_index_reads not in [1, 2]:
             raise ValueError("RunInfo.xml contains abnormal reads.")
-        dummy_sample_id = basename(run_dir) + '_SMPL1'
+        dummy_sample_id = basename(run_dir) + "_SMPL1"
 
         sheet = self._generate_dummy_sample_sheet(
-                index_reads[0]['NumCycles'],
-                non_index_reads[0]['NumCycles'],
-                len_index_reads, dummy_sample_id)
+            index_reads[0]["NumCycles"],
+            non_index_reads[0]["NumCycles"],
+            len_index_reads,
+            dummy_sample_id,
+        )
 
-        with open(output_fp, 'w') as f:
+        with open(output_fp, "w") as f:
             sheet.write(f, 1)
 
     def process_run_info_file(self, run_info_fp):
@@ -993,29 +1121,33 @@ class Pipeline:
             # the contents of each Read element are highly regular.
             # for now, process w/out installing xml2dict or other
             # library into Qiita env.
-            found = findall('<Read (.+?)/>', reads)
+            found = findall("<Read (.+?)/>", reads)
 
             results = []
             for item in found:
-                attributes = item.strip().split(' ')
+                attributes = item.strip().split(" ")
                 d = {}
                 for attribute in attributes:
-                    k, v = attribute.split('=')
-                    if k in ['NumCycles', 'Number']:
+                    k, v = attribute.split("=")
+                    if k in ["NumCycles", "Number"]:
                         v = int(v.strip('"'))
-                    elif k in ['IsIndexedRead', 'IsReverseComplement']:
+                    elif k in [
+                        "IsIndexedRead",
+                        "IsReverseComplement",
+                        "IsPairedEndComplete",
+                    ]:
                         v = v.strip('"')
-                        v = False if v == 'N' else True
+                        v = False if v == "N" else True
                     else:
-                        raise ValueError("Unknown key: %s" % k)
+                        raise ValueError(f"Unknown key in {run_info_fp}: {k}")
                     d[k] = v
                 results.append(d)
 
             return results
 
-        with open(run_info_fp, 'r') as f:
+        with open(run_info_fp, "r") as f:
             s = f.read()
-            reads = search('<Reads>(.+?)</Reads>', s.replace('\n', ''))
+            reads = search("<Reads>(.+?)</Reads>", s.replace("\n", ""))
             if reads:
                 result = reads.group(1)
             else:
