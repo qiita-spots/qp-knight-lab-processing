@@ -338,7 +338,7 @@ class TestPipeline(unittest.TestCase):
                     '"per_process_memory_limit": "10gb" } } } }')
 
         with self.assertRaisesRegex(ValueError, "'assay_type' is not an "
-                                                "attribute in 'tests/"
+                                                "attribute in      'tests/"
                                                 "data/configuration_profiles/"
                                                 "bad.json'"):
             Pipeline(self.good_config_file,
