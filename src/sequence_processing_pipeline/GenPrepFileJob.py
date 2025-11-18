@@ -1,26 +1,44 @@
+from collections import defaultdict
+from functools import partial
+from os import makedirs, symlink
+from os.path import basename, exists, isdir, join
+from shutil import copy, copytree
+
+from metapool import (
+    demux_pre_prep,
+    demux_sample_sheet,
+    load_sample_sheet,
+    parse_prep,
+    pre_prep_needs_demuxing,
+    sheet_needs_demuxing,
+)
+
 from sequence_processing_pipeline.Job import Job
 from sequence_processing_pipeline.PipelineError import PipelineError
-from os import makedirs, symlink
-from os.path import isdir, join, exists, basename
-from shutil import copy, copytree
-from functools import partial
-from collections import defaultdict
-from metapool import (demux_sample_sheet, parse_prep,
-                      demux_pre_prep, pre_prep_needs_demuxing,
-                      sheet_needs_demuxing, load_sample_sheet)
 
 
 class GenPrepFileJob(Job):
-    def __init__(self, run_dir, convert_job_path, qc_job_path, output_path,
-                 input_file_path, seqpro_path, modules_to_load,
-                 qiita_job_id, reports_path, is_amplicon=False):
-
-        super().__init__(run_dir,
-                         output_path,
-                         'GenPrepFileJob',
-                         [seqpro_path],
-                         1000,
-                         modules_to_load=modules_to_load)
+    def __init__(
+        self,
+        run_dir,
+        convert_job_path,
+        qc_job_path,
+        output_path,
+        input_file_path,
+        seqpro_path,
+        modules_to_load,
+        qiita_job_id,
+        reports_path,
+        is_amplicon=False,
+    ):
+        super().__init__(
+            run_dir,
+            output_path,
+            "GenPrepFileJob",
+            [seqpro_path],
+            1000,
+            modules_to_load=modules_to_load,
+        )
 
         self.run_id = basename(run_dir)
         self.input_file_path = input_file_path
@@ -43,7 +61,7 @@ class GenPrepFileJob(Job):
         # copying. To support legacy seqpro, We will copy the single file
         # seqpro needs into a clean sub-directory named 'Reports'. This can
         # be fixed when seqpro is refactored.
-        reports_dir = join(self.output_path, self.run_id, 'Reports')
+        reports_dir = join(self.output_path, self.run_id, "Reports")
 
         # handle reports_path being either a directory or a file.
         if exists(reports_dir):
@@ -64,9 +82,9 @@ class GenPrepFileJob(Job):
 
         for project in projects:
             src_path = partial(join, qc_job_path, project)
-            filtered_seq_dir = src_path('filtered_sequences')
-            trimmed_seq_dir = src_path('trimmed_sequences')
-            fastp_rept_dir = src_path('fastp_reports_dir', 'json')
+            filtered_seq_dir = src_path("filtered_sequences")
+            trimmed_seq_dir = src_path("trimmed_sequences")
+            fastp_rept_dir = src_path("fastp_reports_dir", "json")
             amplicon_seq_dir = join(convert_job_path, project)
 
             dst = join(self.output_path, self.run_id, project)
@@ -76,21 +94,19 @@ class GenPrepFileJob(Job):
                 if self.is_amplicon:
                     if exists(amplicon_seq_dir):
                         makedirs(dst, exist_ok=True)
-                        symlink(amplicon_seq_dir, join(dst, 'amplicon'))
+                        symlink(amplicon_seq_dir, join(dst, "amplicon"))
                 else:
                     if exists(filtered_seq_dir):
                         makedirs(dst, exist_ok=True)
-                        symlink(filtered_seq_dir, join(dst,
-                                                       'filtered_sequences'))
+                        symlink(filtered_seq_dir, join(dst, "filtered_sequences"))
 
                     if exists(trimmed_seq_dir):
                         makedirs(dst, exist_ok=True)
-                        symlink(trimmed_seq_dir, join(dst,
-                                                      'trimmed_sequences'))
+                        symlink(trimmed_seq_dir, join(dst, "trimmed_sequences"))
 
                     if exists(fastp_rept_dir):
                         makedirs(dst, exist_ok=True)
-                        symlink(fastp_rept_dir, join(dst, 'json'))
+                        symlink(fastp_rept_dir, join(dst, "json"))
 
         # seqpro usage:
         # seqpro path/to/run_dir path/to/sample/sheet /path/to/fresh/output_dir
@@ -129,35 +145,40 @@ class GenPrepFileJob(Job):
             # generate a seqpro command-line using the new sample-sheet.
             if self.has_replicates:
                 self.replicate_count += 1
-                out_path = join(self.output_path,
-                                'PrepFiles',
-                                str(self.replicate_count))
+                out_path = join(
+                    self.output_path, "PrepFiles", str(self.replicate_count)
+                )
             else:
-                out_path = join(self.output_path, 'PrepFiles')
+                out_path = join(self.output_path, "PrepFiles")
 
-            self.commands.append([self.seqpro_path, '--verbose',
-                                  join(self.output_path, self.run_id),
-                                  f'"{fp}"',
-                                  out_path])
+            self.commands.append(
+                [
+                    self.seqpro_path,
+                    "--verbose",
+                    join(self.output_path, self.run_id),
+                    f'"{fp}"',
+                    out_path,
+                ]
+            )
 
     def _write_to_file(self, demuxed):
-        '''
+        """
         Saves the new plate-replicate-specific sample-sheet or pre-prep file
         w/a unique name. Assume demuxed is a list of DataFrames originating
         from a single sample-sheet or pre-prep file.
         :param demuxed:
         :return:
-        '''
+        """
         results = []
         for count, replicate in enumerate(demuxed, 1):
             if self.is_amplicon:
-                replicate['sample_name'] = replicate['orig_name']
+                replicate["sample_name"] = replicate["orig_name"]
                 fp = join(self.output_path, f"replicate_sheet_{count}.txt")
-                replicate.to_csv(fp, sep='\t', index=False, header=True)
+                replicate.to_csv(fp, sep="\t", index=False, header=True)
                 results.append(fp)
             else:
                 fp = join(self.output_path, f"replicate_sheet_{count}.csv")
-                with open(fp, 'w') as f:
+                with open(fp, "w") as f:
                     replicate.write(f)
                 results.append(fp)
 
@@ -165,13 +186,12 @@ class GenPrepFileJob(Job):
 
     def _get_prep_file_paths(self, stdout):
         # Strip UserWarnings and empty lines that appear on stdout.
-        tmp = [x for x in stdout.split('\n') if x != ''
-               and 'UserWarning' not in x]
+        tmp = [x for x in stdout.split("\n") if x != "" and "UserWarning" not in x]
 
         results = defaultdict(list)
 
         for line in tmp:
-            qiita_id, prep_file_fp = line.strip().split('\t')
+            qiita_id, prep_file_fp = line.strip().split("\t")
             results[qiita_id].append(prep_file_fp)
 
         return results
@@ -186,13 +206,13 @@ class GenPrepFileJob(Job):
             # currently that is how it's done. Hence, self.output_directory
             # and the path to run_dir might be different locations than the
             # others.
-            res = self._system_call(' '.join(command), callback=callback)
+            res = self._system_call(" ".join(command), callback=callback)
 
-            if res['return_code'] != 0:
+            if res["return_code"] != 0:
                 raise PipelineError("Seqpro encountered an error")
 
             # if successful, store results.
-            cmd_results = self._get_prep_file_paths(res['stdout'])
+            cmd_results = self._get_prep_file_paths(res["stdout"])
 
             for qiita_id in cmd_results:
                 results[qiita_id] += cmd_results[qiita_id]

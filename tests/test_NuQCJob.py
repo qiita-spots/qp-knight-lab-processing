@@ -1,16 +1,17 @@
+import gzip
 import shutil
 import unittest
-from os.path import join, abspath, exists, dirname
 from functools import partial
+from os import makedirs, remove, walk
+from os.path import abspath, dirname, exists, join
+
+from metapool import load_sample_sheet
+
 from sequence_processing_pipeline.NuQCJob import NuQCJob
 from sequence_processing_pipeline.PipelineError import (
-    PipelineError,
     JobFailedError,
+    PipelineError,
 )
-from os import makedirs, remove
-from metapool import load_sample_sheet
-from os import walk
-import gzip
 
 
 class TestNuQCJob(unittest.TestCase):
@@ -19,12 +20,8 @@ class TestNuQCJob(unittest.TestCase):
         package_root = abspath("./")
         self.path = partial(join, package_root, "tests", "data")
         self.good_sample_sheet_path = self.path("good-sample-sheet.csv")
-        self.bad_sample_sheet_path = self.path(
-            "bad-sample-sheet-" "metagenomics.csv"
-        )
-        self.bad_sheet_bools_path = self.path(
-            "bad-sample-sheet-" "bool-test.csv"
-        )
+        self.bad_sample_sheet_path = self.path("bad-sample-sheet-metagenomics.csv")
+        self.bad_sheet_bools_path = self.path("bad-sample-sheet-bool-test.csv")
         self.mmi_db_paths = [self.path("mmi.db")]
         self.project_list = [
             "StudyA_13059",
@@ -66,10 +63,7 @@ class TestNuQCJob(unittest.TestCase):
             sample_path = self.fastq_path(tmp)
             makedirs(sample_path, exist_ok=True)
 
-            ids = [
-                x[0]
-                for x in filter(lambda c: c[1] == project_name, sample_ids)
-            ]
+            ids = [x[0] for x in filter(lambda c: c[1] == project_name, sample_ids)]
 
             for id in ids:
                 fr_fp = join(sample_path, f"{id}_R1_001.fastq.gz")
@@ -832,28 +826,22 @@ class TestNuQCJob(unittest.TestCase):
             "slurm-9999999_35.out": [
                 "---------------",
                 "Run details:",
-                (
-                    "hds-fe848a9e-c0e9-49d9-978d-"
-                    "27565a314e8b 1908305 b2-018"
-                ),
+                ("hds-fe848a9e-c0e9-49d9-978d-27565a314e8b 1908305 b2-018"),
                 "---------------",
                 "+ this",
                 "+ that",
                 "+ blah",
-                ("something error: Generic Standin Error" " (GSE)."),
+                ("something error: Generic Standin Error (GSE)."),
             ],
             "slurm-9999999_17.out": [
                 "---------------",
                 "Run details:",
-                (
-                    "hds-fe848a9e-c0e9-49d9-978d-"
-                    "27565a314e8b 1908305 b2-018"
-                ),
+                ("hds-fe848a9e-c0e9-49d9-978d-27565a314e8b 1908305 b2-018"),
                 "---------------",
                 "+ this",
                 "+ that",
                 "+ blah",
-                ("something error: Another Standin Error" " (ASE)."),
+                ("something error: Another Standin Error (ASE)."),
             ],
         }
 
@@ -904,7 +892,7 @@ class TestNuQCJob(unittest.TestCase):
 
         self.assertEqual(
             str(e.exception),
-            "file 'not/path/to/sample/sheet' " "does not exist.",
+            "file 'not/path/to/sample/sheet' does not exist.",
         )
 
         # sample-sheet.
@@ -944,7 +932,8 @@ class TestNuQCJob(unittest.TestCase):
             sheet.write(f)
 
         with self.assertRaisesRegex(
-            ValueError, "'NotMetagenomic' is an unrecognized Assay type",
+            ValueError,
+            "'NotMetagenomic' is an unrecognized Assay type",
         ):
             NuQCJob(
                 self.fastq_root_path,
@@ -1005,16 +994,13 @@ class TestNuQCJob(unittest.TestCase):
             # preserved, while including known strings from each of the
             # sample log-files.
             self.assertIn("This job died.", str(e))
-            self.assertIn(
-                "something error: Generic Standin Error (GSE)", str(e)
-            )
-            self.assertIn(
-                "something error: Another Standin Error (ASE)", str(e)
-            )
+            self.assertIn("something error: Generic Standin Error (GSE)", str(e))
+            self.assertIn("something error: Another Standin Error (ASE)", str(e))
 
     def test_assay_value(self):
         with self.assertRaisesRegex(
-            ValueError, "'Metagenomics' is an unrecognized Assay type",
+            ValueError,
+            "'Metagenomics' is an unrecognized Assay type",
         ):
             NuQCJob(
                 self.fastq_root_path,
@@ -1036,7 +1022,7 @@ class TestNuQCJob(unittest.TestCase):
                 self.movi_path,
                 self.gres_value,
                 self.pmls_path,
-                []
+                [],
             )
 
     def test_audit(self):
@@ -1060,7 +1046,7 @@ class TestNuQCJob(unittest.TestCase):
             self.movi_path,
             self.gres_value,
             self.pmls_path,
-            []
+            [],
         )
 
         obs = job.audit(self.sample_ids)
@@ -1843,12 +1829,10 @@ class TestNuQCJob(unittest.TestCase):
             self.movi_path,
             self.gres_value,
             self.pmls_path,
-            []
+            [],
         )
 
-        my_path = (
-            "tests/data/output_dir/" "NuQCJob"
-        )
+        my_path = "tests/data/output_dir/NuQCJob"
 
         # since a .completed file is generated when the job is complete, we
         # must manually create the file we expect to see once a run is
@@ -1884,7 +1868,7 @@ class TestNuQCJob(unittest.TestCase):
             self.movi_path,
             self.gres_value,
             self.pmls_path,
-            []
+            [],
         )
 
         # test _confirm_job_completed() fails when a .completed file isn't
@@ -1912,7 +1896,7 @@ class TestNuQCJob(unittest.TestCase):
             self.movi_path,
             self.gres_value,
             self.pmls_path,
-            []
+            [],
         )
 
         # 2k as a parameter will promote the default value.
@@ -1941,7 +1925,7 @@ class TestNuQCJob(unittest.TestCase):
             self.movi_path,
             self.gres_value,
             self.pmls_path,
-            []
+            [],
         )
 
         # a sample of known valid fastq file-names plus a few edge-cases.
@@ -1971,7 +1955,7 @@ class TestNuQCJob(unittest.TestCase):
         bad_names = [
             "0363237608_S104_L001_R1_001.fastp.fastq.gz",
             "12050-GTCGTTACCCGC-407_S149_L002_R2_001.fastp.fastq.gz",
-            "13392_2065_165845_KFB9Y_176_GACACCGT_TACGAGCA_R2.fastq" ".gz",
+            "13392_2065_165845_KFB9Y_176_GACACCGT_TACGAGCA_R2.fastq.gz",
             "1373A..pool764_R1.fastq.gz",
             "20N_I_S189_L004.nonribosomal.R2.fastq.gz",
             "363148415_S263_L001_R2_001.fastp.fastq.gz",
@@ -1990,11 +1974,10 @@ class TestNuQCJob(unittest.TestCase):
             "SRR6967693_1.fastq.gz",
             "SRS1838544.SRR5079047_R1.fastq.gz",
             "S_71702_0030_9_13_16_S2303_L005.R1.fastq.gz",
-            "TCGA-R5-A7O7-01A-11R-A33Y-31_rnaseq.ribosomal.R2." "fastq.gz",
+            "TCGA-R5-A7O7-01A-11R-A33Y-31_rnaseq.ribosomal.R2.fastq.gz",
             "UNCID_2657496.7819e7d1-5b57-4a61-9eee-6aa31876e78b."
             "sorted_genome_alignments.nonribosomal.R2.fastq.gz",
-            "_1_TCGA-HU-A4H6-01A-11R-A251-31_rnaseq.nonribosomal.R2."
-            "fastq.gz",
+            "_1_TCGA-HU-A4H6-01A-11R-A251-31_rnaseq.nonribosomal.R2.fastq.gz",
             "tum038.fq.SRR8290295.R1.ebi.fastq.gz",
             # we don't want filtered or trimmed files to pass this
             # filter, only raw-files.
@@ -2098,7 +2081,7 @@ class TestNuQCJob(unittest.TestCase):
             self.movi_path,
             self.gres_value,
             self.pmls_path,
-            []
+            [],
         )
 
         obs = job._generate_mmi_filter_cmds("/my_work_dir")
@@ -2109,8 +2092,7 @@ class TestNuQCJob(unittest.TestCase):
             "/my_work_dir/foo",
             "minimap2 -2 -ax sr -t 2 db_path/mmi_2.db /my_work_dir/foo -a"
             " | samtools fastq -@ 2 -f 12 -F 256 > /my_work_dir/bar",
-            "mv /my_work_dir/bar /my_work_dir/seqs.interleaved.filter_"
-            "alignment.fastq",
+            "mv /my_work_dir/bar /my_work_dir/seqs.interleaved.filter_alignment.fastq",
             "[ -e /my_work_dir/foo ] && rm /my_work_dir/foo",
             "[ -e /my_work_dir/bar ] && rm /my_work_dir/bar",
         ]
@@ -2140,7 +2122,7 @@ class TestNuQCJob(unittest.TestCase):
             self.movi_path,
             self.gres_value,
             self.pmls_path,
-            ["BX"]
+            ["BX"],
         )
 
         obs = job._generate_mmi_filter_cmds("/my_work_dir")
@@ -2151,8 +2133,7 @@ class TestNuQCJob(unittest.TestCase):
             "/my_work_dir/foo",
             "minimap2 -2 -ax sr -y -t 2 db_path/mmi_2.db /my_work_dir/foo -a"
             " | samtools fastq -@ 2 -f 12 -F 256 -T BX > /my_work_dir/bar",
-            "mv /my_work_dir/bar /my_work_dir/seqs.interleaved.filter_"
-            "alignment.fastq",
+            "mv /my_work_dir/bar /my_work_dir/seqs.interleaved.filter_alignment.fastq",
             "[ -e /my_work_dir/foo ] && rm /my_work_dir/foo",
             "[ -e /my_work_dir/bar ] && rm /my_work_dir/bar",
         ]
@@ -2182,7 +2163,7 @@ class TestNuQCJob(unittest.TestCase):
             self.movi_path,
             self.gres_value,
             self.pmls_path,
-            ['BX']
+            ["BX"],
         )
 
         obs = job._generate_mmi_filter_cmds("/my_work_dir")
@@ -2193,10 +2174,9 @@ class TestNuQCJob(unittest.TestCase):
             "/my_work_dir/foo",
             "minimap2 -2 -ax sr -y -t 2 db_path/mmi_2.db /my_work_dir/foo -a"
             " | samtools fastq -@ 2 -f 12 -F 256 -T BX > /my_work_dir/bar",
-            "mv /my_work_dir/bar /my_work_dir/seqs.interleaved.filter_"
-            "alignment.fastq",
+            "mv /my_work_dir/bar /my_work_dir/seqs.interleaved.filter_alignment.fastq",
             "[ -e /my_work_dir/foo ] && rm /my_work_dir/foo",
-            "[ -e /my_work_dir/bar ] && rm /my_work_dir/bar"
+            "[ -e /my_work_dir/bar ] && rm /my_work_dir/bar",
         ]
 
         exp = "\n".join(exp)
@@ -2226,7 +2206,7 @@ class TestNuQCJob(unittest.TestCase):
             self.movi_path,
             self.gres_value,
             self.pmls_path,
-            ['BX']
+            ["BX"],
         )
 
         sample_dir = [
@@ -2238,19 +2218,16 @@ class TestNuQCJob(unittest.TestCase):
             "interleave.fastq.gz",
             "NuQCJob/only-adapter-filtered/EP023801B04_S27_L001_R2_001."
             "interleave.fastq.gz",
-            "NuQCJob/NPH_15288/fastp_reports_dir/html/EP890158A02_S58_L001_"
-            "R1_001.html",
-            "NuQCJob/NPH_15288/fastp_reports_dir/json/EP023801B04_S27_L001_"
-            "R1_001.json",
+            "NuQCJob/NPH_15288/fastp_reports_dir/html/EP890158A02_S58_L001_R1_001.html",
+            "NuQCJob/NPH_15288/fastp_reports_dir/json/EP023801B04_S27_L001_R1_001.json",
             "NuQCJob/process_all_fastq_files.sh",
-            "NuQCJob/hds-a439513a-5fcc-4f29-a1e5-902ee5c1309d.1897981."
-            "completed",
+            "NuQCJob/hds-a439513a-5fcc-4f29-a1e5-902ee5c1309d.1897981.completed",
             "NuQCJob/logs/slurm-1897981_1.out",
             "NuQCJob/tmp/hds-a439513a-5fcc-4f29-a1e5-902ee5c1309d-1",
-            'NuQCJob/only-adapter-filtered/CDPH-SAL_'
-            'Salmonella_Typhi_MDL-150__S36_L001_R1_001.interleave.fastq.gz',
-            'NuQCJob/only-adapter-filtered/CDPH-SAL_'
-            'Salmonella_Typhi_MDL-150__S36_L001_R2_001.interleave.fastq.gz',
+            "NuQCJob/only-adapter-filtered/CDPH-SAL_"
+            "Salmonella_Typhi_MDL-150__S36_L001_R1_001.interleave.fastq.gz",
+            "NuQCJob/only-adapter-filtered/CDPH-SAL_"
+            "Salmonella_Typhi_MDL-150__S36_L001_R2_001.interleave.fastq.gz",
         ]
 
         for dummy_fp in sample_dir:
@@ -2269,15 +2246,15 @@ class TestNuQCJob(unittest.TestCase):
         new_path = join(trimmed_only_path, "StudyA_13059")
 
         exp = {
-            'NuQCJob/only-adapter-filtered/StudyA_13059/EP890158A02'
-            '_S58_L001_R1_001.interleave.fastq.gz',
-            'NuQCJob/only-adapter-filtered/StudyA_13059/EP023801B04'
-            '_S27_L001_R1_001.interleave.fastq.gz',
-            'NuQCJob/only-adapter-filtered/StudyA_13059/EP890158A02'
-            '_S58_L001_R2_001.interleave.fastq.gz',
-            'NuQCJob/only-adapter-filtered/StudyA_13059/EP023801B04'
-            '_S27_L001_R2_001.interleave.fastq.gz'
-            }
+            "NuQCJob/only-adapter-filtered/StudyA_13059/EP890158A02"
+            "_S58_L001_R1_001.interleave.fastq.gz",
+            "NuQCJob/only-adapter-filtered/StudyA_13059/EP023801B04"
+            "_S27_L001_R1_001.interleave.fastq.gz",
+            "NuQCJob/only-adapter-filtered/StudyA_13059/EP890158A02"
+            "_S58_L001_R2_001.interleave.fastq.gz",
+            "NuQCJob/only-adapter-filtered/StudyA_13059/EP023801B04"
+            "_S27_L001_R2_001.interleave.fastq.gz",
+        }
 
         obs = []
         for root, dirs, files in walk(new_path):

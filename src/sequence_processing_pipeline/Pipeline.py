@@ -1,34 +1,35 @@
+import logging
+from collections import defaultdict
+from datetime import datetime
+from glob import glob
 from json import load as json_load
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
-from os import makedirs, listdir, walk
-from os.path import join, exists, isdir, basename
-from glob import glob
+from os import listdir, makedirs, walk
+from os.path import basename, exists, isdir, join
+from re import findall, search
+from xml.etree import ElementTree as ET
+
+import pandas as pd
+import sample_sheet
 from metapool import (
-    load_sample_sheet,
-    AmpliconSampleSheet,
-    is_blank,
-    parse_project_name,
-    SAMPLE_NAME_KEY,
-    QIITA_ID_KEY,
-    PROJECT_SHORT_NAME_KEY,
-    PROJECT_FULL_NAME_KEY,
     CONTAINS_REPLICATES_KEY,
-    get_model_by_instrument_id,
     PROFILE_NAME_KEY,
+    PROJECT_FULL_NAME_KEY,
+    PROJECT_SHORT_NAME_KEY,
+    QIITA_ID_KEY,
+    SAMPLE_NAME_KEY,
+    AmpliconSampleSheet,
+    get_model_by_instrument_id,
+    is_blank,
+    load_sample_sheet,
+    parse_project_name,
 )
 from metapool.plate import ErrorMessage, WarningMessage
 from metapool.prep import PREP_MF_COLUMNS
+
 from sequence_processing_pipeline.Job import Job
 from sequence_processing_pipeline.PipelineError import PipelineError
-import logging
-from re import findall, search
-import sample_sheet
-import pandas as pd
-from collections import defaultdict
-from datetime import datetime
-from xml.etree import ElementTree as ET
-
 
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 

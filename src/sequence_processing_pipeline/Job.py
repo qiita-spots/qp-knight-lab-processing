@@ -1,19 +1,22 @@
-from jinja2 import BaseLoader, TemplateNotFound
-from os.path import getmtime
-import pathlib
-from itertools import zip_longest
-from os import makedirs, walk
-from os.path import basename, exists, split, join
-from sequence_processing_pipeline.PipelineError import (PipelineError,
-                                                        JobFailedError,
-                                                        ExecFailedError)
-from subprocess import Popen, PIPE
-from time import sleep
 import logging
-from inspect import stack
+import pathlib
 import re
 from collections import Counter
 from glob import glob
+from inspect import stack
+from itertools import zip_longest
+from os import makedirs, walk
+from os.path import basename, exists, getmtime, join, split
+from subprocess import PIPE, Popen
+from time import sleep
+
+from jinja2 import BaseLoader, TemplateNotFound
+
+from sequence_processing_pipeline.PipelineError import (
+    ExecFailedError,
+    JobFailedError,
+    PipelineError,
+)
 
 
 # taken from https://jinja.palletsprojects.com/en/3.0.x/api/#jinja2.BaseLoader
@@ -35,30 +38,55 @@ class KISSLoader(BaseLoader):
 
 
 class Job:
-    slurm_status_terminated = ['BOOT_FAIL', 'CANCELLED', 'DEADLINE', 'FAILED',
-                               'NODE_FAIL', 'OUT_OF_MEMORY', 'PREEMPTED',
-                               'REVOKED', 'TIMEOUT']
+    slurm_status_terminated = [
+        "BOOT_FAIL",
+        "CANCELLED",
+        "DEADLINE",
+        "FAILED",
+        "NODE_FAIL",
+        "OUT_OF_MEMORY",
+        "PREEMPTED",
+        "REVOKED",
+        "TIMEOUT",
+    ]
 
-    slurm_status_successful = ['COMPLETED']
+    slurm_status_successful = ["COMPLETED"]
 
-    slurm_status_running = ['COMPLETING', 'CONFIGURING', 'PENDING', 'REQUEUED',
-                            'REQUEUE_FED', 'REQUEUE_HOLD', 'RESIZING',
-                            'RESV_DEL_HOLD', 'RUNNING', 'SIGNALING',
-                            'SPECIAL_EXIT', 'STAGE_OUT', 'STOPPED',
-                            'SUSPENDED']
+    slurm_status_running = [
+        "COMPLETING",
+        "CONFIGURING",
+        "PENDING",
+        "REQUEUED",
+        "REQUEUE_FED",
+        "REQUEUE_HOLD",
+        "RESIZING",
+        "RESV_DEL_HOLD",
+        "RUNNING",
+        "SIGNALING",
+        "SPECIAL_EXIT",
+        "STAGE_OUT",
+        "STOPPED",
+        "SUSPENDED",
+    ]
 
-    slurm_status_not_running = (slurm_status_terminated +
-                                slurm_status_successful)
+    slurm_status_not_running = slurm_status_terminated + slurm_status_successful
 
-    slurm_status_all_states = (slurm_status_terminated +
-                               slurm_status_successful +
-                               slurm_status_running)
+    slurm_status_all_states = (
+        slurm_status_terminated + slurm_status_successful + slurm_status_running
+    )
 
     polling_interval_in_seconds = 60
     squeue_retry_in_seconds = 10
 
-    def __init__(self, root_dir, output_path, job_name, executable_paths,
-                 max_array_length, modules_to_load=None):
+    def __init__(
+        self,
+        root_dir,
+        output_path,
+        job_name,
+        executable_paths,
+        max_array_length,
+        modules_to_load=None,
+    ):
         """
         Base-class to implement Jobs from.
         :param job_name: A name for the job. Used to create log files.
@@ -75,7 +103,7 @@ class Job:
         self.output_path = join(output_path, self.job_name)
         self._directory_check(self.output_path, create=True)
 
-        self.log_path = join(self.output_path, 'logs')
+        self.log_path = join(self.output_path, "logs")
         self._directory_check(self.log_path, create=True)
 
         self.modules_to_load = modules_to_load
@@ -83,14 +111,15 @@ class Job:
 
         self.script_count = 0
 
-        self.bypass_exec_check = ['bcl-convert']
+        self.bypass_exec_check = ["bcl-convert"]
 
         self.suffix = None
 
         # checking if this is running as part of the unittest
         # https://stackoverflow.com/a/25025987
-        self.is_test = True if [
-            x for x in stack() if 'unittest' in x.filename] else False
+        self.is_test = (
+            True if [x for x in stack() if "unittest" in x.filename] else False
+        )
 
         self.audit_folders = None
 
@@ -129,24 +158,22 @@ class Job:
         raise PipelineError("Base class run() method not implemented.")
 
     def mark_job_completed(self):
-        with open(join(self.output_path, 'job_completed'), 'w') as f:
+        with open(join(self.output_path, "job_completed"), "w") as f:
             f.write("job_completed")
 
     def mark_post_processing_completed(self):
-        with open(join(self.output_path,
-                       'post_processing_completed'), 'w') as f:
+        with open(join(self.output_path, "post_processing_completed"), "w") as f:
             f.write("post_processing_completed")
 
     def parse_logs(self):
         # by default, look for anything to parse in the logs directory.
-        log_path = join(self.output_path, 'logs')
-        files = sorted(glob(join(log_path, '*')))
+        log_path = join(self.output_path, "logs")
+        files = sorted(glob(join(log_path, "*")))
         msgs = []
 
         for some_file in files:
-            with open(some_file, 'r') as f:
-                msgs += [line for line in f.readlines()
-                         if 'error:' in line.lower()]
+            with open(some_file, "r") as f:
+                msgs += [line for line in f.readlines() if "error:" in line.lower()]
 
         return [msg.strip() for msg in msgs]
 
@@ -164,20 +191,19 @@ class Job:
 
         isPath = True if len(tmp) > 1 else False
 
-        cmd = 'which ' + file_path
+        cmd = "which " + file_path
 
         if modules_to_load:
-            cmd = 'module load ' + ' '.join(modules_to_load) + ';' + cmd
+            cmd = "module load " + " ".join(modules_to_load) + ";" + cmd
 
         results = self._system_call(cmd)
-        result = results['stdout'].strip()
+        result = results["stdout"].strip()
 
         if not result:
             raise PipelineError("File '%s' does not exist." % file_path)
 
         if isPath is True and result != file_path:
-            raise PipelineError(f"Found path '{result} does not match "
-                                f"{file_path}")
+            raise PipelineError(f"Found path '{result} does not match {file_path}")
 
         return result
 
@@ -208,7 +234,8 @@ class Job:
                     raise PipelineError(str(e))
             else:
                 raise PipelineError(
-                    "directory_path '%s' does not exist." % directory_path)
+                    "directory_path '%s' does not exist." % directory_path
+                )
 
     def _system_call(self, cmd, allow_return_codes=[], callback=None):
         """
@@ -223,11 +250,10 @@ class Job:
         :return: a dictionary containing stdout, stderr, and return_code as
                  key/value pairs.
         """
-        proc = Popen(cmd, universal_newlines=True, shell=True,
-                     stdout=PIPE, stderr=PIPE)
+        proc = Popen(cmd, universal_newlines=True, shell=True, stdout=PIPE, stderr=PIPE)
 
         if callback is not None:
-            callback(jid=proc.pid, status='RUNNING')
+            callback(jid=proc.pid, status="RUNNING")
 
         # Communicate pulls all stdout/stderr from the PIPEs
         # This call blocks until the command is done
@@ -242,30 +268,31 @@ class Job:
 
         if return_code not in acceptable_return_codes:
             if callback is not None:
-                callback(jid=proc.pid, status='ERROR')
+                callback(jid=proc.pid, status="ERROR")
             msg = (
-                'Execute command-line statement failure:\n'
-                f'Command: {cmd}\n'
-                f'return code: {return_code}\n'
-                f'stdout: {stdout}\n'
-                f'stderr: {stderr}\n')
+                "Execute command-line statement failure:\n"
+                f"Command: {cmd}\n"
+                f"return code: {return_code}\n"
+                f"stdout: {stdout}\n"
+                f"stderr: {stderr}\n"
+            )
             logging.error(msg)
             raise ExecFailedError(message=msg)
 
         if callback is not None:
-            callback(jid=proc.pid, status='COMPLETED')
+            callback(jid=proc.pid, status="COMPLETED")
 
-        return {'stdout': stdout, 'stderr': stderr, 'return_code': return_code}
+        return {"stdout": stdout, "stderr": stderr, "return_code": return_code}
 
     def _query_slurm(self, job_ids):
         # query_slurm encapsulates the handling of squeue.
         count = 0
         while True:
-            result = self._system_call("squeue -t all -j "
-                                       f"{','.join(job_ids)} "
-                                       "-o '%i,%T'")
+            result = self._system_call(
+                f"squeue -t all -j {','.join(job_ids)} -o '%i,%T'"
+            )
 
-            if result['return_code'] == 0:
+            if result["return_code"] == 0:
                 # there was no issue w/squeue, break this loop and
                 # continue.
                 break
@@ -276,13 +303,13 @@ class Job:
                 count += 1
 
                 if count > 3:
-                    raise ExecFailedError(result['stderr'])
+                    raise ExecFailedError(result["stderr"])
 
                 sleep(Job.squeue_retry_in_seconds)
 
-        lines = result['stdout'].split('\n')
+        lines = result["stdout"].split("\n")
         lines.pop(0)  # remove header
-        lines = [x.split(',') for x in lines if x != '']
+        lines = [x.split(",") for x in lines if x != ""]
 
         jobs = {}
         for job_id, state in lines:
@@ -293,12 +320,12 @@ class Job:
         return jobs
 
     def wait_on_job_ids(self, job_ids, callback=None):
-        '''
+        """
         Wait for the given job-ids to finish running before returning.
         :param job_ids: A list of Slurm job-ids
         :param callback: Set callback function that receives status updates.
         :return: A dictionary of job-ids and their current statuses.
-        '''
+        """
 
         # wait_on_job_ids was broken out of submit_job() and updated to monitor
         # multiple job ids. This will allow multiple jobs to be submitted to
@@ -328,15 +355,20 @@ class Job:
                 # that are running.
                 break
 
-            logging.debug(f"sleeping {Job.polling_interval_in_seconds} "
-                          "seconds...")
+            logging.debug(f"sleeping {Job.polling_interval_in_seconds} seconds...")
             sleep(Job.polling_interval_in_seconds)
 
         return jobs
 
-    def submit_job(self, script_path, job_parameters=None,
-                   script_parameters=None, wait=True,
-                   exec_from=None, callback=None):
+    def submit_job(
+        self,
+        script_path,
+        job_parameters=None,
+        script_parameters=None,
+        wait=True,
+        exec_from=None,
+        callback=None,
+    ):
         """
         Submit a Slurm job script and optionally wait for it to finish.
         :param script_path: The path to a Slurm job (bash) script.
@@ -351,15 +383,15 @@ class Job:
                  job was unsuccessful.
         """
         if job_parameters:
-            cmd = 'sbatch %s %s' % (job_parameters, script_path)
+            cmd = "sbatch %s %s" % (job_parameters, script_path)
         else:
-            cmd = 'sbatch %s' % (script_path)
+            cmd = "sbatch %s" % (script_path)
 
         if script_parameters:
-            cmd += ' %s' % script_parameters
+            cmd += " %s" % script_parameters
 
         if exec_from:
-            cmd = f'cd {exec_from};' + cmd
+            cmd = f"cd {exec_from};" + cmd
 
         logging.debug("job scheduler call: %s" % cmd)
 
@@ -370,12 +402,12 @@ class Job:
         # successfully submitted the job. In this case, it should return
         # the id of the job in stdout.
         results = self._system_call(cmd)
-        stdout = results['stdout']
+        stdout = results["stdout"]
 
         job_id = stdout.strip().split()[-1]
         # during testing sometimes job_id would be a fullpath and the
         # log_fp creation will fail so making sure this doesn't happen
-        if job_id.startswith('/'):
+        if job_id.startswith("/"):
             job_id = basename(job_id)
 
         # Just to give some time for everything to be set up properly
@@ -395,7 +427,7 @@ class Job:
 
         if job_id in results:
             # job is a non-array job
-            job_result = {'job_id': job_id, 'job_state': results[job_id]}
+            job_result = {"job_id": job_id, "job_state": results[job_id]}
         else:
             # job is an array job
             # assume all array jobs in this case will be associated w/job_id.
@@ -407,10 +439,10 @@ class Job:
             # state of a single job. Instead we're returning a dictionary of
             # the number of unique states the set of array-jobs ended up in and
             # the number for each one.
-            job_result = {'job_id': job_id, 'job_state': dict(counts)}
+            job_result = {"job_id": job_id, "job_state": dict(counts)}
 
         if callback is not None:
-            if isinstance(job_result['job_state'], dict):
+            if isinstance(job_result["job_state"], dict):
                 # this is an array job
                 states = []
                 for key in counts:
@@ -420,21 +452,24 @@ class Job:
 
             else:
                 # this is a standard job
-                callback(jid=job_id, status=job_result['job_state'])
+                callback(jid=job_id, status=job_result["job_state"])
 
-        if isinstance(job_result['job_state'], dict):
-            states = list(job_result['job_state'].keys())
-            if states == ['COMPLETED']:
+        if isinstance(job_result["job_state"], dict):
+            states = list(job_result["job_state"].keys())
+            if states == ["COMPLETED"]:
                 return job_result
             else:
-                raise JobFailedError(f"job {job_id} exited with jobs in the "
-                                     f"following states: {', '.join(states)}")
+                raise JobFailedError(
+                    f"job {job_id} exited with jobs in the "
+                    f"following states: {', '.join(states)}"
+                )
         else:
-            if job_result['job_state'] == 'COMPLETED':
+            if job_result["job_state"] == "COMPLETED":
                 return job_result
             else:
-                raise JobFailedError(f"job {job_id} exited with status "
-                                     f"{job_result['job_state']}")
+                raise JobFailedError(
+                    f"job {job_id} exited with status {job_result['job_state']}"
+                )
 
     def _group_commands(self, cmds):
         # break list of commands into chunks of max_array_length (Typically
@@ -442,8 +477,10 @@ class Job:
         # than 1000 jobs long, we'll chain additional commands together, and
         # evenly distribute them amongst the first 1000.
         cmds.sort()
-        chunks = [cmds[i:i + self.max_array_length] for i in
-                  range(0, len(cmds), self.max_array_length)]
+        chunks = [
+            cmds[i : i + self.max_array_length]
+            for i in range(0, len(cmds), self.max_array_length)
+        ]
 
         results = []
 
@@ -454,7 +491,7 @@ class Job:
             # zip_longest() pads shorter lists with None. In our case, we
             # don't want an additional command named 'None'.
             chained_cmd = [x for x in list(tuple) if x is not None]
-            chained_cmd = ';'.join(chained_cmd)
+            chained_cmd = ";".join(chained_cmd)
             results.append(chained_cmd)
 
         return results
@@ -479,14 +516,13 @@ class Job:
             raise PipelineError("Audit() method called on base Job object.")
 
         for root, dirs, files in walk(self.output_path):
-            if 'zero_files' in root:
+            if "zero_files" in root:
                 continue
             if self.audit_folders is not None:
                 # let's check that any of the audit_folders is in root
                 if not [f for f in self.audit_folders if f in root]:
                     continue
-            files_found += [join(root, x) for x in files if
-                            x.endswith(self.suffix)]
+            files_found += [join(root, x) for x in files if x.endswith(self.suffix)]
 
         found = []
         for sample_id in sample_ids:
@@ -495,7 +531,7 @@ class Job:
                 # that all fastq.gz files will begin with sample_id followed
                 # by an '_', and then one or more additional parameters
                 # separated by underscores. This substring is unlikely to be
-                if basename(found_file).startswith('%s_' % sample_id):
+                if basename(found_file).startswith("%s_" % sample_id):
                     found.append(sample_id)
                     break
 
@@ -510,19 +546,19 @@ class Job:
         return self.force_job_fail
 
     def extract_project_names_from_fastq_dir(self, path_to_fastq_dir):
-        '''
+        """
         Returns list of <project_qiita-ids> based on a fastq path.
         :param path_to_fastq_dir: Path to a nested dir containing fastq files.
         :return: list of strings of the form PROJECT-NAME_QIITA-ID.
-        '''
+        """
         tmp = []
 
         # given a nested directory containing fastq.gz files from any part
         # of the SPP, get a list of paths to just the fastq files.
         for root, dirs, files in walk(path_to_fastq_dir):
             for file_name in files:
-                if file_name.endswith('.fastq.gz'):
-                    if not file_name.startswith('Undetermined'):
+                if file_name.endswith(".fastq.gz"):
+                    if not file_name.startswith("Undetermined"):
                         # do not include the Undetermined files found in
                         # ConvertJob, because they do not contain a project
                         # name in their path, by definition.
@@ -534,7 +570,7 @@ class Job:
         # break up the path into a set of unique directory names. at least
         # some of these will be of the form PROJECT-NAME_QIITA-ID. Flatten
         # out the list of lists into a single list.
-        tmp = [some_root.split('/') for some_root in tmp]
+        tmp = [some_root.split("/") for some_root in tmp]
         tmp = [dir_name for sub_list in tmp for dir_name in sub_list]
 
         # remove any duplicate entries from the list.
@@ -547,7 +583,7 @@ class Job:
         # Hence, this method filters for names that fit the above format.
         results = []
         for dir_name in tmp:
-            m = re.match(r'^(\w[\w\-_]*_\d{5})$', dir_name)
+            m = re.match(r"^(\w[\w\-_]*_\d{5})$", dir_name)
             if m:
                 results.append(m.groups(0)[0])
 
