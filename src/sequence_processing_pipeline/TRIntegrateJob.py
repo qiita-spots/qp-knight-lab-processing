@@ -1,25 +1,39 @@
-from os.path import join
-from .Job import Job, KISSLoader
-from .PipelineError import JobFailedError
 import logging
-from jinja2 import Environment
-from .Pipeline import Pipeline
-from .PipelineError import PipelineError
-from metapool import load_sample_sheet
-from os import makedirs, walk
-from shutil import copyfile
-from collections import defaultdict
 import re
+from collections import defaultdict
+from os import makedirs, walk
+from os.path import join
+from shutil import copyfile
 
+from jinja2 import Environment
+from metapool import load_sample_sheet
+
+from .Job import Job, KISSLoader
+from .Pipeline import Pipeline
+from .PipelineError import JobFailedError, PipelineError
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 class TRIntegrateJob(Job):
-    def __init__(self, run_dir, output_path, sample_sheet_path, queue_name,
-                 node_count, wall_time_limit, jmem, modules_to_load,
-                 qiita_job_id, integrate_script_path, sil_path, raw_fastq_dir,
-                 reference_base, reference_map, cores_per_task):
+    def __init__(
+        self,
+        run_dir,
+        output_path,
+        sample_sheet_path,
+        queue_name,
+        node_count,
+        wall_time_limit,
+        jmem,
+        modules_to_load,
+        qiita_job_id,
+        integrate_script_path,
+        sil_path,
+        raw_fastq_dir,
+        reference_base,
+        reference_map,
+        cores_per_task,
+    ):
         """
         ConvertJob provides a convenient way to run bcl-convert or bcl2fastq
         on a directory BCL files to generate Fastq files.
@@ -38,19 +52,21 @@ class TRIntegrateJob(Job):
         :param reference_map: None
         :param cores_per_task: # of CPU cores per node to request.
         """
-        super().__init__(run_dir,
-                         output_path,
-                         'TRIntegrateJob',
-                         [],
-                         # max_array_length and self.max_array_length are
-                         # not used by TRIntegrateJob.
-                         -1,
-                         modules_to_load=modules_to_load)
+        super().__init__(
+            run_dir,
+            output_path,
+            "TRIntegrateJob",
+            [],
+            # max_array_length and self.max_array_length are
+            # not used by TRIntegrateJob.
+            -1,
+            modules_to_load=modules_to_load,
+        )
 
         self.sample_sheet_path = sample_sheet_path
         self._file_check(self.sample_sheet_path)
         metadata = self._process_sample_sheet()
-        self.sample_ids = metadata['sample_ids']
+        self.sample_ids = metadata["sample_ids"]
         self.queue_name = queue_name
         self.node_count = node_count
         self.wall_time_limit = wall_time_limit
@@ -58,7 +74,7 @@ class TRIntegrateJob(Job):
         self.integrate_script_path = integrate_script_path
         self.sil_path = sil_path
         self.raw_fastq_dir = raw_fastq_dir
-        self.tmp_dir = join(self.output_path, 'tmp')
+        self.tmp_dir = join(self.output_path, "tmp")
 
         self.reference_base = reference_base
         self.reference_map = reference_map
@@ -67,16 +83,16 @@ class TRIntegrateJob(Job):
         self.jmem = str(int(jmem))
         self.qiita_job_id = qiita_job_id
         self.sample_count = len(self.sample_ids)
-        self.jinja_env = Environment(loader=KISSLoader('templates'))
-        self.job_name = (f"integrate_{self.qiita_job_id}")
+        self.jinja_env = Environment(loader=KISSLoader("templates"))
+        self.job_name = f"integrate_{self.qiita_job_id}"
 
-        with open(self.sil_path, 'r') as f:
+        with open(self.sil_path, "r") as f:
             # obtain the number of unique barcode_ids as determined by
             # TellReadJob() in order to set up an array job of the
             # proper length.
             lines = f.readlines()
             lines = [x.strip() for x in lines]
-            lines = [x for x in lines if x != '']
+            lines = [x for x in lines if x != ""]
             self.barcode_id_count = len(lines)
 
     def run(self, callback=None):
@@ -84,32 +100,31 @@ class TRIntegrateJob(Job):
 
         # copy sil_path to TRIntegrate working directory and rename to a
         # predictable name.
-        copyfile(self.sil_path,
-                 join(self.output_path, 'sample_index_list.txt'))
+        copyfile(self.sil_path, join(self.output_path, "sample_index_list.txt"))
 
         makedirs(self.tmp_dir)
 
-        params = ['--parsable',
-                  f'-J {self.job_name}',
-                  f'--array 1-{self.sample_count}']
+        params = ["--parsable", f"-J {self.job_name}", f"--array 1-{self.sample_count}"]
         try:
-            self.job_info = self.submit_job(job_script_path,
-                                            job_parameters=' '.join(params),
-                                            exec_from=None,
-                                            callback=callback)
+            self.job_info = self.submit_job(
+                job_script_path,
+                job_parameters=" ".join(params),
+                exec_from=None,
+                callback=callback,
+            )
 
-            logging.debug(f'TRIntegrateJob Job Info: {self.job_info}')
+            logging.debug(f"TRIntegrateJob Job Info: {self.job_info}")
         except JobFailedError as e:
             # When a job has failed, parse the logs generated by this specific
             # job to return a more descriptive message to the user.
             info = self.parse_logs()
             # prepend just the message component of the Error.
             info.insert(0, str(e))
-            raise JobFailedError('\n'.join(info))
+            raise JobFailedError("\n".join(info))
 
         self.mark_job_completed()
 
-        logging.debug(f'TRIntegrateJob {self.job_info["job_id"]} completed')
+        logging.debug(f"TRIntegrateJob {self.job_info['job_id']} completed")
 
     def _process_sample_sheet(self):
         sheet = load_sample_sheet(self.sample_sheet_path)
@@ -119,45 +134,48 @@ class TRIntegrateJob(Job):
             raise PipelineError(s)
 
         header = sheet.Header
-        chemistry = header['chemistry']
+        chemistry = header["chemistry"]
 
-        if header['Assay'] not in Pipeline.assay_types:
-            s = "Assay value '%s' is not recognized." % header['Assay']
+        if header["Assay"] not in Pipeline.assay_types:
+            s = "Assay value '%s' is not recognized." % header["Assay"]
             raise PipelineError(s)
 
         sample_ids = []
         for sample in sheet.samples:
-            sample_ids.append((sample['Sample_ID'], sample['Sample_Project']))
+            sample_ids.append((sample["Sample_ID"], sample["Sample_Project"]))
 
         bioinformatics = sheet.Bioinformatics
 
         # reorganize the data into a list of dictionaries, one for each row.
         # the ordering of the rows will be preserved in the order of the list.
-        lst = bioinformatics.to_dict('records')
+        lst = bioinformatics.to_dict("records")
 
         # human-filtering jobs are scoped by project. Each job requires
         # particular knowledge of the project.
-        return {'chemistry': chemistry,
-                'projects': lst,
-                'sample_ids': sample_ids}
+        return {"chemistry": chemistry, "projects": lst, "sample_ids": sample_ids}
 
     def _generate_job_script(self):
-        job_script_path = join(self.output_path, 'integrate_test.sbatch')
+        job_script_path = join(self.output_path, "integrate_test.sbatch")
         template = self.jinja_env.get_template("integrate.sbatch")
 
         with open(job_script_path, mode="w", encoding="utf-8") as f:
-            f.write(template.render({
-                "job_name": "integrate",
-                "wall_time_limit": self.wall_time_limit,
-                "mem_in_gb": self.jmem,
-                "node_count": self.node_count,
-                "cores_per_task": self.cores_per_task,
-                "integrate_script_path": self.integrate_script_path,
-                "queue_name": self.queue_name,
-                "barcode_id_count": self.barcode_id_count,
-                "raw_fastq_dir": self.raw_fastq_dir,
-                "tmp_dir": self.tmp_dir,
-                "output_dir": self.output_path}))
+            f.write(
+                template.render(
+                    {
+                        "job_name": "integrate",
+                        "wall_time_limit": self.wall_time_limit,
+                        "mem_in_gb": self.jmem,
+                        "node_count": self.node_count,
+                        "cores_per_task": self.cores_per_task,
+                        "integrate_script_path": self.integrate_script_path,
+                        "queue_name": self.queue_name,
+                        "barcode_id_count": self.barcode_id_count,
+                        "raw_fastq_dir": self.raw_fastq_dir,
+                        "tmp_dir": self.tmp_dir,
+                        "output_dir": self.output_path,
+                    }
+                )
+            )
 
         return job_script_path
 
@@ -168,7 +186,7 @@ class TRIntegrateJob(Job):
                     return s_id
 
         integrated = defaultdict(list)
-        for root, dirs, files in walk(join(self.output_path, 'integrated')):
+        for root, dirs, files in walk(join(self.output_path, "integrated")):
             for _file in files:
                 m = re.match(r"(C5\d\d)\.([R,I]\d)\.fastq.gz", _file)
                 if m:
@@ -180,7 +198,7 @@ class TRIntegrateJob(Job):
         failed = []
         for barcode_id in integrated:
             # we expect only the following read/orientations.
-            if not set(integrated[barcode_id]) == {'I1', 'R1', 'R2'}:
+            if not set(integrated[barcode_id]) == {"I1", "R1", "R2"}:
                 failed.append(map_barcode_id_to_sample_id(barcode_id))
 
         return sorted(failed)

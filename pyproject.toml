@@ -43,7 +43,7 @@ dependencies = [
     "pandas",
     "lxml",
     'requests',
-    'flake8',
+    'ruff',
     'nose',
     'coverage',
     'pgzip',

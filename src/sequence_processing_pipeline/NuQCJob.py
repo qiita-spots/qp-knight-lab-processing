@@ -1,31 +1,50 @@
-from metapool import load_sample_sheet
-from os import stat, makedirs, rename
-from os.path import join, basename, dirname, exists, abspath, split
-from sequence_processing_pipeline.Job import Job, KISSLoader
-from sequence_processing_pipeline.PipelineError import (PipelineError,
-                                                        JobFailedError)
-from sequence_processing_pipeline.Pipeline import Pipeline
-from shutil import move
 import logging
-from sequence_processing_pipeline.Commands import split_similar_size_bins
-from sequence_processing_pipeline.util import iter_paired_files, FILES_REGEX
-from jinja2 import Environment
 from glob import glob
+from os import makedirs, rename, stat
+from os.path import abspath, basename, dirname, exists, join, split
+from shutil import move
 from sys import executable
 
+from jinja2 import Environment
+from metapool import load_sample_sheet
+
+from sequence_processing_pipeline.Commands import split_similar_size_bins
+from sequence_processing_pipeline.Job import Job, KISSLoader
+from sequence_processing_pipeline.Pipeline import Pipeline
+from sequence_processing_pipeline.PipelineError import JobFailedError, PipelineError
+from sequence_processing_pipeline.util import FILES_REGEX, iter_paired_files
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 class NuQCJob(Job):
-    def __init__(self, fastq_root_dir, output_path, sample_sheet_path,
-                 minimap_database_paths, queue_name, node_count,
-                 wall_time_limit, jmem, fastp_path, minimap2_path,
-                 samtools_path, modules_to_load, qiita_job_id,
-                 max_array_length, known_adapters_path, movi_path, gres_value,
-                 pmls_path, additional_fastq_tags, bucket_size=8,
-                 length_limit=100, cores_per_task=4, files_regex='SPP',
-                 read_length='short'):
+    def __init__(
+        self,
+        fastq_root_dir,
+        output_path,
+        sample_sheet_path,
+        minimap_database_paths,
+        queue_name,
+        node_count,
+        wall_time_limit,
+        jmem,
+        fastp_path,
+        minimap2_path,
+        samtools_path,
+        modules_to_load,
+        qiita_job_id,
+        max_array_length,
+        known_adapters_path,
+        movi_path,
+        gres_value,
+        pmls_path,
+        additional_fastq_tags,
+        bucket_size=8,
+        length_limit=100,
+        cores_per_task=4,
+        files_regex="SPP",
+        read_length="short",
+    ):
         """
         Submit a slurm job where the contents of fastq_root_dir are processed
         using fastp, minimap2, and samtools. Human-genome sequences will be
@@ -55,19 +74,21 @@ class NuQCJob(Job):
         :param files_regex: the FILES_REGEX to use for parsing files
         :param read_length: string defining the read length: long/short.
         """
-        super().__init__(fastq_root_dir,
-                         output_path,
-                         'NuQCJob',
-                         [fastp_path, minimap2_path, samtools_path],
-                         max_array_length,
-                         modules_to_load=modules_to_load)
+        super().__init__(
+            fastq_root_dir,
+            output_path,
+            "NuQCJob",
+            [fastp_path, minimap2_path, samtools_path],
+            max_array_length,
+            modules_to_load=modules_to_load,
+        )
         self.read_length = read_length
         self.sample_sheet_path = sample_sheet_path
         self._file_check(self.sample_sheet_path)
         metadata = self._process_sample_sheet()
-        self.sample_ids = metadata['sample_ids']
-        self.project_data = metadata['projects']
-        self.chemistry = metadata['chemistry']
+        self.sample_ids = metadata["sample_ids"]
+        self.project_data = metadata["projects"]
+        self.chemistry = metadata["chemistry"]
         self.mmi_file_paths = minimap_database_paths
         self.queue_name = queue_name
         self.node_count = node_count
@@ -78,17 +99,17 @@ class NuQCJob(Job):
         self.minimap2_path = minimap2_path
         self.samtools_path = samtools_path
         self.qiita_job_id = qiita_job_id
-        self.suffix = 'fastq.gz'
+        self.suffix = "fastq.gz"
         self.movi_path = movi_path
         self.gres_value = gres_value
         self.pmls_path = pmls_path
         self.additional_fastq_tags = additional_fastq_tags
-        self.audit_folders = ['filtered_sequences']
+        self.audit_folders = ["filtered_sequences"]
 
         # for projects that use sequence_processing_pipeline as a dependency,
         # jinja_env must be set to sequence_processing_pipeline's root path,
         # rather than the project's root path.
-        self.jinja_env = Environment(loader=KISSLoader('templates'))
+        self.jinja_env = Environment(loader=KISSLoader("templates"))
 
         self.counts = {}
         self.known_adapters_path = known_adapters_path
@@ -105,80 +126,82 @@ class NuQCJob(Job):
         # one node using this pair of switches (N nodes * n tasks per node).
         self.cores_per_task = cores_per_task
 
-        self.temp_dir = join(self.output_path, 'tmp')
+        self.temp_dir = join(self.output_path, "tmp")
         makedirs(self.temp_dir, exist_ok=True)
 
         self.batch_prefix = f"hds-{self.qiita_job_id}"
         self.minimum_bytes = 3100
-        self.fastq_regex = FILES_REGEX[files_regex]['fastq']
-        self.interleave_fastq_regex = FILES_REGEX[
-            files_regex]['interleave_fastq']
-        self.html_regex = FILES_REGEX[files_regex]['html']
-        self.json_regex = FILES_REGEX[files_regex]['json']
+        self.fastq_regex = FILES_REGEX[files_regex]["fastq"]
+        self.interleave_fastq_regex = FILES_REGEX[files_regex]["interleave_fastq"]
+        self.html_regex = FILES_REGEX[files_regex]["html"]
+        self.json_regex = FILES_REGEX[files_regex]["json"]
 
         self._validate_project_data()
 
     def _validate_project_data(self):
         # Validate project settings in [Bioinformatics]
         for project in self.project_data:
-            if 'ForwardAdapter' not in project or \
-                    project['ForwardAdapter'] == 'NA':
-                project['ForwardAdapter'] = None
+            if "ForwardAdapter" not in project or project["ForwardAdapter"] == "NA":
+                project["ForwardAdapter"] = None
 
-            if 'ReverseAdapter' not in project or \
-                    project['ReverseAdapter'] == 'NA':
-                project['ReverseAdapter'] = None
+            if "ReverseAdapter" not in project or project["ReverseAdapter"] == "NA":
+                project["ReverseAdapter"] = None
 
-            if project['ForwardAdapter'] is None:
-                if project['ReverseAdapter'] is not None:
-                    raise ValueError(("ForwardAdapter is declared but not "
-                                      "ReverseAdapter."))
+            if project["ForwardAdapter"] is None:
+                if project["ReverseAdapter"] is not None:
+                    raise ValueError(
+                        ("ForwardAdapter is declared but not ReverseAdapter.")
+                    )
 
-            if project['ReverseAdapter'] is None:
-                if project['ForwardAdapter'] is not None:
-                    raise ValueError(("ReverseAdapter is declared but not "
-                                      "ForwardAdapter."))
+            if project["ReverseAdapter"] is None:
+                if project["ForwardAdapter"] is not None:
+                    raise ValueError(
+                        ("ReverseAdapter is declared but not ForwardAdapter.")
+                    )
 
-            if not isinstance(project['HumanFiltering'], bool):
+            if not isinstance(project["HumanFiltering"], bool):
                 raise ValueError("needs_adapter_trimming must be boolean.")
 
-    def _filter_empty_fastq_files(self, filtered_directory,
-                                  empty_files_directory,
-                                  minimum_bytes):
-        '''
+    def _filter_empty_fastq_files(
+        self, filtered_directory, empty_files_directory, minimum_bytes
+    ):
+        """
         Filters out and moves fastq files that are below threshold.
         :param filtered_directory:
         :param empty_files_directory:
         :param minimum_bytes:
         :return:
-        '''
+        """
         empty_list = []
 
-        files = glob(join(filtered_directory, f'*.{self.suffix}'))
+        files = glob(join(filtered_directory, f"*.{self.suffix}"))
 
-        if self.read_length == 'long':
+        if self.read_length == "long":
             for r1 in files:
                 full_path = join(filtered_directory, r1)
                 if stat(full_path).st_size <= minimum_bytes:
-                    logging.debug(f'moving {full_path} to empty list.')
+                    logging.debug(f"moving {full_path} to empty list.")
                     empty_list.append(full_path)
         else:
             for r1, r2 in iter_paired_files(files):
                 full_path = join(filtered_directory, r1)
                 full_path_reverse = join(filtered_directory, r2)
-                if stat(full_path).st_size <= minimum_bytes or stat(
-                        full_path_reverse).st_size <= minimum_bytes:
-                    logging.debug(f'moving {full_path} and {full_path_reverse}'
-                                  f' to empty list.')
+                if (
+                    stat(full_path).st_size <= minimum_bytes
+                    or stat(full_path_reverse).st_size <= minimum_bytes
+                ):
+                    logging.debug(
+                        f"moving {full_path} and {full_path_reverse} to empty list."
+                    )
                     empty_list.append(full_path)
                     empty_list.append(full_path_reverse)
 
         if empty_list:
-            logging.debug(f'making directory {empty_files_directory}')
+            logging.debug(f"making directory {empty_files_directory}")
             makedirs(empty_files_directory, exist_ok=True)
 
         for item in empty_list:
-            logging.debug(f'moving {item}')
+            logging.debug(f"moving {item}")
             move(item, empty_files_directory)
 
     def _move_helper(self, completed_files, regex, samples_in_project, dst):
@@ -187,17 +210,15 @@ class NuQCJob(Job):
             file_name = basename(fp)
             substr = regex.search(file_name)
             if substr is None:
-                raise ValueError(f"{file_name} does not follow naming "
-                                 "pattern.")
+                raise ValueError(f"{file_name} does not follow naming pattern.")
             else:
                 # check if found substring is a member of this
                 # project. Note sample-name != sample-id
                 if substr[1] in samples_in_project:
-                    if fp.endswith('.fastq.gz'):
+                    if fp.endswith(".fastq.gz"):
                         # legacy QC'ed files were always denoted with
                         # 'trimmed' to distinguish them from raw files.
-                        renamed_fp = fp.replace('.fastq.gz',
-                                                '.trimmed.fastq.gz')
+                        renamed_fp = fp.replace(".fastq.gz", ".trimmed.fastq.gz")
                         rename(fp, renamed_fp)
                         # move file into destination w/new filename
                         files_to_move.append(renamed_fp)
@@ -209,12 +230,12 @@ class NuQCJob(Job):
             move(fp, dst)
 
     def _move_trimmed_files(self, project_name, output_path):
-        '''
+        """
         Given output_path, move all fastqs to a new subdir named project_name.
         :param project_name: The name of the new folder to be created.
         :param output_path: The path to scan for fastq files.
         :return: None
-        '''
+        """
 
         if exists(output_path):
             pattern = f"{output_path}/*.fastq.gz"
@@ -222,8 +243,7 @@ class NuQCJob(Job):
             # this directory shouldn't already exist.
             makedirs(join(output_path, project_name), exist_ok=False)
 
-            sample_ids = [x[0] for x in self.sample_ids
-                          if x[1] == project_name]
+            sample_ids = [x[0] for x in self.sample_ids if x[1] == project_name]
 
             for trimmed_file in list(glob(pattern)):
                 file_name = split(trimmed_file)[1]
@@ -247,45 +267,57 @@ class NuQCJob(Job):
             max_size = 0
         else:
             batch_count, max_size = split_similar_size_bins(
-                self.root_dir, self.bucket_size, batch_location,
-                self.read_length == 'long')
+                self.root_dir,
+                self.bucket_size,
+                batch_location,
+                self.read_length == "long",
+            )
 
         job_script_path = self._generate_job_script(max_size)
 
         self.counts[self.batch_prefix] = batch_count
 
-        export_params = [f"PREFIX={batch_location}",
-                         f"OUTPUT={self.output_path}",
-                         f"TMPDIR={self.temp_dir}"]
+        export_params = [
+            f"PREFIX={batch_location}",
+            f"OUTPUT={self.output_path}",
+            f"TMPDIR={self.temp_dir}",
+        ]
 
-        job_params = ['-J', self.batch_prefix, f'--array 1-{batch_count}',
-                      '--export', ','.join(export_params)]
+        job_params = [
+            "-J",
+            self.batch_prefix,
+            f"--array 1-{batch_count}",
+            "--export",
+            ",".join(export_params),
+        ]
 
         # job_script_path formerly known as:
         #  process.multiprep.pangenome.adapter-filter.pe.sbatch
 
         try:
-            job_info = self.submit_job(job_script_path,
-                                       job_parameters=' '.join(job_params),
-                                       exec_from=self.log_path,
-                                       callback=callback)
+            job_info = self.submit_job(
+                job_script_path,
+                job_parameters=" ".join(job_params),
+                exec_from=self.log_path,
+                callback=callback,
+            )
         except JobFailedError as e:
             # When a job has failed, parse the logs generated by this specific
             # job to return a more descriptive message to the user.
             info = self.parse_logs()
             # prepend just the message component of the Error.
             info.insert(0, str(e))
-            raise JobFailedError('\n'.join(info))
+            raise JobFailedError("\n".join(info))
 
-        job_id = job_info['job_id']
+        job_id = job_info["job_id"]
 
         self.mark_job_completed()
 
-        logging.debug(f'NuQCJob {job_id} completed')
+        logging.debug(f"NuQCJob {job_id} completed")
 
         for project in self.project_data:
-            project_name = project['Sample_Project']
-            needs_human_filtering = project['HumanFiltering']
+            project_name = project["Sample_Project"]
+            needs_human_filtering = project["HumanFiltering"]
             source_dir = join(self.output_path, project_name)
             pattern = f"{source_dir}/*.fastq.gz"
             completed_files = list(glob(pattern))
@@ -293,40 +325,40 @@ class NuQCJob(Job):
             # if the 'only-adapter-filtered' directory exists, move the files
             # into a unique location so that files from multiple projects
             # don't overwrite each other.
-            trimmed_only_path = join(self.output_path,
-                                     'only-adapter-filtered')
+            trimmed_only_path = join(self.output_path, "only-adapter-filtered")
 
             if exists(trimmed_only_path):
                 self._move_trimmed_files(project_name, trimmed_only_path)
 
             if needs_human_filtering is True:
-                filtered_directory = join(source_dir, 'filtered_sequences')
+                filtered_directory = join(source_dir, "filtered_sequences")
             else:
-                filtered_directory = join(source_dir, 'trimmed_sequences')
+                filtered_directory = join(source_dir, "trimmed_sequences")
 
             # create the properly named directory to move files to in
             # in order to preserve legacy behavior.
             makedirs(filtered_directory, exist_ok=True)
 
             # get the list of sample-names in this project.
-            samples_in_project = [x[0] for x in self.sample_ids
-                                  if x[1] == project_name]
+            samples_in_project = [x[0] for x in self.sample_ids if x[1] == project_name]
 
             # Tissue_1_Mag_Hom_DNASe_RIBO_S16_L001_R2_001.fastq.gz
             # Nislux_SLC_Trizol_DNASe_S7_L001_R2_001.fastq.gz
-            self._move_helper(completed_files,
-                              self.fastq_regex,
-                              samples_in_project,
-                              filtered_directory)
+            self._move_helper(
+                completed_files,
+                self.fastq_regex,
+                samples_in_project,
+                filtered_directory,
+            )
 
             # once fastq.gz files have been moved into the right project,
             # we now need to consider the html and json fastp_reports
             # files.
-            old_html_path = join(self.output_path, 'fastp_reports_dir', 'html')
-            old_json_path = join(self.output_path, 'fastp_reports_dir', 'json')
+            old_html_path = join(self.output_path, "fastp_reports_dir", "html")
+            old_json_path = join(self.output_path, "fastp_reports_dir", "json")
 
-            new_html_path = join(source_dir, 'fastp_reports_dir', 'html')
-            new_json_path = join(source_dir, 'fastp_reports_dir', 'json')
+            new_html_path = join(source_dir, "fastp_reports_dir", "html")
+            new_json_path = join(source_dir, "fastp_reports_dir", "json")
 
             makedirs(new_html_path, exist_ok=True)
             makedirs(new_json_path, exist_ok=True)
@@ -334,27 +366,31 @@ class NuQCJob(Job):
             # move all html files underneath the subdirectory for this project.
             pattern = f"{old_html_path}/*.html"
             completed_htmls = list(glob(pattern))
-            self._move_helper(completed_htmls,
-                              # Tissue_1_Super_Trizol_S19_L001_R1_001.html
-                              self.html_regex,
-                              samples_in_project,
-                              new_html_path)
+            self._move_helper(
+                completed_htmls,
+                # Tissue_1_Super_Trizol_S19_L001_R1_001.html
+                self.html_regex,
+                samples_in_project,
+                new_html_path,
+            )
 
             # move all json files underneath the subdirectory for this project.
             pattern = f"{old_json_path}/*.json"
             completed_jsons = list(glob(pattern))
-            self._move_helper(completed_jsons,
-                              # Tissue_1_Super_Trizol_S19_L001_R1_001.json
-                              self.json_regex,
-                              samples_in_project,
-                              new_json_path)
+            self._move_helper(
+                completed_jsons,
+                # Tissue_1_Super_Trizol_S19_L001_R1_001.json
+                self.json_regex,
+                samples_in_project,
+                new_json_path,
+            )
 
             # now that files are separated by project as per legacy
             # operation, continue normal processing.
-            empty_files_directory = join(source_dir, 'zero_files')
-            self._filter_empty_fastq_files(filtered_directory,
-                                           empty_files_directory,
-                                           self.minimum_bytes)
+            empty_files_directory = join(source_dir, "zero_files")
+            self._filter_empty_fastq_files(
+                filtered_directory, empty_files_directory, self.minimum_bytes
+            )
 
         self.mark_post_processing_completed()
 
@@ -376,33 +412,29 @@ class NuQCJob(Job):
             raise PipelineError(s)
 
         header = sheet.Header
-        chemistry = header.get('chemistry', '')
+        chemistry = header.get("chemistry", "")
 
-        if header['Assay'] not in Pipeline.assay_types:
-            s = "Assay value '%s' is not recognized." % header['Assay']
+        if header["Assay"] not in Pipeline.assay_types:
+            s = "Assay value '%s' is not recognized." % header["Assay"]
             raise PipelineError(s)
 
         sample_ids = []
         for sample in sheet.samples:
-            sample_ids.append(
-                (sample['Sample_ID'], sample['Sample_Project']))
+            sample_ids.append((sample["Sample_ID"], sample["Sample_Project"]))
 
         bioinformatics = sheet.Bioinformatics
 
         # reorganize the data into a list of dictionaries, one for each row.
         # the ordering of the rows will be preserved in the order of the list.
-        lst = bioinformatics.to_dict('records')
+        lst = bioinformatics.to_dict("records")
 
         # human-filtering jobs are scoped by project. Each job requires
         # particular knowledge of the project.
-        return {'chemistry': chemistry,
-                'projects': lst,
-                'sample_ids': sample_ids}
+        return {"chemistry": chemistry, "projects": lst, "sample_ids": sample_ids}
 
     def _generate_mmi_filter_cmds(self, working_dir):
         initial_input = join(working_dir, "seqs.interleaved.fastq")
-        final_output = join(working_dir, "seqs.interleaved.filter_"
-                                         "alignment.fastq")
+        final_output = join(working_dir, "seqs.interleaved.filter_alignment.fastq")
 
         cmds = []
 
@@ -422,19 +454,19 @@ class NuQCJob(Job):
             # NB: This doesn't appear to be true, actually. if there is
             # a metadata element but it does not begin with 'BX', supplying
             # '-T BX' will cause an error writing output to disk.
-            tags = " -T %s" % ','.join(self.additional_fastq_tags)
+            tags = " -T %s" % ",".join(self.additional_fastq_tags)
             t_switch = " -y"
 
-        if self.read_length == 'short':
-            minimap2_prefix = f'minimap2 -2 -ax sr{t_switch}'
-            minimap2_subfix = '-a'
-            samtools_params = '-f 12 -F 256'
-        elif self.read_length == 'long':
-            minimap2_prefix = 'minimap2 -2 -ax map-hifi'
-            minimap2_subfix = '--no-pairing'
-            samtools_params = '-f 4 -F 256'
+        if self.read_length == "short":
+            minimap2_prefix = f"minimap2 -2 -ax sr{t_switch}"
+            minimap2_subfix = "-a"
+            samtools_params = "-f 12 -F 256"
+        elif self.read_length == "long":
+            minimap2_prefix = "minimap2 -2 -ax map-hifi"
+            minimap2_subfix = "--no-pairing"
+            samtools_params = "-f 4 -F 256"
         else:
-            raise ValueError(f'minimap2 prefix not set for {self.read_length}')
+            raise ValueError(f"minimap2 prefix not set for {self.read_length}")
 
         for count, mmi_db_path in enumerate(self.mmi_file_paths):
             if count == 0:
@@ -451,11 +483,13 @@ class NuQCJob(Job):
                 input = tmp_file1
                 output = tmp_file2
 
-            cmds.append(f"{minimap2_prefix} -t {cores_to_allocate} "
-                        f"{mmi_db_path} {input} {minimap2_subfix} | "
-                        "samtools fastq -@ "
-                        f"{cores_to_allocate} {samtools_params}{tags} > "
-                        f"{output}")
+            cmds.append(
+                f"{minimap2_prefix} -t {cores_to_allocate} "
+                f"{mmi_db_path} {input} {minimap2_subfix} | "
+                "samtools fastq -@ "
+                f"{cores_to_allocate} {samtools_params}{tags} > "
+                f"{output}"
+            )
 
         # rename the latest tmp file to the final output filename.
         cmds.append(f"mv {output} {final_output}")
@@ -472,81 +506,82 @@ class NuQCJob(Job):
         if self.force_job_fail:
             return None
 
-        job_script_path = join(self.output_path, 'process_all_fastq_files.sh')
+        job_script_path = join(self.output_path, "process_all_fastq_files.sh")
 
-        job_name = f'{self.qiita_job_id}_{self.job_name}'
+        job_name = f"{self.qiita_job_id}_{self.job_name}"
 
-        html_path = join(self.output_path, 'fastp_reports_dir', 'html')
-        json_path = join(self.output_path, 'fastp_reports_dir', 'json')
+        html_path = join(self.output_path, "fastp_reports_dir", "html")
+        json_path = join(self.output_path, "fastp_reports_dir", "json")
 
         # get location of python executable in this environment.
         # demux script should be present in the same location.
-        demux_path = join(dirname(executable), 'demux')
+        demux_path = join(dirname(executable), "demux")
 
         if not exists(demux_path):
             raise ValueError(f"{demux_path} does not exist.")
 
         # get this file location and add splitter as it should live there
-        splitter_binary = join(
-            dirname(abspath(__file__)), 'scripts', 'splitter')
+        splitter_binary = join(dirname(abspath(__file__)), "scripts", "splitter")
         if not exists(splitter_binary):
-            raise ValueError(f'{splitter_binary} does not exist.')
+            raise ValueError(f"{splitter_binary} does not exist.")
 
         # this method relies on an environment variable defined in nu_qc.sh
         # used to define where unfiltered fastq files are and where temp
         # files can be created. (${jobd})
         mmi_filter_cmds = self._generate_mmi_filter_cmds("${jobd}")
 
-        if self.read_length == 'short':
-            pmls_extra_parameters = ''
+        if self.read_length == "short":
+            pmls_extra_parameters = ""
             template = self.jinja_env.get_template("nuqc_job.sh")
-        elif self.read_length == 'long':
+        elif self.read_length == "long":
             pmls_extra_parameters = '"max" 21'
             template = self.jinja_env.get_template("nuqc_job_single.sh")
         else:
-            raise ValueError(
-                f'pmls_extra_parameters not set for {self.read_length}')
+            raise ValueError(f"pmls_extra_parameters not set for {self.read_length}")
 
         with open(job_script_path, mode="w", encoding="utf-8") as f:
             # the job resources should come from a configuration file
 
             # generate a string of linux system modules to load before
             # processing begins.
-            mtl = ' '.join(self.modules_to_load)
+            mtl = " ".join(self.modules_to_load)
 
-            f.write(template.render(
-                job_name=job_name,
-                queue_name=self.queue_name,
-                # should be 4 * 24 * 60 = 4 days
-                wall_time_limit=self.wall_time_limit,
-                mem_in_gb=self.jmem,
-                # Note NuQCJob now maps node_count to
-                # SLURM -N parameter to act like other
-                # Job classes.
-                # self.node_count should be 1
-                node_count=self.node_count,
-                # cores-per-task (-c) should be 4
-                cores_per_task=self.cores_per_task,
-                knwn_adpt_path=self.known_adapters_path,
-                output_path=self.output_path,
-                html_path=html_path,
-                json_path=json_path,
-                demux_path=demux_path,
-                temp_dir=self.temp_dir,
-                splitter_binary=splitter_binary,
-                modules_to_load=mtl,
-                length_limit=self.length_limit,
-                gres_value=self.gres_value,
-                movi_path=self.movi_path,
-                mmi_filter_cmds=mmi_filter_cmds,
-                pmls_extra_parameters=pmls_extra_parameters,
-                pmls_path=self.pmls_path))
+            f.write(
+                template.render(
+                    job_name=job_name,
+                    queue_name=self.queue_name,
+                    # should be 4 * 24 * 60 = 4 days
+                    wall_time_limit=self.wall_time_limit,
+                    mem_in_gb=self.jmem,
+                    # Note NuQCJob now maps node_count to
+                    # SLURM -N parameter to act like other
+                    # Job classes.
+                    # self.node_count should be 1
+                    node_count=self.node_count,
+                    # cores-per-task (-c) should be 4
+                    cores_per_task=self.cores_per_task,
+                    knwn_adpt_path=self.known_adapters_path,
+                    output_path=self.output_path,
+                    html_path=html_path,
+                    json_path=json_path,
+                    demux_path=demux_path,
+                    temp_dir=self.temp_dir,
+                    splitter_binary=splitter_binary,
+                    modules_to_load=mtl,
+                    length_limit=self.length_limit,
+                    gres_value=self.gres_value,
+                    movi_path=self.movi_path,
+                    mmi_filter_cmds=mmi_filter_cmds,
+                    pmls_extra_parameters=pmls_extra_parameters,
+                    pmls_path=self.pmls_path,
+                )
+            )
 
         return job_script_path
 
     def parse_logs(self):
-        log_path = join(self.output_path, 'logs')
-        files = sorted(glob(join(log_path, '*')))
+        log_path = join(self.output_path, "logs")
+        files = sorted(glob(join(log_path, "*")))
         msgs = []
 
         # assume that the only possible files in logs directory are '.out'
@@ -558,11 +593,12 @@ class NuQCJob(Job):
         # a known location.
 
         # for now, construct lists of both of these types of files.
-        output_logs = [x for x in files if x.endswith('.out')]
+        output_logs = [x for x in files if x.endswith(".out")]
 
         for some_file in output_logs:
-            with open(some_file, 'r') as f:
-                msgs += [line.strip() for line in f.readlines()
-                         if 'error:' in line.lower()]
+            with open(some_file, "r") as f:
+                msgs += [
+                    line.strip() for line in f.readlines() if "error:" in line.lower()
+                ]
 
         return msgs

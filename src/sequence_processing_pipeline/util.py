@@ -1,43 +1,43 @@
-from re import compile as REC
 from os.path import basename
+from re import compile as REC
 
-
-PAIR_UNDERSCORE = (REC(r'_R1_'), '_R1_', '_R2_')
-PAIR_DOT = (REC(r'\.R1\.'), '.R1.', '.R2.')
-SIMPLE_PAIR_UNDERSCORE = (REC(r'_R1'), '_R1', '_R2')
+PAIR_UNDERSCORE = (REC(r"_R1_"), "_R1_", "_R2_")
+PAIR_DOT = (REC(r"\.R1\."), ".R1.", ".R2.")
+SIMPLE_PAIR_UNDERSCORE = (REC(r"_R1"), "_R1", "_R2")
 PAIR_TESTS = (PAIR_UNDERSCORE, PAIR_DOT, SIMPLE_PAIR_UNDERSCORE)
 FILES_REGEX = {
-    'SPP': {
-        'fastq': REC(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.fastq\.gz$'),
-        'interleave_fastq': REC(
-            r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.interleave\.fastq\.gz$'),
-        'html': REC(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.html$'),
-        'json': REC(r'^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.json$'),
+    "SPP": {
+        "fastq": REC(r"^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.fastq\.gz$"),
+        "interleave_fastq": REC(
+            r"^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.interleave\.fastq\.gz$"
+        ),
+        "html": REC(r"^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.html$"),
+        "json": REC(r"^(.*)_S\d{1,4}_L\d{3}_R\d_\d{3}\.json$"),
     },
-    'per_sample_FASTQ': {
-        'fastq': REC(r'^(.*)[_|.]R\d\.fastq\.gz$'),
-        'interleave_fastq': REC(r'^(.*)[_|.]R\d\.interleave\.fastq\.gz$'),
-        'html': REC(r'^(.*).html$'),
-        'json':  REC(r'^(.*).json$')
+    "per_sample_FASTQ": {
+        "fastq": REC(r"^(.*)[_|.]R\d\.fastq\.gz$"),
+        "interleave_fastq": REC(r"^(.*)[_|.]R\d\.interleave\.fastq\.gz$"),
+        "html": REC(r"^(.*).html$"),
+        "json": REC(r"^(.*).json$"),
     },
-    'qebil': {
-        'fastq': REC(r'^(.*)_R\d_ebi\.fastq\.gz$'),
-        'interleave_fastq': REC(r'^(.*)_R\d_ebi\.interleave\.fastq\.gz$'),
-        'html': REC(r'^(.*).html$'),
-        'json':  REC(r'^(.*).json$')
+    "qebil": {
+        "fastq": REC(r"^(.*)_R\d_ebi\.fastq\.gz$"),
+        "interleave_fastq": REC(r"^(.*)_R\d_ebi\.interleave\.fastq\.gz$"),
+        "html": REC(r"^(.*).html$"),
+        "json": REC(r"^(.*).json$"),
     },
-    'simple_per_sample_FASTQ': {
-        'fastq': REC(r'^(.*)_\d\.fastq\.gz$'),
-        'interleave_fastq': REC(r'^(.*)_\d\.interleave\.fastq\.gz$'),
-        'html': REC(r'^(.*).html$'),
-        'json':  REC(r'^(.*).json$')
+    "simple_per_sample_FASTQ": {
+        "fastq": REC(r"^(.*)_\d\.fastq\.gz$"),
+        "interleave_fastq": REC(r"^(.*)_\d\.interleave\.fastq\.gz$"),
+        "html": REC(r"^(.*).html$"),
+        "json": REC(r"^(.*).json$"),
     },
 }
 
 
 def determine_orientation(file_name):
     # aka forward, reverse, and indexed reads
-    orientations = ['R1', 'R2', 'I1', 'I2']
+    orientations = ["R1", "R2", "I1", "I2"]
 
     results = []
 
@@ -51,7 +51,7 @@ def determine_orientation(file_name):
     # orientation as part of their filenames as well. e.g.:
     # ABC_7_04_1776_R1_SRE_S3_L007_R2_001.trimmed.fastq.gz
     for o in orientations:
-        variations = [f"_{o}_", f".{o}.", f'_{o}']
+        variations = [f"_{o}_", f".{o}.", f"_{o}"]
         for v in variations:
             # rfind searches from the end of the string, rather than
             # its beginning. It returns the position in the string
@@ -99,11 +99,10 @@ def iter_paired_files(files):
                 # r2_prefix will be: LS_8_22_2014_R1_SRE_S3_L007
                 # NOTE: we need to use basename to be sure that we are not
                 #       comparing the folder name
-                r1_prefix = basename(r1_fp[:r1_fp.rfind(r1_exp)])
-                r2_prefix = basename(r2_fp[:r2_fp.rfind(r2_exp)])
+                r1_prefix = basename(r1_fp[: r1_fp.rfind(r1_exp)])
+                r2_prefix = basename(r2_fp[: r2_fp.rfind(r2_exp)])
                 if not r1_prefix or not r2_prefix or r1_prefix != r2_prefix:
-                    raise ValueError(f"Mismatch prefixes:\n{r1_prefix}\n"
-                                     f"{r2_prefix}")
+                    raise ValueError(f"Mismatch prefixes:\n{r1_prefix}\n{r2_prefix}")
 
                 matched = True
                 break
