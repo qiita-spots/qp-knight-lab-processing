@@ -46,16 +46,16 @@
 # barcodes are incorporating as expected in output.
 #
 # author: Daniel McDonald (d3mcdonald@eng.ucsd.edu)
-import numpy as np
-import click
-import re
-import io
-import pgzip
 import gzip
+import io
+import re
 
+import click
+import numpy as np
+import pgzip
 
-RECORD = re.compile(rb'@\S+\n[ATGCN]+\n\+\n\S+\n')
-BARCODE = re.compile(rb'@\S+\n([ATGCN]+)\n\+\n\S+\n')
+RECORD = re.compile(rb"@\S+\n[ATGCN]+\n\+\n\S+\n")
+BARCODE = re.compile(rb"@\S+\n([ATGCN]+)\n\+\n\S+\n")
 
 
 def gather_order(i1_in_fp):
@@ -78,9 +78,9 @@ def gather_order(i1_in_fp):
     end = len(i1)
 
     # get the number of records. we completely assume non-multiline fastq here
-    newlines = i1.count(b'\n')
+    newlines = i1.count(b"\n")
     assert newlines % 4 == 0
-    barcodes = np.empty(newlines // 4, dtype='|S%d' % rec_len)
+    barcodes = np.empty(newlines // 4, dtype="|S%d" % rec_len)
 
     # walk all index records
     # grab each barcode
@@ -108,19 +108,43 @@ def gather_order(i1_in_fp):
 
 
 def test_gather_order():
-    i1data = [b'@foo', b'ATGC', b'+', b'!!!!',
-              b'@bar', b'TTGG', b'+', b'!!!!',
-              b'@baz', b'ATGC', b'+', b'!!!!',
-              b'@oof', b'TTTT', b'+', b'!!!!',
-              b'@rab', b'TTGG', b'+', b'!!!!',
-              b'@zab', b'TTTT', b'+', b'!!!!',
-              b'@ofo', b'TTTT', b'+', b'!!!!', b'']
+    i1data = [
+        b"@foo",
+        b"ATGC",
+        b"+",
+        b"!!!!",
+        b"@bar",
+        b"TTGG",
+        b"+",
+        b"!!!!",
+        b"@baz",
+        b"ATGC",
+        b"+",
+        b"!!!!",
+        b"@oof",
+        b"TTTT",
+        b"+",
+        b"!!!!",
+        b"@rab",
+        b"TTGG",
+        b"+",
+        b"!!!!",
+        b"@zab",
+        b"TTTT",
+        b"+",
+        b"!!!!",
+        b"@ofo",
+        b"TTTT",
+        b"+",
+        b"!!!!",
+        b"",
+    ]
 
-    i1 = io.BytesIO(b'\n'.join(i1data))
+    i1 = io.BytesIO(b"\n".join(i1data))
     order, unique, bounds = gather_order(i1)
 
     exp_order = np.array([0, 2, 1, 4, 3, 5, 6])
-    exp_unique = np.array([b'ATGC', b'TTGG', b'TTTT'])
+    exp_unique = np.array([b"ATGC", b"TTGG", b"TTTT"])
     exp_bounds = np.array([0, 2, 4])
 
     assert (order == exp_order).all()
@@ -173,69 +197,140 @@ def troll_and_write(order, unique, bounds, in_, out_):
         # n.b., b'foo'[0] is int, because yay, so we use a slice to maintain
         # a human readable character to test against as most mortals haven't
         # memorized the ascii table
-        assert record[:1] == b'@'
-        assert record[-1:] == b'\n'
+        assert record[:1] == b"@"
+        assert record[-1:] == b"\n"
 
         with_barcode = insert_barcode(record, current_barcode)
         out_.write(with_barcode)
 
 
 def test_troll_and_write():
-    i1data = [b'@foo', b'ATGC', b'+', b'!!!!',
-              b'@bar', b'TTGG', b'+', b'!!!!',
-              b'@baz', b'ATGC', b'+', b'!!!!',
-              b'@oof', b'TTTT', b'+', b'!!!!',
-              b'@rab', b'TTGG', b'+', b'!!!!',
-              b'@zab', b'TTTT', b'+', b'!!!!',
-              b'@ofo', b'TTTT', b'+', b'!!!!', b'']
+    i1data = [
+        b"@foo",
+        b"ATGC",
+        b"+",
+        b"!!!!",
+        b"@bar",
+        b"TTGG",
+        b"+",
+        b"!!!!",
+        b"@baz",
+        b"ATGC",
+        b"+",
+        b"!!!!",
+        b"@oof",
+        b"TTTT",
+        b"+",
+        b"!!!!",
+        b"@rab",
+        b"TTGG",
+        b"+",
+        b"!!!!",
+        b"@zab",
+        b"TTTT",
+        b"+",
+        b"!!!!",
+        b"@ofo",
+        b"TTTT",
+        b"+",
+        b"!!!!",
+        b"",
+    ]
 
-    i1 = io.BytesIO(b'\n'.join(i1data))
+    i1 = io.BytesIO(b"\n".join(i1data))
     order, unique, bounds = gather_order(i1)
 
     # we assume records are in the same order, as that has previously been
     # observed w/ tellread and is the normal expectation
-    r1data = [b'@foo', b'AATGC', b'+', b'!!!!!',
-              b'@bar', b'ATTGG', b'+', b'!!!!!',
-              b'@baz', b'AATGC', b'+', b'!!!!!',
-              b'@oof', b'ATTTT', b'+', b'!!!!!',
-              b'@rab', b'ATTGG', b'+', b'!!!!!',
-              b'@zab', b'ATTTT', b'+', b'!!!!!',
-              b'@ofo', b'ATTTT', b'+', b'!!!!!', b'']
-    r1 = io.BytesIO(b'\n'.join(r1data))
+    r1data = [
+        b"@foo",
+        b"AATGC",
+        b"+",
+        b"!!!!!",
+        b"@bar",
+        b"ATTGG",
+        b"+",
+        b"!!!!!",
+        b"@baz",
+        b"AATGC",
+        b"+",
+        b"!!!!!",
+        b"@oof",
+        b"ATTTT",
+        b"+",
+        b"!!!!!",
+        b"@rab",
+        b"ATTGG",
+        b"+",
+        b"!!!!!",
+        b"@zab",
+        b"ATTTT",
+        b"+",
+        b"!!!!!",
+        b"@ofo",
+        b"ATTTT",
+        b"+",
+        b"!!!!!",
+        b"",
+    ]
+    r1 = io.BytesIO(b"\n".join(r1data))
     r1out = io.BytesIO()
     troll_and_write(order, unique, bounds, r1, r1out)
     r1out.seek(0)
 
-    r1exp = [b'@foo BX:Z:ATGC-1', b'AATGC', b'+', b'!!!!!',
-             b'@baz BX:Z:ATGC-1', b'AATGC', b'+', b'!!!!!',
-             b'@bar BX:Z:TTGG-1', b'ATTGG', b'+', b'!!!!!',
-             b'@rab BX:Z:TTGG-1', b'ATTGG', b'+', b'!!!!!',
-             b'@oof BX:Z:TTTT-1', b'ATTTT', b'+', b'!!!!!',
-             b'@zab BX:Z:TTTT-1', b'ATTTT', b'+', b'!!!!!',
-             b'@ofo BX:Z:TTTT-1', b'ATTTT', b'+', b'!!!!!',
-             b'']
-    r1exp = b'\n'.join(r1exp)
+    r1exp = [
+        b"@foo BX:Z:ATGC-1",
+        b"AATGC",
+        b"+",
+        b"!!!!!",
+        b"@baz BX:Z:ATGC-1",
+        b"AATGC",
+        b"+",
+        b"!!!!!",
+        b"@bar BX:Z:TTGG-1",
+        b"ATTGG",
+        b"+",
+        b"!!!!!",
+        b"@rab BX:Z:TTGG-1",
+        b"ATTGG",
+        b"+",
+        b"!!!!!",
+        b"@oof BX:Z:TTTT-1",
+        b"ATTTT",
+        b"+",
+        b"!!!!!",
+        b"@zab BX:Z:TTTT-1",
+        b"ATTTT",
+        b"+",
+        b"!!!!!",
+        b"@ofo BX:Z:TTTT-1",
+        b"ATTTT",
+        b"+",
+        b"!!!!!",
+        b"",
+    ]
+    r1exp = b"\n".join(r1exp)
     assert r1exp == r1out.read()
 
 
 def create_tag(t):
-    return b'BX:Z:%s-1' % t
+    return b"BX:Z:%s-1" % t
 
 
 def create_tag_no_suffix(t):
-    return b'BX:Z:%s' % t
+    return b"BX:Z:%s" % t
 
 
 def insert_barcode(record, barcode):
     """Get the current ID, smash the needed tag in"""
     # @foo\nATGC\n+\n!!!!\n
-    id_, remainder = record.split(b'\n', 1)
+    id_, remainder = record.split(b"\n", 1)
     tag = create_tag(barcode)
-    return b'%s %s\n%s' % (id_, tag, remainder)
+    return b"%s %s\n%s" % (id_, tag, remainder)
 
 
 def readfq(fp):
-    if fp.mode == 'rb':
+    if fp.mode == "rb":
         strip = bytes.strip
     else:
         strip = str.strip
@@ -251,7 +346,7 @@ def readfq(fp):
 def writefq(rec, out):
     for item in rec:
         out.write(item)
-        out.write(b'\n')
+        out.write(b"\n")
 
 
 @click.group()
@@ -266,21 +361,21 @@ def tests():
 
 
 @cli.command()
-@click.option('--r1-in', type=click.Path(exists=True), required=True)
-@click.option('--r2-in', type=click.Path(exists=True), required=True)
-@click.option('--i1-in', type=click.Path(exists=True), required=True)
-@click.option('--r1-out', type=click.Path(exists=False), required=True)
-@click.option('--r2-out', type=click.Path(exists=False), required=True)
-@click.option('--threads', type=int, required=False, default=1)
-@click.option('--no-sort', is_flag=True, default=False)
+@click.option("--r1-in", type=click.Path(exists=True), required=True)
+@click.option("--r2-in", type=click.Path(exists=True), required=True)
+@click.option("--i1-in", type=click.Path(exists=True), required=True)
+@click.option("--r1-out", type=click.Path(exists=False), required=True)
+@click.option("--r2-out", type=click.Path(exists=False), required=True)
+@click.option("--threads", type=int, required=False, default=1)
+@click.option("--no-sort", is_flag=True, default=False)
 def integrate(r1_in, r2_in, i1_in, r1_out, r2_out, threads, no_sort):
-    r1_in_fp = open(r1_in, 'rb')
-    r2_in_fp = open(r2_in, 'rb')
-    i1_in_fp = open(i1_in, 'rb')
+    r1_in_fp = open(r1_in, "rb")
+    r2_in_fp = open(r2_in, "rb")
+    i1_in_fp = open(i1_in, "rb")
 
     if no_sort:
-        r1_out_fp = gzip.open(r1_out, mode='wb')
-        r2_out_fp = gzip.open(r2_out, mode='wb')
+        r1_out_fp = gzip.open(r1_out, mode="wb")
+        r2_out_fp = gzip.open(r2_out, mode="wb")
 
         r1_sniff = r1_in_fp.readline().strip()
         r2_sniff = r2_in_fp.readline().strip()
@@ -289,20 +384,22 @@ def integrate(r1_in, r2_in, i1_in, r1_out, r2_out, threads, no_sort):
 
         # outputs from tellread don't seem to have orientation information
         # some downstream programs hate this, so let's add if needed.
-        if r1_sniff.endswith(b'/1'):
-            if not r2_sniff.endswith(b'/2'):
-                raise ValueError('unexpected endings: '
-                                 f'{r1_sniff.decode("utf-8")} '
-                                 f'{r2_sniff.decode("utf-8")}')
-            orient_r1 = ''
-            orient_r2 = ''
+        if r1_sniff.endswith(b"/1"):
+            if not r2_sniff.endswith(b"/2"):
+                raise ValueError(
+                    "unexpected endings: "
+                    f"{r1_sniff.decode('utf-8')} "
+                    f"{r2_sniff.decode('utf-8')}"
+                )
+            orient_r1 = ""
+            orient_r2 = ""
         else:
-            assert b'/1' not in r1_sniff
+            assert b"/1" not in r1_sniff
 
-            orient_r1 = b'/1'
-            orient_r2 = b'/2'
+            orient_r1 = b"/1"
+            orient_r2 = b"/2"
 
-        for (r1, r2, i1) in zip(*map(readfq, [r1_in_fp, r2_in_fp, i1_in_fp])):
+        for r1, r2, i1 in zip(*map(readfq, [r1_in_fp, r2_in_fp, i1_in_fp])):
             assert r1[0] == r2[0]
             assert r1[0] == i1[0]
 
@@ -315,10 +412,8 @@ def integrate(r1_in, r2_in, i1_in, r1_out, r2_out, threads, no_sort):
         r2_out_fp.close()
     else:
         # 200MB is what they use in their readme...
-        r1_out_fp = pgzip.open(r1_out, mode='wb', thread=threads,
-                               blocksize=2*10**8)
-        r2_out_fp = pgzip.open(r2_out, mode='wb', thread=threads,
-                               blocksize=2*10**8)
+        r1_out_fp = pgzip.open(r1_out, mode="wb", thread=threads, blocksize=2 * 10**8)
+        r2_out_fp = pgzip.open(r2_out, mode="wb", thread=threads, blocksize=2 * 10**8)
 
         order, unique, bounds = gather_order(i1_in_fp)
 
@@ -328,5 +423,5 @@ def integrate(r1_in, r2_in, i1_in, r1_out, r2_out, threads, no_sort):
             out_.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

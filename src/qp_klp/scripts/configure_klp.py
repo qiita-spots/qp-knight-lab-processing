@@ -14,16 +14,25 @@ from qp_klp import plugin
 
 
 @click.command()
-@click.option('--env-script', prompt='Environment script', required=True,
-              default='source activate qp-klp')
-@click.option('--ca-cert', prompt='Server certificate', required=False,
-              default='None', show_default=True)
+@click.option(
+    "--env-script",
+    prompt="Environment script",
+    required=True,
+    default="source activate qp-klp",
+)
+@click.option(
+    "--ca-cert",
+    prompt="Server certificate",
+    required=False,
+    default="None",
+    show_default=True,
+)
 def config(env_script, ca_cert):
     """Generates the Qiita configuration files"""
-    if ca_cert == 'None':
+    if ca_cert == "None":
         ca_cert = None
-    plugin.generate_config(env_script, 'start_klp', ca_cert)
+    plugin.generate_config(env_script, "start_klp", ca_cert)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     config()

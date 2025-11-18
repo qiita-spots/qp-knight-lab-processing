@@ -1,14 +1,15 @@
+from collections import defaultdict
+from json import dumps
 from os import listdir, makedirs, walk
-from os.path import isfile, join, basename, dirname, abspath
+from os.path import abspath, basename, dirname, isfile, join
 from shutil import copyfile
-from sequence_processing_pipeline.NuQCJob import NuQCJob
+
+import pandas as pd
+
 from sequence_processing_pipeline.FastQCJob import FastQCJob
 from sequence_processing_pipeline.GenPrepFileJob import GenPrepFileJob
 from sequence_processing_pipeline.MultiQCJob import MultiQCJob
-import pandas as pd
-from json import dumps
-from collections import defaultdict
-
+from sequence_processing_pipeline.NuQCJob import NuQCJob
 
 ASSAY_NAME_NONE = "Assay"
 ASSAY_NAME_AMPLICON = "Amplicon"
@@ -20,7 +21,7 @@ ARTIFACT_TYPE_AMPLICON = "FASTQ"
 ARTIFACT_TYPE_METAOMICS = "per_sample_FASTQ"
 
 
-class Assay():
+class Assay:
     """
     Assay encapsulate Job()s and other functionality that varies on the
     assay-type of the run. All Assays are mixins for Workflow() classes
@@ -34,6 +35,7 @@ class Assay():
     methods used by other functions in Assay() or its children begin
     w/'_'.
     """
+
     assay_type = ASSAY_NAME_NONE
     assay_warnings = []
 
@@ -49,17 +51,17 @@ class Assay():
         reversed_map = {tube_id_map[k]: k for k in tube_id_map}
 
         # passing tube_id_map as a parameter allows for easier testing.
-        df = pd.read_csv(prep_file_path, sep='\t', dtype=str, index_col=False)
+        df = pd.read_csv(prep_file_path, sep="\t", dtype=str, index_col=False)
         # save copy of sample_name column as 'old_sample_name'
-        df['old_sample_name'] = df['sample_name']
+        df["old_sample_name"] = df["sample_name"]
         for i in df.index:
             sample_name = df.at[i, "sample_name"]
             # blanks do not get their names swapped.
-            if sample_name.startswith('BLANK'):
+            if sample_name.startswith("BLANK"):
                 continue
 
             # remove leading zeroes if they exist to match Qiita results.
-            sample_name = sample_name.lstrip('0')
+            sample_name = sample_name.lstrip("0")
 
             if sample_name in reversed_map:
                 df.at[i, "sample_name"] = reversed_map[sample_name]
@@ -79,8 +81,8 @@ class Assay():
         projects = self.pipeline.get_project_info(short_names=True)
 
         for project in projects:
-            project_name = project['project_name']
-            qiita_id = str(project['qiita_id'])
+            project_name = project["project_name"]
+            qiita_id = str(project["qiita_id"])
 
             if qiita_id not in self.tube_id_map:
                 continue
@@ -88,16 +90,17 @@ class Assay():
             # prep files are named in the following form:
             # 20220423_FS10001773_12_BRB11603-0615.Matrix_Tube_LBM_14332.1.tsv
             fqp_name = "%s_%s" % (project_name, qiita_id)
-            matching_files = [prep_file for prep_file in prep_file_paths if
-                              fqp_name in prep_file]
+            matching_files = [
+                prep_file for prep_file in prep_file_paths if fqp_name in prep_file
+            ]
 
             if len(matching_files) == 0:
                 continue
 
             for matching_file in matching_files:
-                Assay._replace_tube_ids_w_sample_names(matching_file,
-                                                       self.tube_id_map[
-                                                           qiita_id])
+                Assay._replace_tube_ids_w_sample_names(
+                    matching_file, self.tube_id_map[qiita_id]
+                )
 
     @classmethod
     def _parse_prep_file(cls, prep_file_path, convert_to_dict=True):
@@ -107,20 +110,22 @@ class Assay():
         :param convert_to_dict: If True, a dict() is returned.
         :return: A DataFrame() is returned, unless convert_to_dict is True.
         """
-        metadata = pd.read_csv(prep_file_path,
-                               dtype=str,
-                               delimiter='\t',
-                               # forces Pandas to not make the first column
-                               # the index even when the values appear numeric.
-                               index_col=False)
+        metadata = pd.read_csv(
+            prep_file_path,
+            dtype=str,
+            delimiter="\t",
+            # forces Pandas to not make the first column
+            # the index even when the values appear numeric.
+            index_col=False,
+        )
 
         if metadata is None:
             raise ValueError(f"{prep_file_path} does not exist.")
 
-        metadata.set_index('sample_name', inplace=True)
+        metadata.set_index("sample_name", inplace=True)
 
         if convert_to_dict:
-            return metadata.to_dict('index')
+            return metadata.to_dict("index")
         else:
             return metadata
 
@@ -131,7 +136,7 @@ class Assay():
         :return: If prep is a replicate, returns artifact-name, repl-number,
          and True. Otherwise, returns artifact-name and False.
         """
-        a_name = f'{self.pipeline.run_id}_{self.lane_number}'
+        a_name = f"{self.pipeline.run_id}_{self.lane_number}"
         repl_num = basename(dirname(prep_file_path))
 
         if self.has_replicates is True:
@@ -139,16 +144,16 @@ class Assay():
             # append a replication number to each name to
             # make it unique from other replicates.
             # return ('%s_r%s' % (a_name, result[1]), True)
-            return ('%s_r%s' % (a_name, repl_num), True)
+            return ("%s_r%s" % (a_name, repl_num), True)
         else:
             # this is a normal pre-prep or sample-sheet.
             return (a_name, False)
 
     def execute_pipeline(self):
-        '''
+        """
         Executes steps of pipeline in proper sequence.
         :return: None
-        '''
+        """
         # pre_check-ing the status of the workflow
         self.pre_check()
 
@@ -188,7 +193,7 @@ class Assay():
         # moved final component of genprepfilejob outside of object.
         # obtain the paths to the prep-files generated by GenPrepFileJob
         # w/out having to recover full state.
-        tmp = join(self.pipeline.output_path, 'GenPrepFileJob', 'PrepFiles')
+        tmp = join(self.pipeline.output_path, "GenPrepFileJob", "PrepFiles")
 
         self.has_replicates = False
 
@@ -199,14 +204,14 @@ class Assay():
             for _file in files:
                 # we are looing for .tsv files and we are only interested
                 # in the string after the last _, which is the study_id
-                if not _file.endswith('.tsv'):
+                if not _file.endswith(".tsv"):
                     continue
                 # continue if no underscore
-                chunks = _file.rsplit('_', 1)
+                chunks = _file.rsplit("_", 1)
                 if len(chunks) <= 1:
                     continue
                 # continue if no int after .
-                qid = chunks[-1].split('.')[0]
+                qid = chunks[-1].split(".")[0]
                 if not qid.isnumeric():
                     continue
                 if qid not in self.prep_file_paths:
@@ -217,7 +222,7 @@ class Assay():
                 self.prep_file_paths[qid].append(_path)
 
             for _dir in dirs:
-                if _dir == '1':
+                if _dir == "1":
                     # if PrepFiles contains the '1' directory, then it's a
                     # given that this sample-sheet contains replicates.
                     self.has_replicates = True
@@ -256,7 +261,7 @@ class Assay():
         # before we pack the results, we need to generate the human-readable
         # report of samples lost in each step. The tracking is being done
         # within fsr (FailedSamplesRecord), in conjuction with Job.audit.
-        if hasattr(self, 'fsr'):
+        if hasattr(self, "fsr"):
             self.fsr.generate_report()
 
         self.update_status("Generating packaging commands", 8, 9)
@@ -265,9 +270,9 @@ class Assay():
         # store the warnings, if they exist so they are packed with the
         # final results
         if self.assay_warnings:
-            wfp = f'{self.pipeline.output_path}/final_results/WARNINGS.txt'
-            with open(wfp, 'w') as f:
-                f.write('\n'.join(self.assay_warnings))
+            wfp = f"{self.pipeline.output_path}/final_results/WARNINGS.txt"
+            with open(wfp, "w") as f:
+                f.write("\n".join(self.assay_warnings))
 
         self.update_status("Packaging results", 9, 9)
         if self.update:
@@ -275,8 +280,8 @@ class Assay():
 
 
 class Amplicon(Assay):
-    AMPLICON_TYPE = 'Amplicon'
-    AMPLICON_SUB_TYPES = {'16S', '18S', 'ITS'}
+    AMPLICON_TYPE = "Amplicon"
+    AMPLICON_SUB_TYPES = {"16S", "18S", "ITS"}
     assay_type = ASSAY_NAME_AMPLICON
 
     def qc_reads(self):
@@ -291,7 +296,7 @@ class Amplicon(Assay):
         # Simulate NuQCJob's output directory for use as input into FastQCJob.
         projects = self.pipeline.get_project_info()
 
-        projects = [x['project_name'] for x in projects]
+        projects = [x["project_name"] for x in projects]
 
         for project_name in projects:
             # FastQC expects the ConvertJob output to also be organized by
@@ -303,10 +308,17 @@ class Amplicon(Assay):
             output_folder = join(self.raw_fastq_files_path, project_name)
             makedirs(output_folder)
 
-            job_output = [join(self.raw_fastq_files_path, x) for x in
-                          listdir(self.raw_fastq_files_path)]
-            job_output = [x for x in job_output if isfile(x) and x.endswith(
-                'fastq.gz') and not basename(x).startswith('Undetermined')]
+            job_output = [
+                join(self.raw_fastq_files_path, x)
+                for x in listdir(self.raw_fastq_files_path)
+            ]
+            job_output = [
+                x
+                for x in job_output
+                if isfile(x)
+                and x.endswith("fastq.gz")
+                and not basename(x).startswith("Undetermined")
+            ]
 
             for raw_fastq_file in job_output:
                 new_path = join(output_folder, basename(raw_fastq_file))
@@ -314,15 +326,17 @@ class Amplicon(Assay):
 
             # copy the files from ConvertJob output to faked NuQCJob output
             # folder: $WKDIR/$RUN_ID/NuQCJob/$PROJ_NAME/amplicon
-            output_folder = join(self.pipeline.output_path,
-                                 'NuQCJob',
-                                 project_name,
-                                 # for legacy purposes, output folders are
-                                 # either 'trimmed_sequences', 'amplicon', or
-                                 # 'filtered_sequences'. Hence, this folder
-                                 # is not defined using AMPLICON_TYPE as that
-                                 # value may or may not equal the needed value.
-                                 'amplicon')
+            output_folder = join(
+                self.pipeline.output_path,
+                "NuQCJob",
+                project_name,
+                # for legacy purposes, output folders are
+                # either 'trimmed_sequences', 'amplicon', or
+                # 'filtered_sequences'. Hence, this folder
+                # is not defined using AMPLICON_TYPE as that
+                # value may or may not equal the needed value.
+                "amplicon",
+            )
             makedirs(output_folder)
 
             # copy the file
@@ -331,68 +345,74 @@ class Amplicon(Assay):
                 copyfile(fastq_file, new_path)
 
     def generate_reports(self):
-        config = self.pipeline.get_software_configuration('fastqc')
-        fcjob = FastQCJob(self.pipeline.run_dir,
-                          self.pipeline.output_path,
-                          self.raw_fastq_files_path,
-                          join(self.pipeline.output_path, 'NuQCJob'),
-                          config['nprocs'],
-                          config['nthreads'],
-                          config['fastqc_executable_path'],
-                          config['modules_to_load'],
-                          self.master_qiita_job_id,
-                          config['queue'],
-                          config['nodes'],
-                          config['wallclock_time_in_minutes'],
-                          config['job_total_memory_limit'],
-                          config['job_pool_size'],
-                          config['job_max_array_length'],
-                          True)
-        mqcjob = MultiQCJob(self.pipeline.run_dir,
-                            self.pipeline.output_path,
-                            self.raw_fastq_files_path,
-                            join(self.pipeline.output_path, 'NuQCJob'),
-                            config['nprocs'],
-                            config['nthreads'],
-                            config['multiqc_executable_path'],
-                            config['modules_to_load'],
-                            self.master_qiita_job_id,
-                            config['queue'],
-                            config['nodes'],
-                            config['wallclock_time_in_minutes'],
-                            config['job_total_memory_limit'],
-                            config['job_pool_size'],
-                            join(self.pipeline.output_path, 'FastQCJob'),
-                            config['job_max_array_length'],
-                            config['multiqc_config_file_path'],
-                            True)
+        config = self.pipeline.get_software_configuration("fastqc")
+        fcjob = FastQCJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            self.raw_fastq_files_path,
+            join(self.pipeline.output_path, "NuQCJob"),
+            config["nprocs"],
+            config["nthreads"],
+            config["fastqc_executable_path"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            config["queue"],
+            config["nodes"],
+            config["wallclock_time_in_minutes"],
+            config["job_total_memory_limit"],
+            config["job_pool_size"],
+            config["job_max_array_length"],
+            True,
+        )
+        mqcjob = MultiQCJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            self.raw_fastq_files_path,
+            join(self.pipeline.output_path, "NuQCJob"),
+            config["nprocs"],
+            config["nthreads"],
+            config["multiqc_executable_path"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            config["queue"],
+            config["nodes"],
+            config["wallclock_time_in_minutes"],
+            config["job_total_memory_limit"],
+            config["job_pool_size"],
+            join(self.pipeline.output_path, "FastQCJob"),
+            config["job_max_array_length"],
+            config["multiqc_config_file_path"],
+            True,
+        )
 
-        if 'FastQCJob' not in self.skip_steps:
+        if "FastQCJob" not in self.skip_steps:
             fcjob.run(callback=self.job_callback)
 
-        if 'MultiQCJob' not in self.skip_steps:
+        if "MultiQCJob" not in self.skip_steps:
             mqcjob.run(callback=self.job_callback)
 
     def generate_prep_file(self):
-        config = self.pipeline.get_software_configuration('seqpro')
+        config = self.pipeline.get_software_configuration("seqpro")
 
         # NB: For amplicon runs, the executable used is currently a variant
         # of seqpro called 'seqpro_mf'. It is stored in the same location as
         # 'seqpro'.
-        seqpro_path = config['seqpro_path'].replace('seqpro', 'seqpro_mf')
+        seqpro_path = config["seqpro_path"].replace("seqpro", "seqpro_mf")
 
-        job = GenPrepFileJob(self.pipeline.run_dir,
-                             self.raw_fastq_files_path,
-                             join(self.pipeline.output_path, 'NuQCJob'),
-                             self.pipeline.output_path,
-                             self.pipeline.input_file_path,
-                             seqpro_path,
-                             config['modules_to_load'],
-                             self.master_qiita_job_id,
-                             self.reports_path,
-                             is_amplicon=True)
+        job = GenPrepFileJob(
+            self.pipeline.run_dir,
+            self.raw_fastq_files_path,
+            join(self.pipeline.output_path, "NuQCJob"),
+            self.pipeline.output_path,
+            self.pipeline.input_file_path,
+            seqpro_path,
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            self.reports_path,
+            is_amplicon=True,
+        )
 
-        if 'GenPrepFileJob' not in self.skip_steps:
+        if "GenPrepFileJob" not in self.skip_steps:
             job.run(callback=self.job_callback)
 
         self.dereplicated_input_file_paths = job.dereplicated_input_file_paths
@@ -410,32 +430,33 @@ class Amplicon(Assay):
             for prep_fp in self.prep_file_paths[study_id]:
                 metadata = Assay._parse_prep_file(prep_fp)
                 afact_name, is_repl = self._generate_artifact_name(prep_fp)
-                data = {'prep_info': dumps(metadata),
-                        'study': study_id,
-                        'data_type': None,
-                        'job-id': self.master_qiita_job_id,
-                        'name': afact_name}
+                data = {
+                    "prep_info": dumps(metadata),
+                    "study": study_id,
+                    "data_type": None,
+                    "job-id": self.master_qiita_job_id,
+                    "name": afact_name,
+                }
 
-                if 'target_gene' in metadata[list(metadata.keys())[0]]:
-                    tg = metadata[list(metadata.keys())[0]]['target_gene']
+                if "target_gene" in metadata[list(metadata.keys())[0]]:
+                    tg = metadata[list(metadata.keys())[0]]["target_gene"]
                     for key in Amplicon.AMPLICON_SUB_TYPES:
                         if key in tg:
-                            data['data_type'] = key
+                            data["data_type"] = key
 
-                    if data['data_type'] is None:
-                        raise ValueError("data_type could not be "
-                                         "determined from target_gene "
-                                         "column")
+                    if data["data_type"] is None:
+                        raise ValueError(
+                            "data_type could not be determined from target_gene column"
+                        )
                 else:
-                    raise ValueError("target_gene must be specified for "
-                                     "amplicon type")
+                    raise ValueError("target_gene must be specified for amplicon type")
 
-                reply = self.qclient.post('/qiita_db/prep_template/',
-                                          data=data)
-                prep_id = reply['prep']
+                reply = self.qclient.post("/qiita_db/prep_template/", data=data)
+                prep_id = reply["prep"]
                 results[study_id].append((prep_id, afact_name, is_repl))
-                self.run_prefixes[prep_id] = [metadata[sample]['run_prefix']
-                                              for sample in metadata]
+                self.run_prefixes[prep_id] = [
+                    metadata[sample]["run_prefix"] for sample in metadata
+                ]
 
         self.touched_studies_prep_info = results
         return results
@@ -444,7 +465,8 @@ class Amplicon(Assay):
         data = []
         for project, _, qiita_id in self.special_map:
             fastq_files = self._get_postqc_fastq_files(
-                self.pipeline.output_path, project)
+                self.pipeline.output_path, project
+            )
 
             for vals in self.touched_studies_prep_info[qiita_id]:
                 prep_id, artifact_name, is_repl = vals
@@ -462,15 +484,30 @@ class Amplicon(Assay):
                 else:
                     working_set = fastq_files
 
-                data.append(self._load_prep_into_qiita(
-                    self.qclient, prep_id, artifact_name, qiita_id, project,
-                    working_set, ARTIFACT_TYPE_AMPLICON))
+                data.append(
+                    self._load_prep_into_qiita(
+                        self.qclient,
+                        prep_id,
+                        artifact_name,
+                        qiita_id,
+                        project,
+                        working_set,
+                        ARTIFACT_TYPE_AMPLICON,
+                    )
+                )
 
         df = pd.DataFrame(data)
-        opath = join(self.pipeline.output_path, 'touched_studies.html')
-        with open(opath, 'w') as f:
-            f.write(df.to_html(border=2, index=False, justify="left",
-                               render_links=True, escape=False))
+        opath = join(self.pipeline.output_path, "touched_studies.html")
+        with open(opath, "w") as f:
+            f.write(
+                df.to_html(
+                    border=2,
+                    index=False,
+                    justify="left",
+                    render_links=True,
+                    escape=False,
+                )
+            )
 
         return df
 
@@ -480,119 +517,128 @@ class MetaOmic(Assay):
     MetaOmic() is a base class for Metagenomic() and Metatranscriptomic(),
     which are currently identical in functionality.
     """
+
     # MetaOmic does not have an assay_type of its own. It is defined by its
     # children.
 
     def qc_reads(self):
         # because this is a mixin, assume containing object will contain
         # a pipeline object.
-        config = self.pipeline.get_software_configuration('nu-qc')
+        config = self.pipeline.get_software_configuration("nu-qc")
 
         # files_regex is used with
         # sequencing_processing_pipeline.util.FILES_REGEX to decide
         # the file formats to look for. In this case, if self.files_regex
         # is not defined, just fallback to the SPP expected default regex
-        if not hasattr(self, 'files_regex'):
-            self.files_regex = 'SPP'
+        if not hasattr(self, "files_regex"):
+            self.files_regex = "SPP"
 
         # base quality control used by multiple Assay types.
-        job = NuQCJob(self.raw_fastq_files_path,
-                      self.pipeline.output_path,
-                      self.pipeline.sample_sheet.path,
-                      config['minimap2_databases'],
-                      config['queue'],
-                      config['nodes'],
-                      config['wallclock_time_in_minutes'],
-                      config['job_total_memory_limit'],
-                      config['fastp_executable_path'],
-                      config['minimap2_executable_path'],
-                      config['samtools_executable_path'],
-                      config['modules_to_load'],
-                      self.master_qiita_job_id,
-                      config['job_max_array_length'],
-                      config['known_adapters_path'],
-                      config['movi_executable_path'],
-                      config['gres_value'],
-                      config['pmls_path'],
-                      config['additional_fastq_tags'],
-                      bucket_size=config['bucket_size'],
-                      length_limit=config['length_limit'],
-                      cores_per_task=config['cores_per_task'],
-                      files_regex=self.files_regex,
-                      read_length=self.read_length)
+        job = NuQCJob(
+            self.raw_fastq_files_path,
+            self.pipeline.output_path,
+            self.pipeline.sample_sheet.path,
+            config["minimap2_databases"],
+            config["queue"],
+            config["nodes"],
+            config["wallclock_time_in_minutes"],
+            config["job_total_memory_limit"],
+            config["fastp_executable_path"],
+            config["minimap2_executable_path"],
+            config["samtools_executable_path"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            config["job_max_array_length"],
+            config["known_adapters_path"],
+            config["movi_executable_path"],
+            config["gres_value"],
+            config["pmls_path"],
+            config["additional_fastq_tags"],
+            bucket_size=config["bucket_size"],
+            length_limit=config["length_limit"],
+            cores_per_task=config["cores_per_task"],
+            files_regex=self.files_regex,
+            read_length=self.read_length,
+        )
 
-        if 'NuQCJob' not in self.skip_steps:
+        if "NuQCJob" not in self.skip_steps:
             job.run(callback=self.job_callback)
 
         # audit the results to determine which samples failed to convert
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         failed_samples = job.audit(self.pipeline.get_sample_ids())
-        if hasattr(self, 'fsr'):
+        if hasattr(self, "fsr"):
             self.fsr.write(failed_samples, job.__class__.__name__)
         return failed_samples
 
     def generate_reports(self):
-        config = self.pipeline.get_software_configuration('fastqc')
-        fqjob = FastQCJob(self.pipeline.run_dir,
-                          self.pipeline.output_path,
-                          self.raw_fastq_files_path,
-                          join(self.pipeline.output_path, 'NuQCJob'),
-                          config['nprocs'],
-                          config['nthreads'],
-                          config['fastqc_executable_path'],
-                          config['modules_to_load'],
-                          self.master_qiita_job_id,
-                          config['queue'],
-                          config['nodes'],
-                          config['wallclock_time_in_minutes'],
-                          config['job_total_memory_limit'],
-                          config['job_pool_size'],
-                          config['job_max_array_length'],
-                          False)
-        mqcjob = MultiQCJob(self.pipeline.run_dir,
-                            self.pipeline.output_path,
-                            self.raw_fastq_files_path,
-                            join(self.pipeline.output_path, 'NuQCJob'),
-                            config['nprocs'],
-                            config['nthreads'],
-                            config['multiqc_executable_path'],
-                            config['modules_to_load'],
-                            self.master_qiita_job_id,
-                            config['queue'],
-                            config['nodes'],
-                            config['wallclock_time_in_minutes'],
-                            config['job_total_memory_limit'],
-                            config['job_pool_size'],
-                            join(self.pipeline.output_path, 'FastQCJob'),
-                            config['job_max_array_length'],
-                            config['multiqc_config_file_path'],
-                            False)
+        config = self.pipeline.get_software_configuration("fastqc")
+        fqjob = FastQCJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            self.raw_fastq_files_path,
+            join(self.pipeline.output_path, "NuQCJob"),
+            config["nprocs"],
+            config["nthreads"],
+            config["fastqc_executable_path"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            config["queue"],
+            config["nodes"],
+            config["wallclock_time_in_minutes"],
+            config["job_total_memory_limit"],
+            config["job_pool_size"],
+            config["job_max_array_length"],
+            False,
+        )
+        mqcjob = MultiQCJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            self.raw_fastq_files_path,
+            join(self.pipeline.output_path, "NuQCJob"),
+            config["nprocs"],
+            config["nthreads"],
+            config["multiqc_executable_path"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            config["queue"],
+            config["nodes"],
+            config["wallclock_time_in_minutes"],
+            config["job_total_memory_limit"],
+            config["job_pool_size"],
+            join(self.pipeline.output_path, "FastQCJob"),
+            config["job_max_array_length"],
+            config["multiqc_config_file_path"],
+            False,
+        )
 
-        if 'FastQCJob' not in self.skip_steps:
+        if "FastQCJob" not in self.skip_steps:
             fqjob.run(callback=self.job_callback)
-        if 'MultiQCJob' not in self.skip_steps:
+        if "MultiQCJob" not in self.skip_steps:
             mqcjob.run(callback=self.job_callback)
 
         failed_samples = fqjob.audit(self.pipeline.get_sample_ids())
-        if hasattr(self, 'fsr'):
+        if hasattr(self, "fsr"):
             self.fsr.write(failed_samples, fqjob.__class__.__name__)
         return failed_samples
 
     def generate_prep_file(self):
-        config = self.pipeline.get_software_configuration('seqpro')
+        config = self.pipeline.get_software_configuration("seqpro")
 
-        job = GenPrepFileJob(self.pipeline.run_dir,
-                             self.raw_fastq_files_path,
-                             join(self.pipeline.output_path, 'NuQCJob'),
-                             self.pipeline.output_path,
-                             self.pipeline.input_file_path,
-                             config['seqpro_path'],
-                             config['modules_to_load'],
-                             self.master_qiita_job_id,
-                             self.reports_path)
+        job = GenPrepFileJob(
+            self.pipeline.run_dir,
+            self.raw_fastq_files_path,
+            join(self.pipeline.output_path, "NuQCJob"),
+            self.pipeline.output_path,
+            self.pipeline.input_file_path,
+            config["seqpro_path"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            self.reports_path,
+        )
 
-        if 'GenPrepFileJob' not in self.skip_steps:
+        if "GenPrepFileJob" not in self.skip_steps:
             job.run(callback=self.job_callback)
 
         self.dereplicated_input_file_paths = job.dereplicated_input_file_paths
@@ -613,27 +659,31 @@ class MetaOmic(Assay):
                 # the preps are created by seqpro within the GenPrepFileJob;
                 # thus, the "best" place to overwrite the values of the
                 # metadata are here
-                if hasattr(self, 'overwrite_prep_with_original') and \
-                        self.overwrite_prep_with_original:
-                    sid = basename(prep_fp).split('.')[1]
+                if (
+                    hasattr(self, "overwrite_prep_with_original")
+                    and self.overwrite_prep_with_original
+                ):
+                    sid = basename(prep_fp).split(".")[1]
                     afact_name = sid
-                    prep_fp = f'{self.pipeline.output_path}/original-prep.csv'
+                    prep_fp = f"{self.pipeline.output_path}/original-prep.csv"
 
                 metadata = Assay._parse_prep_file(prep_fp)
-                data = {'prep_info': dumps(metadata),
-                        'study': study_id,
-                        'job-id': self.master_qiita_job_id,
-                        'name': afact_name,
-                        'data_type': self.pipeline.pipeline_type}
+                data = {
+                    "prep_info": dumps(metadata),
+                    "study": study_id,
+                    "job-id": self.master_qiita_job_id,
+                    "name": afact_name,
+                    "data_type": self.pipeline.pipeline_type,
+                }
 
                 # since all Assays are mixins for Workflows, assume
                 # self.qclient exists and available.
-                reply = self.qclient.post('/qiita_db/prep_template/',
-                                          data=data)
-                prep_id = reply['prep']
+                reply = self.qclient.post("/qiita_db/prep_template/", data=data)
+                prep_id = reply["prep"]
                 results[study_id].append((prep_id, afact_name, is_repl))
-                self.run_prefixes[prep_id] = [metadata[sample]['run_prefix']
-                                              for sample in metadata]
+                self.run_prefixes[prep_id] = [
+                    metadata[sample]["run_prefix"] for sample in metadata
+                ]
 
         self.touched_studies_prep_info = results
         return results
@@ -643,7 +693,8 @@ class MetaOmic(Assay):
         empty_projects = []
         for project, _, qiita_id in self.special_map:
             fastq_files = self._get_postqc_fastq_files(
-                self.pipeline.output_path, project)
+                self.pipeline.output_path, project
+            )
 
             for vals in self.touched_studies_prep_info[qiita_id]:
                 prep_id, artifact_name, is_repl = vals
@@ -653,9 +704,9 @@ class MetaOmic(Assay):
                 for key in fastq_files:
                     working_set[key] = []
                     for run_prefix in self.run_prefixes[prep_id]:
-                        working_set[key] += [fastq for fastq in
-                                             fastq_files[key] if
-                                             run_prefix in fastq]
+                        working_set[key] += [
+                            fastq for fastq in fastq_files[key] if run_prefix in fastq
+                        ]
 
                 if is_repl:
                     working_set = self._copy_files(working_set)
@@ -666,28 +717,43 @@ class MetaOmic(Assay):
                     if not v:
                         empty_projects.append(project)
 
-                data.append(self._load_prep_into_qiita(
-                    self.qclient, prep_id, artifact_name, qiita_id, project,
-                    working_set, ARTIFACT_TYPE_METAOMICS))
+                data.append(
+                    self._load_prep_into_qiita(
+                        self.qclient,
+                        prep_id,
+                        artifact_name,
+                        qiita_id,
+                        project,
+                        working_set,
+                        ARTIFACT_TYPE_METAOMICS,
+                    )
+                )
 
         if empty_projects:
             ep = set(empty_projects)
-            raise ValueError(f'These projects have no files: {ep}')
+            raise ValueError(f"These projects have no files: {ep}")
 
         df = pd.DataFrame(data)
-        opath = join(self.pipeline.output_path, 'touched_studies.html')
-        with open(opath, 'w') as f:
-            f.write(df.to_html(border=2, index=False, justify="left",
-                               render_links=True, escape=False))
+        opath = join(self.pipeline.output_path, "touched_studies.html")
+        with open(opath, "w") as f:
+            f.write(
+                df.to_html(
+                    border=2,
+                    index=False,
+                    justify="left",
+                    render_links=True,
+                    escape=False,
+                )
+            )
 
         return df
 
 
 class Metagenomic(MetaOmic):
-    METAGENOMIC_TYPE = 'Metagenomic'
+    METAGENOMIC_TYPE = "Metagenomic"
     assay_type = ASSAY_NAME_METAGENOMIC
 
 
 class Metatranscriptomic(MetaOmic):
-    METATRANSCRIPTOMIC_TYPE = 'Metatranscriptomic'
+    METATRANSCRIPTOMIC_TYPE = "Metatranscriptomic"
     assay_type = ASSAY_NAME_METATRANSCRIPTOMIC

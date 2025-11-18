@@ -1,15 +1,17 @@
-from os.path import join, exists, split
-from os import walk, makedirs, listdir, environ
-import pandas as pd
-from json import dumps
-from subprocess import Popen, PIPE
-from glob import glob
-from shutil import copyfile
 import logging
-from shutil import rmtree
-from .Assays import ASSAY_NAME_AMPLICON
+from glob import glob
+from json import dumps
+from os import environ, listdir, makedirs, walk
+from os.path import exists, join, split
+from shutil import copyfile, rmtree
+from subprocess import PIPE, Popen
+
+import pandas as pd
 from metapool.sample_sheet import PROTOCOL_NAME_PACBIO_SMRT
+
 from sequence_processing_pipeline.util import determine_orientation
+
+from .Assays import ASSAY_NAME_AMPLICON
 
 
 class WorkflowError(Exception):
@@ -18,7 +20,7 @@ class WorkflowError(Exception):
         super().__init__(self.message)
 
 
-class Workflow():
+class Workflow:
     def __init__(self, **kwargs):
         """
         base initializer allows WorkflowFactory to return the correct
@@ -47,14 +49,18 @@ class Workflow():
         self.sifs = None
         self.skip_steps = []
         self.special_map = None
-        self.status_msg = ''
+        self.status_msg = ""
         self.touched_studies_prep_info = None
         self.tube_id_map = None
         self.directories_to_check = [
-            'ConvertJob', 'NuQCJob', 'FastQCJob', 'GenPrepFileJob']
+            "ConvertJob",
+            "NuQCJob",
+            "FastQCJob",
+            "GenPrepFileJob",
+        ]
 
-        if 'status_update_callback' in kwargs:
-            self.status_update_callback = kwargs['status_update_callback']
+        if "status_update_callback" in kwargs:
+            self.status_update_callback = kwargs["status_update_callback"]
         else:
             self.status_update_callback = None
 
@@ -69,17 +75,19 @@ class Workflow():
                 absent_list.append(attribute)
 
         if absent_list:
-            raise ValueError(f"The following values must also be defined in "
-                             f"kwargs for {self.__class__.__name__} workflows"
-                             + ": " + ', '.join(absent_list))
+            raise ValueError(
+                f"The following values must also be defined in "
+                f"kwargs for {self.__class__.__name__} workflows"
+                + ": "
+                + ", ".join(absent_list)
+            )
 
     def job_callback(self, jid, status):
         """
         Update main status message w/current child job status.
         """
         if self.status_update_callback:
-            self.status_update_callback(self.status_msg +
-                                        f" ({jid}: {status})")
+            self.status_update_callback(self.status_msg + f" ({jid}: {status})")
 
     def update_status(self, msg, step_number, total_steps):
         """
@@ -101,8 +109,7 @@ class Workflow():
         """
         Returns text description of Workflow's Instrument & Assay mixins.
         """
-        return (f"Instrument: {self.protocol_type}" + "\t" +
-                f"Assay: {self.assay_type}")
+        return f"Instrument: {self.protocol_type}" + "\t" + f"Assay: {self.assay_type}"
 
     def pre_check(self):
         if self.is_restart:
@@ -125,16 +132,16 @@ class Workflow():
             # for each project. The names of the projects are unimportant. We
             # want to abort early if any project in the sample-sheet/pre-prep
             # file contains samples that aren't registered in Qiita.
-            tmp = [len(project['samples_not_in_qiita']) for project in results]
+            tmp = [len(project["samples_not_in_qiita"]) for project in results]
             missing_counts = [count for count in tmp if count != 0]
 
             if missing_counts:
                 msgs = []
                 for result in results:
-                    msgs += result['messages']
+                    msgs += result["messages"]
 
                 if msgs:
-                    raise WorkflowError('\n'.join(msgs))
+                    raise WorkflowError("\n".join(msgs))
 
     def generate_special_map(self):
         """
@@ -149,11 +156,11 @@ class Workflow():
         results = self.qclient.get("/qiita_db/artifacts/types/")
         projects = self.pipeline.get_project_info()
         for project in projects:
-            upload_path = join(results['uploads'], project['qiita_id'])
+            upload_path = join(results["uploads"], project["qiita_id"])
             makedirs(upload_path, exist_ok=True)
-            special_map.append((project['project_name'],
-                                upload_path,
-                                project['qiita_id']))
+            special_map.append(
+                (project["project_name"], upload_path, project["qiita_id"])
+            )
 
         self.special_map = special_map
 
@@ -166,7 +173,8 @@ class Workflow():
         # generate SIF files with paths to the input file(s) (multiples when
         # there are replicates)
         self.sifs = self.pipeline.generate_sample_info_files(
-            self.dereplicated_input_file_paths)
+            self.dereplicated_input_file_paths
+        )
 
         return self.sifs
 
@@ -180,90 +188,119 @@ class Workflow():
             # get study_id from sif_file_name ...something_14385_blanks.tsv
             study_id = self.pipeline.get_qiita_id_from_sif_fp(sif_path)
 
-            df = pd.read_csv(sif_path, delimiter='\t', dtype=str)
+            df = pd.read_csv(sif_path, delimiter="\t", dtype=str)
 
             # Prepend study_id to make them compatible w/list from Qiita.
-            df['sample_name'] = f'{study_id}.' + df['sample_name'].astype(str)
+            df["sample_name"] = f"{study_id}." + df["sample_name"].astype(str)
 
             # SIFs only contain blanks. Get the list of potentially new blanks.
-            blanks = df['sample_name'].tolist()
+            blanks = df["sample_name"].tolist()
             if len(blanks) == 0:
                 # we have nothing to do so let's return early
                 return
 
             # Get list of samples already registered in Qiita
             # (will include any already-registered blanks)
-            from_qiita = self.qclient.get(f'/api/v1/study/{study_id}/samples')
+            from_qiita = self.qclient.get(f"/api/v1/study/{study_id}/samples")
 
             # Generate list of blanks that need to be ADDED to Qiita.
             new_blanks = (set(blanks) | set(from_qiita)) - set(from_qiita)
 
             if len(new_blanks):
                 # Generate dummy entries for each new blank, if any.
-                url = f'/api/v1/study/{study_id}/samples/info'
+                url = f"/api/v1/study/{study_id}/samples/info"
                 logging.debug(url)
-                categories = self.qclient.get(url)['categories']
+                categories = self.qclient.get(url)["categories"]
 
                 # initialize payload w/required dummy categories
-                data = {i: {c: 'control sample' for c in categories} for i in
-                        new_blanks}
+                data = {
+                    i: {c: "control sample" for c in categories} for i in new_blanks
+                }
 
                 # populate payload w/additional columns and/or overwrite
                 # existing columns w/metadata from SIF file.
-                sif_data = df.set_index('sample_name').T.to_dict()
+                sif_data = df.set_index("sample_name").T.to_dict()
                 for new_blank in new_blanks:
                     for column in sif_data[new_blank]:
                         data[new_blank][column] = sif_data[new_blank][column]
 
                 # http_patch will raise Error if insert failed.
-                self.qclient.http_patch(f'/api/v1/study/{study_id}/samples',
-                                        data=dumps(data))
+                self.qclient.http_patch(
+                    f"/api/v1/study/{study_id}/samples", data=dumps(data)
+                )
 
     def _helper_process_operations(self):
         """
         Helper method for generate_commands()
         :return:
         """
-        RESULTS_DIR = 'final_results'
-        TAR_CMD = 'tar zcvf'
-        LOG_PREFIX = 'logs'
-        REPORT_PREFIX = 'reports'
-        PREP_PREFIX = 'prep-files'
-        CONVERT_JOB = 'ConvertJob'
-        QC_JOB = 'NuQCJob'
-        FASTQC_JOB = 'FastQCJob'
-        PREPFILE_JOB = 'GenPrepFileJob'
-        TAR_EXT = 'tgz'
+        RESULTS_DIR = "final_results"
+        TAR_CMD = "tar zcvf"
+        LOG_PREFIX = "logs"
+        REPORT_PREFIX = "reports"
+        PREP_PREFIX = "prep-files"
+        CONVERT_JOB = "ConvertJob"
+        QC_JOB = "NuQCJob"
+        FASTQC_JOB = "FastQCJob"
+        PREPFILE_JOB = "GenPrepFileJob"
+        TAR_EXT = "tgz"
 
-        op_meta = [(['ConvertJob/logs'], TAR_CMD,
-                    f'{LOG_PREFIX}-{CONVERT_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
-
-                   (['ConvertJob/Reports', 'ConvertJob/logs'], TAR_CMD,
-                    f'{REPORT_PREFIX}-{CONVERT_JOB}.{TAR_EXT}',
-                    'OUTPUT_FIRST'),
-
-                   (['NuQCJob/logs'], TAR_CMD,
-                    f'{LOG_PREFIX}-{QC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
-
-                   (['FastQCJob/logs'], TAR_CMD,
-                    f'{LOG_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
-
-                   (['FastQCJob/fastqc'], TAR_CMD,
-                    f'{REPORT_PREFIX}-{FASTQC_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
-
-                   (['GenPrepFileJob/logs'], TAR_CMD,
-                    f'{LOG_PREFIX}-{PREPFILE_JOB}.{TAR_EXT}', 'OUTPUT_FIRST'),
-
-                   (['GenPrepFileJob/PrepFiles'], TAR_CMD,
-                    f'{PREP_PREFIX}.{TAR_EXT}', 'OUTPUT_FIRST'),
-
-                   (['failed_samples.html',
-                     'touched_studies.html',
-                     'MultiQCJob/multiqc',
-                     'TellReadJob/QC_Analysis_TellReadJob.html'],
-                    'mv', RESULTS_DIR, 'INPUTS_FIRST'),
-
-                   (['FastQCJob/multiqc'], 'mv', RESULTS_DIR, 'INPUTS_FIRST')]
+        op_meta = [
+            (
+                ["ConvertJob/logs"],
+                TAR_CMD,
+                f"{LOG_PREFIX}-{CONVERT_JOB}.{TAR_EXT}",
+                "OUTPUT_FIRST",
+            ),
+            (
+                ["ConvertJob/Reports", "ConvertJob/logs"],
+                TAR_CMD,
+                f"{REPORT_PREFIX}-{CONVERT_JOB}.{TAR_EXT}",
+                "OUTPUT_FIRST",
+            ),
+            (
+                ["NuQCJob/logs"],
+                TAR_CMD,
+                f"{LOG_PREFIX}-{QC_JOB}.{TAR_EXT}",
+                "OUTPUT_FIRST",
+            ),
+            (
+                ["FastQCJob/logs"],
+                TAR_CMD,
+                f"{LOG_PREFIX}-{FASTQC_JOB}.{TAR_EXT}",
+                "OUTPUT_FIRST",
+            ),
+            (
+                ["FastQCJob/fastqc"],
+                TAR_CMD,
+                f"{REPORT_PREFIX}-{FASTQC_JOB}.{TAR_EXT}",
+                "OUTPUT_FIRST",
+            ),
+            (
+                ["GenPrepFileJob/logs"],
+                TAR_CMD,
+                f"{LOG_PREFIX}-{PREPFILE_JOB}.{TAR_EXT}",
+                "OUTPUT_FIRST",
+            ),
+            (
+                ["GenPrepFileJob/PrepFiles"],
+                TAR_CMD,
+                f"{PREP_PREFIX}.{TAR_EXT}",
+                "OUTPUT_FIRST",
+            ),
+            (
+                [
+                    "failed_samples.html",
+                    "touched_studies.html",
+                    "MultiQCJob/multiqc",
+                    "TellReadJob/QC_Analysis_TellReadJob.html",
+                ],
+                "mv",
+                RESULTS_DIR,
+                "INPUTS_FIRST",
+            ),
+            (["FastQCJob/multiqc"], "mv", RESULTS_DIR, "INPUTS_FIRST"),
+        ]
 
         cmds = []
 
@@ -281,14 +318,13 @@ class Workflow():
             # the inputs exists. It's okay for a command to go unprocessed.
             if confirmed_inputs:
                 # convert to string form before using.
-                confirmed_inputs = ' '.join(confirmed_inputs)
-                if order == 'OUTPUT_FIRST':
-                    cmds.append(f'{action} {output} {confirmed_inputs}')
-                elif order == 'INPUTS_FIRST':
-                    cmds.append(f'{action} {confirmed_inputs} {output}')
+                confirmed_inputs = " ".join(confirmed_inputs)
+                if order == "OUTPUT_FIRST":
+                    cmds.append(f"{action} {output} {confirmed_inputs}")
+                elif order == "INPUTS_FIRST":
+                    cmds.append(f"{action} {confirmed_inputs} {output}")
                 else:
-                    raise ValueError(f"'{order}' is not a defined order of "
-                                     "operations")
+                    raise ValueError(f"'{order}' is not a defined order of operations")
 
         return cmds
 
@@ -297,13 +333,14 @@ class Workflow():
         Helper method for generate_commands().
         :return:
         """
-        results = [x for x in listdir(self.pipeline.output_path) if
-                   self.pipeline.is_sif_fp(x)]
+        results = [
+            x for x in listdir(self.pipeline.output_path) if self.pipeline.is_sif_fp(x)
+        ]
 
         results.sort()
 
         if len(results) > 0:
-            return 'tar zcvf sample-files.tgz' + ' ' + ' '.join(results)
+            return "tar zcvf sample-files.tgz" + " " + " ".join(results)
 
     def _process_fastp_report_dirs(self):
         """
@@ -314,15 +351,15 @@ class Workflow():
 
         for root, dirs, files in walk(self.pipeline.output_path):
             for dir_name in dirs:
-                if dir_name == 'fastp_reports_dir':
+                if dir_name == "fastp_reports_dir":
                     # generate the full path for this directory before
                     # truncating everything up to the NuQCJob directory.
-                    full_path = join(root, dir_name).split('NuQCJob/')
-                    report_dirs.append(join('NuQCJob', full_path[1]))
+                    full_path = join(root, dir_name).split("NuQCJob/")
+                    report_dirs.append(join("NuQCJob", full_path[1]))
 
         if report_dirs:
             report_dirs.sort()
-            return 'tar zcvf reports-NuQCJob.tgz ' + ' '.join(report_dirs)
+            return "tar zcvf reports-NuQCJob.tgz " + " ".join(report_dirs)
         else:
             # It is okay to return an empty list of commands if reports_dirs
             # is empty. Some pipelines do not generate fastp reports.
@@ -333,10 +370,10 @@ class Workflow():
         Helper method for generate_commands().
         :return:
         """
-        self.cmds_log_path = join(self.pipeline.output_path, 'cmds.log')
-        with open(self.cmds_log_path, 'w') as f:
+        self.cmds_log_path = join(self.pipeline.output_path, "cmds.log")
+        with open(self.cmds_log_path, "w") as f:
             for cmd in self.cmds:
-                f.write(f'{cmd}\n')
+                f.write(f"{cmd}\n")
 
     def generate_commands(self):
         cmds = self._helper_process_operations()
@@ -354,12 +391,13 @@ class Workflow():
         # if one or more tar-gzip files are found (which we expect there to
         # be), move them into the 'final_results' directory. However, if none
         # are present, don't raise an error.
-        cmds.append('(find *.tgz -maxdepth 1 -type f | xargs mv -t '
-                    'final_results) || true')
+        cmds.append(
+            "(find *.tgz -maxdepth 1 -type f | xargs mv -t final_results) || true"
+        )
 
         # prepend each command with a change-directory to the correct
         # location.
-        cmds = [f'cd {self.pipeline.output_path}; {cmd}' for cmd in cmds]
+        cmds = [f"cd {self.pipeline.output_path}; {cmd}" for cmd in cmds]
 
         self.cmds = cmds
 
@@ -368,11 +406,9 @@ class Workflow():
     def execute_commands(self):
         # execute the list of commands in order
         for cmd in self.cmds:
-            p = Popen(cmd,
-                      universal_newlines=True,
-                      shell=True,
-                      stdout=PIPE,
-                      stderr=PIPE)
+            p = Popen(
+                cmd, universal_newlines=True, shell=True, stdout=PIPE, stderr=PIPE
+            )
             _, _ = p.communicate()
             return_code = p.returncode
 
@@ -391,7 +427,7 @@ class Workflow():
         # names in each project's sample metadata. We'll let Pipeline()
         # decide (using its metapool dependency) which column names are
         # reserved.
-        qiita_ids = [x['qiita_id'] for x in self.pipeline.get_project_info()]
+        qiita_ids = [x["qiita_id"] for x in self.pipeline.get_project_info()]
 
         results = []
 
@@ -405,8 +441,9 @@ class Workflow():
             # if any reserved words were identified, generate an appropriate
             # error message for it and add it to the list of error messages
             # to return to the user.
-            res = [f"'{x}' exists in Qiita study {qiita_id}'s sample metadata"
-                   for x in res]
+            res = [
+                f"'{x}' exists in Qiita study {qiita_id}'s sample metadata" for x in res
+            ]
 
             results += res
 
@@ -422,8 +459,10 @@ class Workflow():
         :return:
         """
         if qiita_id in self.tube_id_map:
-            tids = [self.tube_id_map[qiita_id][sample] for sample in
-                    self.tube_id_map[qiita_id]]
+            tids = [
+                self.tube_id_map[qiita_id][sample]
+                for sample in self.tube_id_map[qiita_id]
+            ]
 
             not_in_qiita = samples - set(tids)
 
@@ -431,8 +470,7 @@ class Workflow():
                 # strip any leading zeroes from the sample-ids. Note that
                 # if a sample-id has more than one leading zero, all of
                 # them will be removed.
-                not_in_qiita = set([x.lstrip('0') for x in samples]) - \
-                               set(tids)
+                not_in_qiita = set([x.lstrip("0") for x in samples]) - set(tids)
 
             # convert examples to strings before returning
             examples = [str(example) for example in tids[:5]]
@@ -454,72 +492,85 @@ class Workflow():
         for project in projects:
             msgs = []
             self._get_tube_ids_from_qiita()
-            p_name = project['project_name']
-            qiita_id = str(project['qiita_id'])
-            contains_replicates = project['contains_replicates']
+            p_name = project["project_name"]
+            qiita_id = str(project["qiita_id"])
+            contains_replicates = project["contains_replicates"]
 
             # get list of samples as presented by the sample-sheet or mapping
             # file and confirm that they are all registered in Qiita.
             if contains_replicates:
                 # don't match against sample-names with a trailing well-id
                 # if project contains replicates.
-                msgs.append("This sample-sheet contains replicates. sample-"
-                            "names will be sourced from orig_name column.")
+                msgs.append(
+                    "This sample-sheet contains replicates. sample-"
+                    "names will be sourced from orig_name column."
+                )
                 samples = set(self.pipeline.get_orig_names_from_sheet(p_name))
             else:
                 samples = set(self.pipeline.get_sample_names(p_name))
 
             # do not include blanks. If they are unregistered, we will add
             # them downstream.
-            samples = {smpl for smpl in samples
-                       if not smpl.startswith('BLANK')}
+            samples = {smpl for smpl in samples if not smpl.startswith("BLANK")}
 
-            msgs.append(f"The total number of samples found in {p_name} that "
-                        f"aren't BLANK is: {len(samples)}")
+            msgs.append(
+                f"The total number of samples found in {p_name} that "
+                f"aren't BLANK is: {len(samples)}"
+            )
 
-            results_sn = self._process_sample_names(p_name, qiita_id,
-                                                    samples)
+            results_sn = self._process_sample_names(p_name, qiita_id, samples)
             rsn = results_sn[0]
-            msgs.append('Number of sample-names not in Qiita: '
-                        f'{len(rsn)}; {list(rsn)[:3]}')
+            msgs.append(
+                f"Number of sample-names not in Qiita: {len(rsn)}; {list(rsn)[:3]}"
+            )
 
             use_tids = False
 
             if len(results_sn[0]) == 0:
-                msgs.append(f"All values in sheet matched sample-names "
-                            f"registered with {p_name}")
+                msgs.append(
+                    f"All values in sheet matched sample-names registered with {p_name}"
+                )
             else:
                 # not all values were matched to sample-names.
                 # check for possible match w/tube-ids, if defined in project.
                 results_tid = self._process_tube_ids(qiita_id, samples)
                 if results_tid:
                     rtid = results_tid[0]
-                    msgs.append('Number of tube-ids not in Qiita: '
-                                f'{len(rtid)}; {list(rtid)[:3]}')
+                    msgs.append(
+                        "Number of tube-ids not in Qiita: "
+                        f"{len(rtid)}; {list(rtid)[:3]}"
+                    )
 
                     if len(results_tid[0]) == 0:
                         # all values were matched to tube-ids.
                         use_tids = True
-                        msgs.append(f"All values in sheet matched tube-ids "
-                                    f"registered with {p_name}")
+                        msgs.append(
+                            f"All values in sheet matched tube-ids "
+                            f"registered with {p_name}"
+                        )
                     else:
                         # we have sample-names and tube-ids and neither is
                         # a perfect match.
                         if len(results_tid[0]) < len(results_sn[0]):
                             # more tube-ids matched than sample-names.
                             use_tids = True
-                            msgs.append(f"More values in sheet matched tube-"
-                                        f"ids than sample-names with {p_name}")
+                            msgs.append(
+                                f"More values in sheet matched tube-"
+                                f"ids than sample-names with {p_name}"
+                            )
                         elif len(results_tid[0]) == len(results_sn[0]):
-                            msgs.append("Sample-names and tube-ids were "
-                                        "equally non-represented in the "
-                                        "sample-sheet")
+                            msgs.append(
+                                "Sample-names and tube-ids were "
+                                "equally non-represented in the "
+                                "sample-sheet"
+                            )
                         else:
-                            msgs.append(f"More values in sheet matched sample-"
-                                        f"names than tube-ids with {p_name}")
+                            msgs.append(
+                                f"More values in sheet matched sample-"
+                                f"names than tube-ids with {p_name}"
+                            )
                 else:
-                    msgs.append("there are no tube-ids registered with "
-                                f"{p_name}")
+                    msgs.append(f"there are no tube-ids registered with {p_name}")
 
             if use_tids:
                 not_in_qiita = results_tid[0]
@@ -532,35 +583,39 @@ class Workflow():
 
             # return an entry for all projects, even when samples_not_in_qiita
             # is an empty list, as the information is still valuable.
-            results.append({'samples_not_in_qiita': not_in_qiita,
-                            'examples_in_qiita': examples,
-                            'project_name': p_name,
-                            'total_in_qiita': total_in_qiita,
-                            'used_tids': use_tids,
-                            'messages': msgs})
+            results.append(
+                {
+                    "samples_not_in_qiita": not_in_qiita,
+                    "examples_in_qiita": examples,
+                    "project_name": p_name,
+                    "total_in_qiita": total_in_qiita,
+                    "used_tids": use_tids,
+                    "messages": msgs,
+                }
+            )
 
         return results
 
     @classmethod
     def get_samples_in_qiita(cls, qclient, qiita_id):
-        '''
+        """
         Obtain lists for sample-names and tube-ids registered in Qiita.
         :param qclient: QiitaClient object
         :param qiita_id: Qiita ID for the project in question.
         :return: a tuple of lists, one for sample-names, another for tube-ids.
-        '''
-        samples = qclient.get(f'/api/v1/study/{qiita_id}/samples')
+        """
+        samples = qclient.get(f"/api/v1/study/{qiita_id}/samples")
 
         # remove Qiita ID as a prefix from the sample-names.
-        samples = {x.replace(f'{qiita_id}.', '') for x in samples}
+        samples = {x.replace(f"{qiita_id}.", "") for x in samples}
 
         # find out if tube-ids are registered in the study.
-        categories = qclient.get(f'/api/v1/study/{qiita_id}'
-                                 '/samples/info')['categories']
+        categories = qclient.get(f"/api/v1/study/{qiita_id}/samples/info")["categories"]
 
-        if 'tube_id' in categories:
-            tids = qclient.get(f'/api/v1/study/{qiita_id}/samples/'
-                               'categories=tube_id')['samples']
+        if "tube_id" in categories:
+            tids = qclient.get(f"/api/v1/study/{qiita_id}/samples/categories=tube_id")[
+                "samples"
+            ]
         else:
             tids = None
 
@@ -568,42 +623,41 @@ class Workflow():
 
     def _get_postqc_fastq_files(self, out_dir, project):
         af = None
-        sub_folders = ['amplicon', 'filtered_sequences', 'trimmed_sequences']
+        sub_folders = ["amplicon", "filtered_sequences", "trimmed_sequences"]
         for sub_folder in sub_folders:
-            sf = join(out_dir, 'NuQCJob', project, sub_folder)
+            sf = join(out_dir, "NuQCJob", project, sub_folder)
             if exists(sf):
-                af = [f for f in glob(join(sf, '*.fastq.gz'))]
+                af = [f for f in glob(join(sf, "*.fastq.gz"))]
                 break
         if af is None or not af:
             raise WorkflowError("NuQCJob output not in expected location")
 
-        files = {'raw_barcodes': [], 'raw_forward_seqs': [],
-                 'raw_reverse_seqs': []}
+        files = {"raw_barcodes": [], "raw_forward_seqs": [], "raw_reverse_seqs": []}
 
         for fastq_file in af:
             _, file_name = split(fastq_file)
             orientation = determine_orientation(file_name)
-            if orientation in ['I1', 'I2']:
-                files['raw_barcodes'].append(fastq_file)
-            elif orientation == 'R1':
-                files['raw_forward_seqs'].append(fastq_file)
-            elif orientation == 'R2':
-                files['raw_reverse_seqs'].append(fastq_file)
+            if orientation in ["I1", "I2"]:
+                files["raw_barcodes"].append(fastq_file)
+            elif orientation == "R1":
+                files["raw_forward_seqs"].append(fastq_file)
+            elif orientation == "R2":
+                files["raw_reverse_seqs"].append(fastq_file)
             else:
                 raise ValueError(f"Unrecognized file: {fastq_file}")
 
-        files['raw_barcodes'].sort()
-        files['raw_forward_seqs'].sort()
-        files['raw_reverse_seqs'].sort()
+        files["raw_barcodes"].sort()
+        files["raw_forward_seqs"].sort()
+        files["raw_reverse_seqs"].sort()
 
         # Amplicon runs should contain raw_barcodes/I1 files.
         # Meta*omics files doesn't use them.
         if self.pipeline.pipeline_type != ASSAY_NAME_AMPLICON:
-            del (files['raw_barcodes'])
+            del files["raw_barcodes"]
 
         # PacBio doesn't have reverse reads
         if self.protocol_type == PROTOCOL_NAME_PACBIO_SMRT:
-            del (files['raw_reverse_seqs'])
+            del files["raw_reverse_seqs"]
 
         # confirm expected lists of reads are not empty.
         for f_type in files:
@@ -614,32 +668,41 @@ class Workflow():
 
         return files
 
-    def _load_prep_into_qiita(self, qclient, prep_id, artifact_name,
-                              qiita_id, project, fastq_files, atype):
-        surl = f'{qclient._server_url}/study/description/{qiita_id}'
-        prep_url = (f'{qclient._server_url}/study/description/'
-                    f'{qiita_id}?prep_id={prep_id}')
+    def _load_prep_into_qiita(
+        self, qclient, prep_id, artifact_name, qiita_id, project, fastq_files, atype
+    ):
+        surl = f"{qclient._server_url}/study/description/{qiita_id}"
+        prep_url = (
+            f"{qclient._server_url}/study/description/{qiita_id}?prep_id={prep_id}"
+        )
 
         # ideally we would use the email of the user that started the SPP
         # run but at this point there is no easy way to retrieve it
-        pdata = {'user_email': 'qiita.help@gmail.com',
-                 'prep_id': prep_id,
-                 'artifact_type': atype,
-                 'command_artifact_name': artifact_name,
-                 'files': dumps(fastq_files)}
+        pdata = {
+            "user_email": "qiita.help@gmail.com",
+            "prep_id": prep_id,
+            "artifact_type": atype,
+            "command_artifact_name": artifact_name,
+            "files": dumps(fastq_files),
+        }
         # this will block adding the default workflow to the
         # long read / pacbio processing; which is desirable
         # until we have a processing pipeline - note that
         # this will only be added if _not_ 'long'
-        if self.read_length != 'long':
-            pdata['add_default_workflow'] = True
+        if self.read_length != "long":
+            pdata["add_default_workflow"] = True
 
-        job_id = qclient.post('/qiita_db/artifact/', data=pdata)['job_id']
+        job_id = qclient.post("/qiita_db/artifact/", data=pdata)["job_id"]
 
-        return {'Project': project, 'Qiita Study ID': qiita_id,
-                'Qiita Prep ID': prep_id, 'Qiita URL': surl,
-                'Artifact Name': artifact_name,
-                'Prep URL': prep_url, 'Linking JobID': job_id}
+        return {
+            "Project": project,
+            "Qiita Study ID": qiita_id,
+            "Qiita Prep ID": prep_id,
+            "Qiita URL": surl,
+            "Artifact Name": artifact_name,
+            "Prep URL": prep_url,
+            "Linking JobID": job_id,
+        }
 
     def _copy_files(self, files):
         # increment the prep_copy_index before generating a new set of copies.
@@ -649,7 +712,7 @@ class Workflow():
             new_files[key] = []
             for some_path in files[key]:
                 path_name, file_name = split(some_path)
-                path_name = join(path_name, f'copy{self.prep_copy_index}')
+                path_name = join(path_name, f"copy{self.prep_copy_index}")
                 makedirs(path_name, exist_ok=True)
                 new_files[key].append(join(path_name, file_name))
 
@@ -665,8 +728,10 @@ class Workflow():
         # Update get_project_info() so that it can return a list of
         # samples in projects['samples']. Include blanks in projects['blanks']
         # just in case there are duplicate qiita_ids
-        qiita_ids = [proj['qiita_id'] for proj in
-                     self.pipeline.get_project_info(short_names=True)]
+        qiita_ids = [
+            proj["qiita_id"]
+            for proj in self.pipeline.get_project_info(short_names=True)
+        ]
 
         tids_by_qiita_id = {}
         sample_names_by_qiita_id = {}
@@ -681,8 +746,7 @@ class Workflow():
             if tids is not None:
                 # fix values in tids to be a string instead of a list of one.
                 # also, remove the qiita_id prepending each sample-name.
-                tids = {k.replace(f'{qiita_id}.', ''): tids[k][0] for k in
-                        tids}
+                tids = {k.replace(f"{qiita_id}.", ""): tids[k][0] for k in tids}
 
                 # the values Qiita returns for tids seems like it can include
                 # empty strings if there is no tube-id associated with a
@@ -713,8 +777,7 @@ class Workflow():
 
         # check if the test flag is on!
         test = False
-        if 'PrepNuQCJob_TEST' in environ and \
-                environ['PrepNuQCJob_TEST'] == 'true':
+        if "PrepNuQCJob_TEST" in environ and environ["PrepNuQCJob_TEST"] == "true":
             test = True
 
         # Although amplicon runs don't perform host-filtering,
@@ -723,13 +786,14 @@ class Workflow():
         # absence of a 'NuQCJob' directory is still a thing (for now)
         for directory in self.directories_to_check:
             if exists(join(out_dir, directory)):
-                if exists(join(out_dir, directory, 'job_completed')):
+                if exists(join(out_dir, directory, "job_completed")):
                     # this step completed successfully but
                     # TRIJ_Post_Processing is a special case and we
                     # need to look for post_processing_completed
-                    if directory == 'TRIJ_Post_Processing':
-                        if not exists(join(out_dir, directory,
-                                      'post_processing_completed')):
+                    if directory == "TRIJ_Post_Processing":
+                        if not exists(
+                            join(out_dir, directory, "post_processing_completed")
+                        ):
                             rmtree(join(out_dir, directory))
                             break
                     self.skip_steps.append(directory)
