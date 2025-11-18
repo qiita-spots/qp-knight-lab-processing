@@ -1,54 +1,61 @@
-from sequence_processing_pipeline.ConvertJob import (
-    ConvertJob, ConvertPacBioBam2FastqJob)
-from sequence_processing_pipeline.TellReadJob import TellReadJob
-from sequence_processing_pipeline.SeqCountsJob import SeqCountsJob
-from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
-from sequence_processing_pipeline.PipelineError import PipelineError
-from sequence_processing_pipeline.util import determine_orientation
-from re import match
+from glob import glob
 from os import makedirs, rename, walk
-from os.path import join, split, basename, dirname, exists
+from os.path import basename, dirname, exists, join, split
+from re import match
+
+import pandas as pd
 from metapool import load_sample_sheet
 from metapool.sample_sheet import (
-    PROTOCOL_NAME_ILLUMINA, PROTOCOL_NAME_TELLSEQ,
-    PROTOCOL_NAME_PACBIO_SMRT)
-import pandas as pd
-from glob import glob
+    PROTOCOL_NAME_ILLUMINA,
+    PROTOCOL_NAME_PACBIO_SMRT,
+    PROTOCOL_NAME_TELLSEQ,
+)
 from qiita_client.util import system_call
 
+from sequence_processing_pipeline.ConvertJob import (
+    ConvertJob,
+    ConvertPacBioBam2FastqJob,
+)
+from sequence_processing_pipeline.PipelineError import PipelineError
+from sequence_processing_pipeline.SeqCountsJob import SeqCountsJob
+from sequence_processing_pipeline.TellReadJob import TellReadJob
+from sequence_processing_pipeline.TRIntegrateJob import TRIntegrateJob
+from sequence_processing_pipeline.util import determine_orientation
 
 PROTOCOL_NAME_NONE = "None"
 
 
-class Protocol():
+class Protocol:
     """
     Protocols encapsulate Job()s and other functionality that vary on
      the nature of the Instrument used to create the raw data. All Instruments
      are mixins for Workflow() classes and shouldn't define their own
      initialization.
     """
+
     protocol_type = PROTOCOL_NAME_NONE
     # this value was selected by looking at all the successful NuQC/SPP jobs,
     # the max sequeces were: 712,497,596
     MAX_READS = 720000000
 
     def subsample_reads(self):
-        if self.assay_type == 'Amplicon':
+        if self.assay_type == "Amplicon":
             return
 
         df = pd.read_csv(self.reports_path)
-        if 'raw_reads_r1r2' in df.columns:
+        if "raw_reads_r1r2" in df.columns:
             # this is a TellSeq run: SeqCounts.csv
-            read_col = 'raw_reads_r1r2'
-            index_col = 'Sample_ID'
-        elif '# Reads' in df.columns:
+            read_col = "raw_reads_r1r2"
+            index_col = "Sample_ID"
+        elif "# Reads" in df.columns:
             # this is a Illumina: Demultiplex_Stats.csv
-            read_col = '# Reads'
-            index_col = 'SampleID'
+            read_col = "# Reads"
+            index_col = "SampleID"
         else:
             raise ValueError(
-                'Not sure how to check for seq counts to subsample, '
-                'please let an admin know.')
+                "Not sure how to check for seq counts to subsample, "
+                "please let an admin know."
+            )
         # df will keep any rows/samples with more than the self.MAX_READS
         df = df[df[read_col] > self.MAX_READS]
         if df.shape[0]:
@@ -56,7 +63,7 @@ class Protocol():
                 sn = row[index_col]
                 # look for any sample (fwd/rev pairs) that have the sample_name
                 # as prefix of their filename
-                files = glob(f'{self.raw_fastq_files_path}/*/{sn}*.fastq.gz')
+                files = glob(f"{self.raw_fastq_files_path}/*/{sn}*.fastq.gz")
                 # for each file let's get their folder (dn) and filename (bn),
                 # then create a fullpath with with dn and bn where we are
                 # changing the filename from fastq.gz to full.gz; then
@@ -65,19 +72,19 @@ class Protocol():
                 for f in files:
                     dn = dirname(f)
                     bn = basename(f)
-                    nbn = join(dn, bn.replace('fastq.gz', 'full.gz'))
-                    cmd = f'mv {f} {nbn}'
+                    nbn = join(dn, bn.replace("fastq.gz", "full.gz"))
+                    cmd = f"mv {f} {nbn}"
                     _, se, rv = system_call(cmd)
                     if rv != 0 or se:
-                        raise ValueError(f'Error during mv: {cmd}. {se}')
-                    cmd = (f'seqtk sample -s 42 {nbn} {self.MAX_READS} '
-                           f'| gzip > {f}')
+                        raise ValueError(f"Error during mv: {cmd}. {se}")
+                    cmd = f"seqtk sample -s 42 {nbn} {self.MAX_READS} | gzip > {f}"
                     _, se, rv = system_call(cmd)
                     if rv != 0 or se:
-                        raise ValueError(f'Error during seqtk: {cmd}. {se}')
+                        raise ValueError(f"Error during seqtk: {cmd}. {se}")
                     self.assay_warnings.append(
-                        f'{sn} ({bn}) had {row[read_col]} sequences, '
-                        f'subsampling to {self.MAX_READS}')
+                        f"{sn} ({bn}) had {row[read_col]} sequences, "
+                        f"subsampling to {self.MAX_READS}"
+                    )
 
 
 class Illumina(Protocol):
@@ -85,23 +92,24 @@ class Illumina(Protocol):
     # required files for successful operation for Illumina (making the default
     # here) both RTAComplete.txt and RunInfo.xml should reside in the root of
     # the run directory.
-    required_files = ['RTAComplete.txt', 'RunInfo.xml']
-    read_length = 'short'
+    required_files = ["RTAComplete.txt", "RunInfo.xml"]
+    read_length = "short"
 
     def __init__(self) -> None:
         super().__init__()
 
         for some_file in self.required_files:
             if not exists(join(self.run_dir, some_file)):
-                raise PipelineError(f"required file '{some_file}' is not "
-                                    f"present in {self.run_dir}.")
+                raise PipelineError(
+                    f"required file '{some_file}' is not present in {self.run_dir}."
+                )
 
         # verify that RunInfo.xml file is readable.
         try:
-            fp = open(join(self.run_dir, 'RunInfo.xml'))
+            fp = open(join(self.run_dir, "RunInfo.xml"))
             fp.close()
         except PermissionError:
-            raise PipelineError('RunInfo.xml is present, but not readable')
+            raise PipelineError("RunInfo.xml is present, but not readable")
 
     def convert_raw_to_fastq(self):
         def get_config(command):
@@ -123,41 +131,43 @@ class Illumina(Protocol):
         # will get and thus we must check for the presence or absence of
         # both dictionaries in the configuration file at run-time and make
         # a determination based on that.
-        bcl2fastq_conf = get_config('bcl2fastq')
-        bclcnvrt_conf = get_config('bcl-convert')
+        bcl2fastq_conf = get_config("bcl2fastq")
+        bclcnvrt_conf = get_config("bcl-convert")
 
         if bclcnvrt_conf is None and bcl2fastq_conf is None:
-            raise PipelineError("bcl-convert and bcl2fastq sections not "
-                                "defined in configuation profile.")
+            raise PipelineError(
+                "bcl-convert and bcl2fastq sections not "
+                "defined in configuation profile."
+            )
 
         # if both are defined, we will use bcl-convert by default.
         config = bcl2fastq_conf if bclcnvrt_conf is None else bclcnvrt_conf
 
-        job = ConvertJob(self.pipeline.run_dir,
-                         self.pipeline.output_path,
-                         # for amplicon runs, get_sample_sheet_path() will
-                         # return the path for a generated dummy sheet.
-                         self.pipeline.get_sample_sheet_path(),
-                         config['queue'],
-                         config['nodes'],
-                         config['nprocs'],
-                         config['wallclock_time_in_minutes'],
-                         config['per_process_memory_limit'],
-                         config['executable_path'],
-                         config['modules_to_load'],
-                         self.master_qiita_job_id)
+        job = ConvertJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            # for amplicon runs, get_sample_sheet_path() will
+            # return the path for a generated dummy sheet.
+            self.pipeline.get_sample_sheet_path(),
+            config["queue"],
+            config["nodes"],
+            config["nprocs"],
+            config["wallclock_time_in_minutes"],
+            config["per_process_memory_limit"],
+            config["executable_path"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+        )
 
-        self.raw_fastq_files_path = join(self.pipeline.output_path,
-                                         'ConvertJob')
+        self.raw_fastq_files_path = join(self.pipeline.output_path, "ConvertJob")
 
-        if 'ConvertJob' not in self.skip_steps:
+        if "ConvertJob" not in self.skip_steps:
             job.run(callback=self.job_callback)
 
         # if successful, set self.reports_path
-        self.reports_path = join(self.pipeline.output_path,
-                                 'ConvertJob',
-                                 'Reports',
-                                 'Demultiplex_Stats.csv')
+        self.reports_path = join(
+            self.pipeline.output_path, "ConvertJob", "Reports", "Demultiplex_Stats.csv"
+        )
         # TODO: Include alternative path when using bcl2fastq instead of
         # bcl-convert.
 
@@ -165,7 +175,7 @@ class Illumina(Protocol):
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         failed_samples = job.audit(self.pipeline.get_sample_ids())
-        if hasattr(self, 'fsr'):
+        if hasattr(self, "fsr"):
             self.fsr.write(failed_samples, job.__class__.__name__)
 
         return failed_samples
@@ -179,41 +189,46 @@ class Illumina(Protocol):
 
 class TellSeq(Protocol):
     protocol_type = PROTOCOL_NAME_TELLSEQ
-    read_length = 'short'
+    read_length = "short"
 
     def convert_raw_to_fastq(self):
-        config = self.pipeline.get_software_configuration('tell-seq')
+        config = self.pipeline.get_software_configuration("tell-seq")
 
-        job = TellReadJob(self.pipeline.run_dir,
-                          self.pipeline.output_path,
-                          self.pipeline.input_file_path,
-                          config['queue'],
-                          config['nodes'],
-                          config['wallclock_time_in_minutes'],
-                          config['tellread_mem_limit'],
-                          config['modules_to_load'],
-                          self.master_qiita_job_id,
-                          config['reference_base'],
-                          config['reference_map'],
-                          config['sing_script_path'],
-                          config['tellread_cores'])
+        job = TellReadJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            self.pipeline.input_file_path,
+            config["queue"],
+            config["nodes"],
+            config["wallclock_time_in_minutes"],
+            config["tellread_mem_limit"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            config["reference_base"],
+            config["reference_map"],
+            config["sing_script_path"],
+            config["tellread_cores"],
+        )
 
-        self.raw_fastq_files_path = join(self.pipeline.output_path,
-                                         'TellReadJob', 'Full')
-        self.my_sil_path = join(self.pipeline.output_path,
-                                'TellReadJob',
-                                'sample_index_list_TellReadJob.txt')
+        self.raw_fastq_files_path = join(
+            self.pipeline.output_path, "TellReadJob", "Full"
+        )
+        self.my_sil_path = join(
+            self.pipeline.output_path,
+            "TellReadJob",
+            "sample_index_list_TellReadJob.txt",
+        )
 
         # if TellReadJob already completed, then skip the over the time-
         # consuming portion but populate the needed member variables.
-        if 'TellReadJob' not in self.skip_steps:
+        if "TellReadJob" not in self.skip_steps:
             job.run(callback=self.job_callback)
 
         # audit the results to determine which samples failed to convert
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         failed_samples = job.audit()
-        if hasattr(self, 'fsr'):
+        if hasattr(self, "fsr"):
             # NB 16S does not require a failed samples report and
             # it is not performed by SPP.
             self.fsr.write(failed_samples, job.__class__.__name__)
@@ -221,37 +236,38 @@ class TellSeq(Protocol):
         return failed_samples
 
     def generate_sequence_counts(self):
-        config = self.pipeline.get_software_configuration('tell-seq')
+        config = self.pipeline.get_software_configuration("tell-seq")
 
-        files_to_count_path = join(self.pipeline.output_path,
-                                   'files_to_count.txt')
+        files_to_count_path = join(self.pipeline.output_path, "files_to_count.txt")
 
-        with open(files_to_count_path, 'w') as f:
+        with open(files_to_count_path, "w") as f:
             for root, _, files in walk(self.raw_fastq_files_path):
                 for _file in files:
-                    if determine_orientation(_file) in ['R1', 'R2']:
+                    if determine_orientation(_file) in ["R1", "R2"]:
                         print(join(root, _file), file=f)
 
-        job = SeqCountsJob(self.pipeline.run_dir,
-                           self.pipeline.output_path,
-                           config['queue'],
-                           config['nodes'],
-                           config['wallclock_time_in_minutes'],
-                           config['normcount_mem_limit'],
-                           config['modules_to_load'],
-                           self.master_qiita_job_id,
-                           config['job_max_array_length'],
-                           files_to_count_path,
-                           self.pipeline.get_sample_sheet_path(),
-                           cores_per_task=config['tellread_cores'])
+        job = SeqCountsJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            config["queue"],
+            config["nodes"],
+            config["wallclock_time_in_minutes"],
+            config["normcount_mem_limit"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            config["job_max_array_length"],
+            files_to_count_path,
+            self.pipeline.get_sample_sheet_path(),
+            cores_per_task=config["tellread_cores"],
+        )
 
-        if 'SeqCountsJob' not in self.skip_steps:
+        if "SeqCountsJob" not in self.skip_steps:
             job.run(callback=self.job_callback)
 
         # if successful, set self.reports_path
-        self.reports_path = join(self.pipeline.output_path,
-                                 'SeqCountsJob',
-                                 'SeqCounts.csv')
+        self.reports_path = join(
+            self.pipeline.output_path, "SeqCountsJob", "SeqCounts.csv"
+        )
 
         # Do not add an entry to fsr because w/respect to counting, either
         # all jobs are going to fail or none are going to fail. It's not
@@ -259,51 +275,52 @@ class TellSeq(Protocol):
         # of the samples.
 
     def integrate_results(self):
-        config = self.pipeline.get_software_configuration('tell-seq')
+        config = self.pipeline.get_software_configuration("tell-seq")
 
         # after the primary job and the optional counts job is completed,
         # the job to integrate results and add metadata to the fastq files
         # is performed.
 
-        job = TRIntegrateJob(self.pipeline.run_dir,
-                             self.pipeline.output_path,
-                             self.pipeline.input_file_path,
-                             config['queue'],
-                             config['nodes'],
-                             config['wallclock_time_in_minutes'],
-                             config['integrate_mem_limit'],
-                             config['modules_to_load'],
-                             self.master_qiita_job_id,
-                             config['integrate_script_path'],
-                             # NB: sample_index_list used may vary
-                             # from project to project in the future.
-                             # If so replace config entry with a user
-                             # supplied entry or an entry in the sample
-                             # sheet.
+        job = TRIntegrateJob(
+            self.pipeline.run_dir,
+            self.pipeline.output_path,
+            self.pipeline.input_file_path,
+            config["queue"],
+            config["nodes"],
+            config["wallclock_time_in_minutes"],
+            config["integrate_mem_limit"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+            config["integrate_script_path"],
+            # NB: sample_index_list used may vary
+            # from project to project in the future.
+            # If so replace config entry with a user
+            # supplied entry or an entry in the sample
+            # sheet.
+            # NB: the version of the sil needed is the one
+            # generated by TellReadJob(), not the master
+            # sil. The former will account for a set of
+            # barcode_ids that don't begin at C501 and/or
+            # skip over some values like C509.
+            self.my_sil_path,
+            self.raw_fastq_files_path,
+            "",
+            "",
+            config["integrate_cores"],
+        )
 
-                             # NB: the version of the sil needed is the one
-                             # generated by TellReadJob(), not the master
-                             # sil. The former will account for a set of
-                             # barcode_ids that don't begin at C501 and/or
-                             # skip over some values like C509.
-                             self.my_sil_path,
-                             self.raw_fastq_files_path,
-                             "",
-                             "",
-                             config['integrate_cores'])
-
-        if 'TRIntegrateJob' not in self.skip_steps:
+        if "TRIntegrateJob" not in self.skip_steps:
             job.run(callback=self.job_callback)
 
         # raw_fastq_files_path is used by downstream processes to know
         # where to locate 'raw' fastq files. Before we could assume that
         # it would always be in ConvertJob's working directory but now
         # this is no longer the case. Currently used by NuQCJob.
-        self.raw_fastq_files_path = join(self.pipeline.output_path,
-                                         'TRIntegrateJob',
-                                         'integrated')
+        self.raw_fastq_files_path = join(
+            self.pipeline.output_path, "TRIntegrateJob", "integrated"
+        )
 
-        if 'TRIJ_Post_Processing' in self.skip_steps:
+        if "TRIJ_Post_Processing" in self.skip_steps:
             # if 'post_processing_completed' is found in the same location,
             # this means the steps below were already completed.
             return
@@ -317,16 +334,14 @@ class TellSeq(Protocol):
         for root, dirs, files in walk(self.raw_fastq_files_path):
             for _file in files:
                 fastq_file = join(root, _file)
-                self._post_process_file(fastq_file,
-                                        mapping,
-                                        self.lane_number)
+                self._post_process_file(fastq_file, mapping, self.lane_number)
 
         # audit the results to determine which samples failed to convert
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         failed_samples = job.audit()
 
-        if hasattr(self, 'fsr'):
+        if hasattr(self, "fsr"):
             # NB 16S does not require a failed samples report and
             # it is not performed by SPP.
             self.fsr.write(failed_samples, job.__class__.__name__)
@@ -343,11 +358,13 @@ class TellSeq(Protocol):
 
         count = 1
         for sample in sheet.samples:
-            barcode_id = sample['barcode_id']
-            results[barcode_id] = {'sample_name': sample['Sample_Name'],
-                                   'sample_id': sample['Sample_ID'],
-                                   'sample_index': count,
-                                   'project_name': sample['Sample_Project']}
+            barcode_id = sample["barcode_id"]
+            results[barcode_id] = {
+                "sample_name": sample["Sample_Name"],
+                "sample_id": sample["Sample_ID"],
+                "sample_index": count,
+                "project_name": sample["Sample_Project"],
+            }
             count += 1
         return results
 
@@ -363,8 +380,7 @@ class TellSeq(Protocol):
         m = match(r"(C5\d\d)\.([R,I]\d)\.fastq.gz", _file)
 
         if m is None:
-            raise ValueError(f"The filename '{_file}' is not of a "
-                             "recognizable form")
+            raise ValueError(f"The filename '{_file}' is not of a recognizable form")
 
         barcode_id = m[1]
         read_type = m[2]
@@ -372,16 +388,18 @@ class TellSeq(Protocol):
         if barcode_id not in mapping:
             raise ValueError(f"{barcode_id} is not present in sample-sheet")
 
-        sample_id = mapping[barcode_id]['sample_id']
-        project_name = mapping[barcode_id]['project_name']
-        sample_index = mapping[barcode_id]['sample_index']
+        sample_id = mapping[barcode_id]["sample_id"]
+        project_name = mapping[barcode_id]["project_name"]
+        sample_index = mapping[barcode_id]["sample_index"]
 
         # generate the new filename for the fastq file, and reorganize the
         # files by project.
-        new_name = "%s_S%d_%s_%s_001.fastq.gz" % (sample_id,
-                                                  sample_index,
-                                                  "L%s" % str(lane).zfill(3),
-                                                  read_type)
+        new_name = "%s_S%d_%s_%s_001.fastq.gz" % (
+            sample_id,
+            sample_index,
+            "L%s" % str(lane).zfill(3),
+            read_type,
+        )
 
         # ensure that the project directory exists before we rename and move
         # the file to that location.
@@ -397,37 +415,37 @@ class TellSeq(Protocol):
 
 class PacBio(Protocol):
     protocol_type = PROTOCOL_NAME_PACBIO_SMRT
-    read_length = 'long'
+    read_length = "long"
 
     def convert_raw_to_fastq(self):
-        config = self.pipeline.get_software_configuration('pacbio_convert')
+        config = self.pipeline.get_software_configuration("pacbio_convert")
 
         job = ConvertPacBioBam2FastqJob(
             self.pipeline.run_dir,
             self.pipeline.output_path,
             self.pipeline.input_file_path,
-            config['queue'],
-            config['nodes'],
-            config['nprocs'],
-            config['wallclock_time_in_minutes'],
-            config['per_process_memory_limit'],
-            config['executable_path'],
-            config['modules_to_load'],
-            self.master_qiita_job_id)
+            config["queue"],
+            config["nodes"],
+            config["nprocs"],
+            config["wallclock_time_in_minutes"],
+            config["per_process_memory_limit"],
+            config["executable_path"],
+            config["modules_to_load"],
+            self.master_qiita_job_id,
+        )
 
-        self.raw_fastq_files_path = join(self.pipeline.output_path,
-                                         'ConvertJob')
+        self.raw_fastq_files_path = join(self.pipeline.output_path, "ConvertJob")
 
         # if ConvertJob already completed, then skip the over the time-
         # consuming portion but populate the needed member variables.
-        if 'ConvertJob' not in self.skip_steps:
+        if "ConvertJob" not in self.skip_steps:
             job.run(callback=self.job_callback)
 
         # audit the results to determine which samples failed to convert
         # properly. Append these to the failed-samples report and also
         # return the list directly to the caller.
         failed_samples = job.audit(self.pipeline.get_sample_ids())
-        if hasattr(self, 'fsr'):
+        if hasattr(self, "fsr"):
             # NB 16S does not require a failed samples report and
             # it is not performed by SPP.
             self.fsr.write(failed_samples, job.__class__.__name__)
@@ -438,29 +456,30 @@ class PacBio(Protocol):
         # for other instances of generate_sequence_counts in other objects
         # the sequence counting needs to be done; however, for PacBio we
         # already have done it and just need to merge the results.
-        gz_files = glob(f'{self.raw_fastq_files_path}/*/*.fastq.gz')
+        gz_files = glob(f"{self.raw_fastq_files_path}/*/*.fastq.gz")
         data, missing_files = [], []
 
         for gzf in gz_files:
-            cf = gzf.replace('.fastq.gz', '.counts.txt')
+            cf = gzf.replace(".fastq.gz", ".counts.txt")
             sn = basename(cf).replace(
-                f'_S000_L00{self.lane_number}_R1_001.counts.txt', '')
+                f"_S000_L00{self.lane_number}_R1_001.counts.txt", ""
+            )
             if not exists(cf):
                 missing_files.append(sn)
                 continue
-            with open(cf, 'r') as fh:
+            with open(cf, "r") as fh:
                 counts = fh.read().strip()
-            data.append({'Sample_ID': sn,
-                         'raw_reads_r1r2': counts,
-                         'Lane': self.lane_number})
+            data.append(
+                {"Sample_ID": sn, "raw_reads_r1r2": counts, "Lane": self.lane_number}
+            )
 
         if missing_files:
-            raise ValueError(f'Missing count files: {missing_files}')
+            raise ValueError(f"Missing count files: {missing_files}")
 
         df = pd.DataFrame(data)
-        self.reports_path = join(self.pipeline.output_path,
-                                 'ConvertJob',
-                                 'SeqCounts.csv')
+        self.reports_path = join(
+            self.pipeline.output_path, "ConvertJob", "SeqCounts.csv"
+        )
         df.to_csv(self.reports_path, index=False)
 
     def integrate_results(self):

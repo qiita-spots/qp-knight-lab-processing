@@ -14,13 +14,13 @@ from qp_klp import plugin
 
 
 @click.command()
-@click.argument('url', required=True)
-@click.argument('job_id', required=True)
-@click.argument('output_dir', required=True)
+@click.argument("url", required=True)
+@click.argument("job_id", required=True)
+@click.argument("output_dir", required=True)
 def execute(url, job_id, output_dir):
     """Executes the task given by job_id and puts the output in output_dir"""
     plugin(url, job_id, output_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     execute()
