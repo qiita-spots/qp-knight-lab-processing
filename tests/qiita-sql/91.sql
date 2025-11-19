@@ -78,10 +78,23 @@ VALUES
         '',
         '',
         ''
+    ),
+    (
+        99999,
+        'demo@microbio.me',
+        1,
+        true,
+        true,
+        1,
+        false,
+        'Study 99999',
+        '',
+        '',
+        ''
     );
 
 -- Add studies to Qiita portal
-INSERT INTO qiita.study_portal (study_id, portal_type_id) VALUES (2, 1), (6123, 1), (6124, 1), (11661, 1), (13059, 1);
+INSERT INTO qiita.study_portal (study_id, portal_type_id) VALUES (2, 1), (6123, 1), (6124, 1), (11661, 1), (13059, 1), (99999, 1);
 
 -- Creating the sample-metadata for tne new studies
 
@@ -115,6 +128,13 @@ CREATE TABLE qiita.sample_13059 (
     sample_values JSONB NOT NULL
 );
 INSERT INTO qiita.sample_13059 (sample_id, sample_values) VALUES  ('qiita_sample_column_names', '{}'::json);
+
+
+CREATE TABLE qiita.sample_99999 (
+    sample_id VARCHAR NOT NULL PRIMARY KEY,
+    sample_values JSONB NOT NULL
+);
+INSERT INTO qiita.sample_99999 (sample_id, sample_values) VALUES  ('qiita_sample_column_names', '{}'::json);
 
 -- Now adding the samples
 INSERT INTO
@@ -1247,7 +1267,6 @@ VALUES
     (11661, '11661.JM-Metabolic__GN02787'),
     (11661, '11661.AB5075_AZM_TALE_in_MHB_A_baumannii_AB5075_WT_3_50'),
     (11661, '11661.AB5075_AZM_TALE_in_MHB_A_baumannii_AB5075_WT_1_24'),
-
     -- 6123
     (6123, '6123.3A'),
     (6123, '6123.4A'),
@@ -1702,4 +1721,7 @@ VALUES
     (6124, '6124.Test.3.24.2015'),
     (6124, '6124.45208.1.1'),
     (6124, '6124.Marine.Sediment.30.32cm.R3'),
-    (6124, '6124.example.A.R3');
+    (6124, '6124.example.A.R3'),
+    (99999, 'sample.1'),
+    (99999, 'sample.2'),
+    (99999, 'sample.3');

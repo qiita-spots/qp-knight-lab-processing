@@ -50,15 +50,20 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
             self.kwargs["output_dir"], self.pipeline.sample_sheet.samples
         )
 
-        samples = [
-            {
-                "barcode": sample["barcode_id"],
-                "sample_name": sample["Sample_ID"],
-                "project_name": sample["Sample_Project"],
-                "lane": sample["Lane"],
-            }
-            for sample in self.pipeline.sample_sheet.samples
-        ]
+        samples = []
+        for sample in self.pipeline.sample_sheet.samples:
+            tai = None
+            if "twist_adaptor_id" in sample:
+                tai = sample["twist_adaptor_id"]
+            samples.append(
+                {
+                    "barcode": sample["barcode_id"],
+                    "sample_name": sample["Sample_ID"],
+                    "project_name": sample["Sample_Project"],
+                    "lane": sample["Lane"],
+                    "twist_adaptor_id": tai,
+                }
+            )
         df = pd.DataFrame(samples)
         sample_list_fp = f"{self.kwargs['output_dir']}/sample_list.tsv"
         df.to_csv(sample_list_fp, sep="\t", index=False)
