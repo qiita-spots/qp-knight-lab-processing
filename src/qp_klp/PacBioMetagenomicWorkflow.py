@@ -6,7 +6,6 @@ from metapool.sample_sheet import (
     LANE_KEY,
     SS_SAMPLE_ID_KEY,
     SS_SAMPLE_PROJECT_KEY,
-    SYNDNA_IS_TWISTED_KEY,
     TWIST_ADAPTOR_ID_KEY,
 )
 
@@ -60,11 +59,9 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
 
         samples = []
         for sample in self.pipeline.sample_sheet.samples:
-            tai, sitk = None, None
+            tai = None
             if TWIST_ADAPTOR_ID_KEY in sample:
                 tai = sample[TWIST_ADAPTOR_ID_KEY]
-                if SYNDNA_IS_TWISTED_KEY in sample:
-                    sitk = sample[SYNDNA_IS_TWISTED_KEY]
             samples.append(
                 {
                     "barcode": sample[BARCODE_ID_KEY],
@@ -72,7 +69,6 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
                     "project_name": sample[SS_SAMPLE_PROJECT_KEY],
                     "lane": sample[LANE_KEY],
                     "twist_adaptor_id": tai,
-                    "syndna_is_twisted_key": sitk,
                 }
             )
         df = pd.DataFrame(samples)
