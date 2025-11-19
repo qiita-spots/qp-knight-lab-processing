@@ -57,9 +57,6 @@ def generate_bam2fastq_commands(sample_list, run_folder, outdir, threads):
                 missing_files.append(tai)
                 continue
             ifile = twisted_files[tai]
-            if pn not in ifile:
-                missing_files.append(f"{pn} not part of filename {ifile}")
-                continue
 
         od = f"{outdir}/{pn}"
 
