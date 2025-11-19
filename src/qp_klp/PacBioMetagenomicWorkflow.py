@@ -63,7 +63,8 @@ class PacBioMetagenomicWorkflow(Workflow, Metagenomic, PacBio):
             tai, sitk = None, None
             if TWIST_ADAPTOR_ID_KEY in sample:
                 tai = sample[TWIST_ADAPTOR_ID_KEY]
-                sitk = sample[SYNDNA_IS_TWISTED_KEY]
+                if SYNDNA_IS_TWISTED_KEY in sample:
+                    sitk = sample[SYNDNA_IS_TWISTED_KEY]
             samples.append(
                 {
                     "barcode": sample[BARCODE_ID_KEY],
