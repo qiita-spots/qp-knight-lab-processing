@@ -9,23 +9,30 @@ from os import makedirs
 from os.path import abspath, dirname, exists, join
 from pathlib import Path
 from shutil import copyfile, rmtree
-from unittest import main
+from unittest import TestCase, main
 
+import metapool
 import pandas as pd
+from click.testing import CliRunner
 from metapool.sample_sheet import PROTOCOL_NAME_PACBIO_SMRT
 from qiita_client.testing import PluginTestCase
 
 from qp_klp.Assays import ASSAY_NAME_METAGENOMIC
+from qp_klp.scripts.pacbio_commands import generate_bam2fastq_commands
 from qp_klp.WorkflowFactory import WorkflowFactory
 
 
-class WorkflowFactoryTests(PluginTestCase):
+class WorkflowBaseFactoryTests(TestCase):
     def setUp(self):
         self.base_dir = dirname(abspath(__file__))
         self.output_dir = join(self.base_dir, "test_output")
         self.remove_these = [self.output_dir]
+        self._create_directory(self.output_dir)
 
         self.gz_source = f"{self.base_dir}/data/dummy.fastq.gz"
+
+        metapool_base_dir = dirname(abspath(metapool.__file__))
+        self.sample_sheets_base_dir = join(metapool_base_dir, "tests", "data")
 
     def tearDown(self):
         for fp in self.remove_these:
@@ -39,6 +46,8 @@ class WorkflowFactoryTests(PluginTestCase):
         makedirs(fp)
         self.remove_these.append(fp)
 
+
+class WorkflowFactoryTests(WorkflowBaseFactoryTests, PluginTestCase):
     def _inject_data(self, wf):
         """This is a helper method for testing that all the steps are run
         when testing wf.execute_pipeline()
@@ -95,8 +104,7 @@ class WorkflowFactoryTests(PluginTestCase):
 
     def test_pacbio_metagenomic_workflow_creation(self):
         kwargs = {
-            "uif_path": "tests/data/sample-sheets/metagenomic/"
-            "pacbio/good_pacbio_metagv10.csv",
+            "uif_path": f"{self.sample_sheets_base_dir}/good_pacbio_metagv10.csv",
             "qclient": self.qclient,
             "lane_number": "1",
             "config_fp": "tests/configuration.json",
@@ -106,10 +114,7 @@ class WorkflowFactoryTests(PluginTestCase):
             "is_restart": False,
         }
 
-        self._create_directory(kwargs["output_dir"])
-
         wf = WorkflowFactory.generate_workflow(**kwargs)
-
         # confirm that the proper type of workflow was generated.
         self.assertEqual(wf.protocol_type, PROTOCOL_NAME_PACBIO_SMRT)
         self.assertEqual(wf.assay_type, ASSAY_NAME_METAGENOMIC)
@@ -130,6 +135,134 @@ class WorkflowFactoryTests(PluginTestCase):
         ):
             wf.execute_pipeline()
 
+    def test_pacbio_metagenomic_workflow_creation_twist_adaptors(self):
+        kwargs = {
+            "uif_path": f"{self.sample_sheets_base_dir}/good_pacbio_metagv11.csv",
+            "qclient": self.qclient,
+            "lane_number": "1",
+            "config_fp": "tests/configuration.json",
+            "run_identifier": "r11111_20250101_111111",
+            "output_dir": self.output_dir,
+            "job_id": "78901",
+            "is_restart": False,
+        }
+
+        self._create_directory(kwargs["output_dir"])
+
+        WorkflowFactory.generate_workflow(**kwargs)
+
+        with open(f"{self.output_dir}/sample_list.tsv", "r") as fp:
+            obs = fp.readlines()
+
+        self.assertCountEqual(SAMPLE_LIST_11, obs)
+
+
+class WorkflowFactoryTestsNoPlugin(WorkflowBaseFactoryTests):
+    def _inject_data(self, add_files=False, remove_twisted=True):
+        self.run_dir = f"{self.output_dir}/r11111_20250101_111111"
+        self._create_directory(self.run_dir)
+
+        if remove_twisted:
+            _data = [line.rsplit("\t", 1)[0] + "\n" for line in SAMPLE_LIST_11]
+        else:
+            # note that we are actually adding both twisted and not twisted here
+            _data = [line for line in SAMPLE_LIST_11]
+            _data[-1] = SAMPLE_LIST_11[-1].rsplit("\t", 1)[0] + "\n"
+
+        # making sure the header is intact
+        _data[0] = SAMPLE_LIST_11[0]
+
+        self.sample_list_fp = f"{self.output_dir}/sample_list.tsv"
+        with open(self.sample_list_fp, "w") as fp:
+            fp.write("".join(_data))
+
+        if add_files:
+            bd = f"{self.run_dir}/1_A01/hifi_reads/"
+            self._create_directory(bd)
+            if remove_twisted:
+                for bc in ["bc3011", "bc0112", "bc9992"]:
+                    Path(f"{bd}/mXXXX.hifi_reads.{bc}.bam").touch()
+            else:
+                # creating non twisted file
+                Path(f"{bd}/mXXXX.hifi_reads.bc9992.bam").touch()
+                # writting twisted
+                bd = f"{self.run_dir}/1_A01/--MyProject_99999--/call-lima/execution/"
+                makedirs(bd)
+                for tb in [
+                    "16_UDI_1_A01_F--16_UDI_1_A01_R",
+                    "16_UDI_2_B01_F--16_UDI_2_B01_R",
+                ]:
+                    self._create_directory(f"{bd}/{tb}")
+                    Path(f"{bd}/{tb}/mXXXX.hifi_reads.{tb}.bam").touch()
+
+    def _execute_command(self):
+        runner = CliRunner()
+        result = runner.invoke(
+            generate_bam2fastq_commands,
+            [
+                self.sample_list_fp,
+                self.run_dir,
+                self.output_dir,
+            ],
+        )
+        return result
+
+    def test_generate_bam2fastq_commands(self):
+        # test missing barcodes
+        self._inject_data()
+        result = self._execute_command()
+        self.assertRegex(
+            str(result.exception),
+            "r11111_20250101_111111 is missing barcodes: \['bc3011', 'bc0112', 'bc9992'\]",
+        )
+
+        # testing pacbio barcodes
+        self._inject_data(add_files=True)
+        result = self._execute_command()
+        exp = [
+            f"bam2fastq -j 1 -o {self.output_dir}/MyProject_99999/sample_1_S000_L001_R1_001 -c 9 "
+            f"{self.run_dir}/1_A01/hifi_reads/mXXXX.hifi_reads.bc3011.bam; fqtools count "
+            f"{self.output_dir}/MyProject_99999/sample_1_S000_L001_R1_001.fastq.gz > "
+            f"{self.output_dir}/MyProject_99999/sample_1_S000_L001_R1_001.counts.txt",
+            f"bam2fastq -j 1 -o {self.output_dir}/MyProject_99999/sample_2_S000_L001_R1_001 -c 9 "
+            f"{self.run_dir}/1_A01/hifi_reads/mXXXX.hifi_reads.bc0112.bam; fqtools count "
+            f"{self.output_dir}/MyProject_99999/sample_2_S000_L001_R1_001.fastq.gz > "
+            f"{self.output_dir}/MyProject_99999/sample_2_S000_L001_R1_001.counts.txt",
+            f"bam2fastq -j 1 -o {self.output_dir}/MyProject_99999/sample_3_S000_L001_R1_001 -c 9 "
+            f"{self.run_dir}/1_A01/hifi_reads/mXXXX.hifi_reads.bc9992.bam; fqtools count "
+            f"{self.output_dir}/MyProject_99999/sample_3_S000_L001_R1_001.fastq.gz > "
+            f"{self.output_dir}/MyProject_99999/sample_3_S000_L001_R1_001.counts.txt",
+            "",
+        ]
+        self.assertCountEqual(result.output.split("\n"), exp)
+
+        # testing pacbio and twist adaptors combined
+        self._inject_data(add_files=True, remove_twisted=False)
+        result = self._execute_command()
+        exp = [
+            f"bam2fastq -j 1 -o {self.output_dir}/MyProject_99999/sample_1_S000_L001_R1_001 -c 9 "
+            f"{self.run_dir}/1_A01/--MyProject_99999--/call-lima/execution/16_UDI_1_A01_F--16_UDI_1_A01_R/mXXXX.hifi_reads.16_UDI_1_A01_F--16_UDI_1_A01_R.bam; "
+            f"fqtools count {self.output_dir}/MyProject_99999/sample_1_S000_L001_R1_001.fastq.gz > "
+            f"{self.output_dir}/MyProject_99999/sample_1_S000_L001_R1_001.counts.txt",
+            f"bam2fastq -j 1 -o {self.output_dir}/MyProject_99999/sample_2_S000_L001_R1_001 -c 9 "
+            f"{self.run_dir}/1_A01/--MyProject_99999--/call-lima/execution/16_UDI_2_B01_F--16_UDI_2_B01_R/mXXXX.hifi_reads.16_UDI_2_B01_F--16_UDI_2_B01_R.bam; "
+            f"fqtools count {self.output_dir}/MyProject_99999/sample_2_S000_L001_R1_001.fastq.gz > "
+            f"{self.output_dir}/MyProject_99999/sample_2_S000_L001_R1_001.counts.txt",
+            f"bam2fastq -j 1 -o {self.output_dir}/MyProject_99999/sample_3_S000_L001_R1_001 -c 9 "
+            f"{self.run_dir}/1_A01/hifi_reads/mXXXX.hifi_reads.bc9992.bam; fqtools count "
+            f"{self.output_dir}/MyProject_99999/sample_3_S000_L001_R1_001.fastq.gz > "
+            f"{self.output_dir}/MyProject_99999/sample_3_S000_L001_R1_001.counts.txt",
+            "",
+        ]
+        self.assertCountEqual(result.output.split("\n"), exp)
+
+
+SAMPLE_LIST_11 = [
+    "barcode\tsample_name\tproject_name\tlane\ttwist_adaptor_id\n",
+    "bc3011\tsample_1\tMyProject_99999\t1\t16_UDI_1_A01_F--16_UDI_1_A01_R\n",
+    "bc0112\tsample_2\tMyProject_99999\t1\t16_UDI_2_B01_F--16_UDI_2_B01_R\n",
+    "bc9992\tsample_3\tMyProject_99999\t1\t16_UDI_5_E01_F--16_UDI_5_E01_R\n",
+]
 
 if __name__ == "__main__":
     main()
