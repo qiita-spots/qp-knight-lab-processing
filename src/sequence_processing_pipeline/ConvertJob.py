@@ -513,6 +513,7 @@ class ConvertPacBioBam2FastqJob(Job):
 
         lines.append("set -x")
         lines.append("set -e")
+        lines.append("set -o pipefail")
         lines.append("date")
         lines.append("hostname")
         lines.append("source ~/.bash_profile")
