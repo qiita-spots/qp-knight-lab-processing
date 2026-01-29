@@ -97,12 +97,11 @@ function mux-runner () {
         # fwd/rev reads so we are gonna take advantage fastp default output
         # to minimize steps. Additionally, movi expects the input to not be
         # gz, so we are not going to compress seqs_r1
-
-        fastp \
+        fastplong \
             -l {{length_limit}} \
             -i ${r1} \
             -w {{cores_per_task}} \
-            --adapter_fasta {{knwn_adpt_path}} \
+            --disable_adapter_trimming \
             --html {{html_path}}/${html_name} \
             --json {{json_path}}/${json_name} \
             --stdout | gzip > ${r_adapter_only}
