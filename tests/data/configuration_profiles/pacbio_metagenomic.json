@@ -34,7 +34,7 @@
         "job_max_array_length": 1000,
         "known_adapters_path": "fastp_known_adapters_formatted.fna",
         "bucket_size": 18,
-        "length_limit": 250,
+        "length_limit": 1000,
         "cores_per_task": 16,
         "movi_executable_path": "/home/user/user_dir/Movi/build/movi-default",
         "gres_value": 4,
